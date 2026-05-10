@@ -22,6 +22,8 @@ models, a tiny Lean model of the restricted Counter Yul path, and a tiny
 verified Counter compiler slice. The broader Solidity and Yul pipeline remains
 placeholder tooling.
 
+For the current intuition and next steps, see `docs/roadmap.md`.
+
 ## What Exists Now
 
 - A Lake-based Lean 4 project.
@@ -108,6 +110,7 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── compiler.md
 │   ├── counter-yul.md
 │   ├── counter.md
+│   ├── roadmap.md
 │   ├── simple-vault.md
 │   └── yul-subset.md
 ├── SoLean.lean
@@ -227,10 +230,5 @@ python3 -m unittest discover -s tests
 
 ## Next Milestones
 
-1. Generate the Python Counter Yul output from the same structure as the Lean
-   compiler, or add a checked round trip from emitted text back to Lean data.
-2. Connect the Counter Solidity parser to the Lean source-language shape.
-3. Compare real `solc 0.8.20 --ir` Counter output against the restricted model,
-   only after the supported subset is explicit.
-4. Generalize the tiny compiler only as needed before extending the verified Yul
-   path to SimpleVault.
+The living roadmap is in `docs/roadmap.md`. Keep that file updated as proof
+boundaries move from manual assumptions into checked Lean artifacts.
