@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 
 COUNTER_SNIPPET = """-- Counter-only sketch generated from examples/Counter.sol.
@@ -21,6 +23,8 @@ import SoLean.Examples.Counter
 #check SoLean.Examples.Counter.incProgram
 #check SoLean.Examples.Counter.inc_assertion_safe
 """
+
+COUNTER_STORAGE_SLOTS = {"x": 0}
 
 
 class UnsupportedSolidityError(ValueError):
@@ -258,6 +262,108 @@ def parse_counter(source: str) -> Contract:
     return contract
 
 
+def contract_to_source_data(contract: Contract) -> dict[str, Any]:
+    """Project the supported Counter contract into the Lean source shape.
+
+    This mirrors `SoLean.Examples.CounterCompiler.counterFunction` for tests and
+    audits. It is not a verified translation from Solidity.
+    """
+
+    validate_counter(contract)
+    function = contract.functions[0]
+    storage_slots = {
+        var.name: {
+            "slot": COUNTER_STORAGE_SLOTS[var.name],
+            "type": var.typ,
+            "visibility": var.visibility,
+        }
+        for var in contract.state_vars
+    }
+
+    return {
+        "kind": "sourceFunction",
+        "lean": "SoLean.Examples.CounterCompiler.counterFunction",
+        "contract": {
+            "name": contract.name,
+            "pragma": contract.pragma_version,
+        },
+        "storage": storage_slots,
+        "function": {
+            "name": function.name,
+            "param": {
+                "name": function.param_name,
+                "type": function.param_type,
+            },
+            "body": {
+                "seq": [
+                    statement_to_source_data(stmt, function.param_name, storage_slots)
+                    for stmt in function.body
+                ]
+            },
+        },
+    }
+
+
+def statement_to_source_data(
+    stmt: Statement, param_name: str, storage_slots: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    if isinstance(stmt, Require):
+        return {
+            "require": comparison_to_source_data(stmt.cond, param_name, storage_slots)
+        }
+    if isinstance(stmt, Assert):
+        return {
+            "assert": comparison_to_source_data(stmt.cond, param_name, storage_slots)
+        }
+    if isinstance(stmt, AddAssign):
+        if stmt.target not in storage_slots:
+            raise UnsupportedSolidityError(f"unknown storage variable: {stmt.target}")
+        return {
+            "assign": {
+                "slot": storage_slots[stmt.target]["slot"],
+                "expr": {
+                    "add": [
+                        {"slot": storage_slots[stmt.target]["slot"]},
+                        expr_to_source_data(Var(stmt.source), param_name, storage_slots),
+                    ]
+                },
+            }
+        }
+    raise TypeError(f"unsupported statement: {stmt!r}")
+
+
+def comparison_to_source_data(
+    comparison: Comparison, param_name: str, storage_slots: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    if comparison.op not in {">", ">="}:
+        raise UnsupportedSolidityError(f"unsupported comparison operator: {comparison.op}")
+    op_name = "gt" if comparison.op == ">" else "ge"
+    return {
+        op_name: [
+            expr_to_source_data(comparison.left, param_name, storage_slots),
+            expr_to_source_data(comparison.right, param_name, storage_slots),
+        ]
+    }
+
+
+def expr_to_source_data(
+    expr: SmallExpr, param_name: str, storage_slots: dict[str, dict[str, Any]]
+) -> dict[str, Any]:
+    if isinstance(expr, Number):
+        return {"const": expr.value}
+    if isinstance(expr, Var):
+        if expr.name == param_name:
+            return {"param": expr.name}
+        if expr.name in storage_slots:
+            return {"slot": storage_slots[expr.name]["slot"]}
+        raise UnsupportedSolidityError(f"unknown identifier: {expr.name}")
+    raise TypeError(f"unsupported expression: {expr!r}")
+
+
+def source_data_json(contract: Contract) -> str:
+    return json.dumps(contract_to_source_data(contract), indent=2, sort_keys=True) + "\n"
+
+
 def validate_counter(contract: Contract) -> None:
     expected = Contract(
         pragma_version="0.8.20",
@@ -295,6 +401,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path, help="Solidity source file")
     parser.add_argument(
+        "--format",
+        choices=["lean", "source-json"],
+        default="lean",
+        help="Output Lean reference sketch or deterministic source-shape JSON",
+    )
+    parser.add_argument(
         "-o",
         "--output",
         type=Path,
@@ -311,15 +423,16 @@ def main(argv: list[str] | None = None) -> int:
 
     source = args.source.read_text()
     try:
-        parse_counter(source)
+        contract = parse_counter(source)
     except UnsupportedSolidityError as exc:
         print(f"unsupported Solidity input: {exc}", file=sys.stderr)
         return 2
 
+    output = COUNTER_SNIPPET if args.format == "lean" else source_data_json(contract)
     if args.output:
-        args.output.write_text(COUNTER_SNIPPET)
+        args.output.write_text(output)
     else:
-        print(COUNTER_SNIPPET, end="")
+        print(output, end="")
     return 0
 
 

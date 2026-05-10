@@ -59,6 +59,8 @@ This is real progress, but it does not yet start from Solidity text or real
 - Python parses and normalizes a restricted Yul-like subset.
 - Python performs bounded trace checks for Counter-shaped Yul programs.
 - Python recognizes a tiny Counter-shaped Solidity subset.
+- Python emits deterministic Counter source-shape JSON that is tested against a
+  JSON-like mirror of `CounterCompiler.counterFunction`.
 - `solc_to_yul.py` can call `solc` when it is installed.
 
 These are useful engineering tools, but they are not part of the trusted Lean
@@ -67,7 +69,8 @@ proof chain yet.
 ### Not Done
 
 - Verified Solidity parsing.
-- Verified translation from Solidity text to the Lean source function.
+- Verified translation from Solidity text to the Lean source function. The
+  current bridge is an auditable structural/golden test, not a proof.
 - Verified connection between the Python Yul emitter and the Lean compiler. The
   current connection is an auditable structural/golden test, not a proof.
 - Parsing emitted Yul text back into Lean Yul data.
@@ -106,17 +109,24 @@ Definition of done:
 
 Goal: stop treating the Solidity input as only a human reference.
 
+Done:
+
+- The Counter Solidity parser can emit deterministic source-shape JSON.
+- Tests check that this JSON matches a canonical mirror of
+  `CounterCompiler.counterFunction`.
+- Unsupported Solidity still fails loudly.
+
 Next tasks:
 
-- Make the Counter Solidity parser produce a tiny structured JSON-like summary.
-- Add a golden check that the parsed Counter summary matches the Lean
-  `counterFunction` shape.
-- Keep unsupported Solidity rejection loud and precise.
+- Reduce duplication between the Python source-shape mirror and Lean
+  `counterFunction`.
+- Decide whether Lean should export a source-shape artifact, or whether a shared
+  checked representation should drive both sides.
 
 Definition of done:
 
 - For Counter, the path from `examples/Counter.sol` to the Lean source function
-  is explicit enough to audit, even if the parser itself is not verified.
+  has less hand-maintained duplication than the current source-shape mirror.
 
 ### 3. Bring In Real `solc 0.8.20` Output
 
@@ -171,26 +181,22 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Connect the Counter Solidity parser to the Lean source function shape.
+Bring in real solc 0.8.20 Counter output.
 ```
 
 Why this matters:
 
-- We now have a Lean source function, compiler proof, and Yul structural/golden
-  checks.
-- But `examples/Counter.sol` is still only recognized by a Python parser that
-  emits a Lean reference.
-- The bridge from Solidity text to `CounterCompiler.counterFunction` is still
-  informal.
+- We now have Counter structural alignment from Solidity text to Lean source
+  shape, then to the Lean compiler/Yul path.
+- The remaining outside-world compiler bridge is real `solc --ir` output.
+- Inspecting real IR will show the smallest honest next Yul subset expansion.
 
 Smallest useful version:
 
-1. Make the Counter Solidity parser emit a deterministic JSON-like source
-   summary.
-2. Add a golden test that this summary matches the shape of
-   `CounterCompiler.counterFunction`.
-3. Keep the claim modest: auditable structural alignment, not verified Solidity
-   parsing.
+1. Use documented `solc-select` setup for `solc 0.8.20`.
+2. Generate local `build/Counter.solc.yul` without committing it.
+3. Document the first unsupported solc IR constructs blocking comparison.
+4. Keep unsupported output rejection explicit.
 
 ## Updating This Roadmap
 

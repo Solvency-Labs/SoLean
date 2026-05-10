@@ -56,6 +56,8 @@ For the current intuition and next steps, see `docs/roadmap.md`.
   - SoLean to restricted Yul-like text for `Counter`.
   - Counter Yul structural/golden checks against the Lean-proved Counter Yul
     shape.
+  - Counter Solidity source-shape JSON aligned with the Lean
+    `CounterCompiler.counterFunction` shape.
   - Yul text normalization.
   - Restricted-subset bounded trace comparison, with strict AST and
     normalized-text modes as explicit fallbacks.
@@ -92,6 +94,8 @@ Python emitter output, and solc Yul all have the same semantics.
 - Verified correspondence between the Python Yul emitter and the Lean Yul data.
   Python tests currently check structural/golden alignment, not a proof.
 - Verified Solidity-to-source-language translation.
+  Python tests currently check structural/golden alignment for Counter, not a
+  proof.
 - Broad Solidity or DeFi verification claims.
 
 Checked addition and subtraction are modeled for the current expression DSL.
@@ -142,6 +146,7 @@ still a small Solidity subset rather than an EVM semantics.
 │   └── yul_subset.py
 └── tests/
     ├── golden/
+    │   ├── Counter.source.json
     │   └── Counter.solean.yul
     ├── README.md
     └── test_yul_tools.py
@@ -226,6 +231,15 @@ python3 scripts/solidity_to_solean.py examples/Counter.sol
 
 This is not a general Solidity parser. It tokenizes and validates only a tiny
 Counter subset and rejects unsupported input.
+
+Emit the same parsed Counter shape as deterministic JSON:
+
+```bash
+python3 scripts/solidity_to_solean.py --format source-json examples/Counter.sol
+```
+
+This JSON is an audit/test artifact that mirrors the Lean
+`CounterCompiler.counterFunction` shape; it is not a verified parser output.
 
 Run the Python tests:
 

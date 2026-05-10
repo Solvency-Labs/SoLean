@@ -8,7 +8,12 @@ from pathlib import Path
 
 from scripts.check_equiv import main as check_equiv_main
 from scripts.normalize_yul import normalize_text
-from scripts.solidity_to_solean import is_supported_counter, main as solidity_to_solean_main
+from scripts.solidity_to_solean import (
+    contract_to_source_data,
+    is_supported_counter,
+    main as solidity_to_solean_main,
+    parse_counter,
+)
 from scripts.solean_to_yul import main as solean_to_yul_main
 from scripts.yul_subset import (
     UINT256_MAX,
@@ -72,6 +77,60 @@ LEAN_COUNTER_YUL_DATA = {
                 },
             },
         ],
+    },
+}
+
+LEAN_COUNTER_SOURCE_DATA = {
+    "contract": {
+        "name": "Counter",
+        "pragma": "0.8.20",
+    },
+    "function": {
+        "body": {
+            "seq": [
+                {
+                    "require": {
+                        "gt": [
+                            {"param": "amount"},
+                            {"const": 0},
+                        ]
+                    }
+                },
+                {
+                    "assign": {
+                        "expr": {
+                            "add": [
+                                {"slot": 0},
+                                {"param": "amount"},
+                            ]
+                        },
+                        "slot": 0,
+                    }
+                },
+                {
+                    "assert": {
+                        "ge": [
+                            {"slot": 0},
+                            {"param": "amount"},
+                        ]
+                    }
+                },
+            ]
+        },
+        "name": "inc",
+        "param": {
+            "name": "amount",
+            "type": "uint256",
+        },
+    },
+    "kind": "sourceFunction",
+    "lean": "SoLean.Examples.CounterCompiler.counterFunction",
+    "storage": {
+        "x": {
+            "slot": 0,
+            "type": "uint256",
+            "visibility": "public",
+        }
     },
 }
 
@@ -242,6 +301,10 @@ class SolidityToSoLeanTests(unittest.TestCase):
     def test_counter_shape_is_supported(self) -> None:
         source = Path("examples/Counter.sol").read_text()
         self.assertTrue(is_supported_counter(source))
+        self.assertEqual(
+            contract_to_source_data(parse_counter(source)),
+            LEAN_COUNTER_SOURCE_DATA,
+        )
 
     def test_counter_parser_allows_whitespace_and_comments(self) -> None:
         source = """
@@ -259,6 +322,10 @@ class SolidityToSoLeanTests(unittest.TestCase):
         }
         """
         self.assertTrue(is_supported_counter(source))
+        self.assertEqual(
+            contract_to_source_data(parse_counter(source)),
+            LEAN_COUNTER_SOURCE_DATA,
+        )
 
     def test_counter_script_outputs_model_reference(self) -> None:
         output = io.StringIO()
@@ -267,6 +334,21 @@ class SolidityToSoLeanTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertIn("SoLean.Examples.Counter.incProgram", output.getvalue())
+
+    def test_counter_script_outputs_source_json_golden_file(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = solidity_to_solean_main([
+                "--format",
+                "source-json",
+                "examples/Counter.sol",
+            ])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            output.getvalue(),
+            Path("tests/golden/Counter.source.json").read_text(),
+        )
 
     def test_unsupported_solidity_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

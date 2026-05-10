@@ -42,6 +42,8 @@ results.
 - `SoLean/Examples/CounterCompiler.lean` proves that the generic Counter source
   function instantiates to the existing Counter model and compiles to the
   existing restricted Yul Counter model.
+- The Counter Solidity parser can emit deterministic source-shape JSON that is
+  tested against a structural mirror of `CounterCompiler.counterFunction`.
 - The default Yul checker runs bounded trace comparison for Counter-shaped
   restricted-subset programs. This is not semantic Yul equivalence.
 - Strict restricted-subset AST equality is available as an explicit `--ast`
@@ -49,4 +51,5 @@ results.
 - `solc 0.8.20` is the intended pinned compiler version for local Counter Yul
   generation. Generated `build/` artifacts are not committed yet.
 - The Python emitter, Python parser, Solidity source, and real solc output are
-  not yet connected to the Lean compiler by a verified translation.
+  not yet connected to the Lean compiler by a verified translation. Current
+  Python tests provide auditable structural alignment for Counter only.
