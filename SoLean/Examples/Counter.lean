@@ -21,7 +21,7 @@ The manually modeled Counter `inc(amount)` assertion is safe:
 whenever execution succeeds, the final modeled value of `x` is at least
 `amount`.
 
-Assumptions: `UInt256` is `Nat`, overflow is not modeled, and the program is the
+Assumptions: `UInt256` is `Nat` with checked addition, and the program is the
 hand-written SoLean model rather than generated Solidity semantics.
 -/
 theorem inc_success_assertion
@@ -37,14 +37,21 @@ theorem inc_success_assertion
             xSlot := by
       rw [Storage.read_write_same]
       exact UInt256.amount_le_add_left (storage.read xSlot) amount
-    have hFinal :
-        ExecResult.success
-            (Storage.write storage xSlot (storage.read xSlot + amount)) =
-          ExecResult.success finalStorage := by
-      simpa [incProgram, xExpr, exec, evalBool, evalValue, UInt256.gt,
-        UInt256.ge, UInt256.add, hAmount, hPost] using h
-    cases hFinal
-    exact hPost
+    by_cases hAdd : storage.read xSlot + amount <= UInt256.maxValue
+    · have hFinal :
+          ExecResult.success
+              (Storage.write storage xSlot (storage.read xSlot + amount)) =
+            ExecResult.success finalStorage := by
+        simpa [incProgram, xExpr, exec, evalBool, evalValue, UInt256.gt,
+          UInt256.ge, UInt256.checkedAdd, hAmount, hAdd, hPost] using h
+      cases hFinal
+      exact hPost
+    · have hImpossible :
+          ExecResult.revert Failure.arithmeticFailed =
+            ExecResult.success finalStorage := by
+        simp [incProgram, xExpr, exec, evalBool, evalValue, UInt256.gt,
+          UInt256.checkedAdd, hAmount, hAdd] at h
+      cases hImpossible
   · have hImpossible :
         ExecResult.revert Failure.requireFailed =
           ExecResult.success finalStorage := by

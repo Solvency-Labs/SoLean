@@ -63,20 +63,30 @@ inductive Stmt where
   | seq : Stmt -> Stmt -> Stmt
 deriving Repr, DecidableEq
 
-def evalValue (env : Env) (storage : Storage) : ValueExpr -> UInt256
-  | .const value => value
-  | .slot slot => storage.read slot
+def evalValue (env : Env) (storage : Storage) : ValueExpr -> Option UInt256
+  | .const value => some value
+  | .slot slot => some (storage.read slot)
   | .add lhs rhs =>
-      UInt256.add (evalValue env storage lhs) (evalValue env storage rhs)
+      match evalValue env storage lhs, evalValue env storage rhs with
+      | some lhsValue, some rhsValue => UInt256.checkedAdd lhsValue rhsValue
+      | _, _ => none
   | .sub lhs rhs =>
-      UInt256.sub (evalValue env storage lhs) (evalValue env storage rhs)
+      match evalValue env storage lhs, evalValue env storage rhs with
+      | some lhsValue, some rhsValue => UInt256.checkedSub lhsValue rhsValue
+      | _, _ => none
 
-def evalBool (env : Env) (storage : Storage) : BoolExpr -> Bool
+def evalBool (env : Env) (storage : Storage) : BoolExpr -> Option Bool
   | .gt lhs rhs =>
-      UInt256.gt (evalValue env storage lhs) (evalValue env storage rhs)
+      match evalValue env storage lhs, evalValue env storage rhs with
+      | some lhsValue, some rhsValue => some (UInt256.gt lhsValue rhsValue)
+      | _, _ => none
   | .ge lhs rhs =>
-      UInt256.ge (evalValue env storage lhs) (evalValue env storage rhs)
+      match evalValue env storage lhs, evalValue env storage rhs with
+      | some lhsValue, some rhsValue => some (UInt256.ge lhsValue rhsValue)
+      | _, _ => none
   | .eq lhs rhs =>
-      decide (evalValue env storage lhs = evalValue env storage rhs)
+      match evalValue env storage lhs, evalValue env storage rhs with
+      | some lhsValue, some rhsValue => some (decide (lhsValue = rhsValue))
+      | _, _ => none
 
 end SoLean
