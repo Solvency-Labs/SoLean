@@ -6,14 +6,14 @@ results.
 
 ## Arithmetic
 
-- `UInt256` is still represented as `Nat`, not as a bounded subtype.
+- `UInt256` is represented as a structure carrying a `Nat` value plus a proof
+  that the value is at most `2^256 - 1`.
 - `UInt256.maxValue` is `2^256 - 1`.
 - Checked addition returns `none` when the mathematical sum exceeds
   `UInt256.maxValue`.
 - Checked subtraction returns `none` when the right-hand side is greater than
   the left-hand side.
-- Existing storage values are assumed to be valid Solidity `uint256` values
-  when a case study depends on bounded stored values.
+- Existing storage values are type-enforced as bounded `UInt256` values.
 
 ## Execution
 

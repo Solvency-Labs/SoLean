@@ -24,3 +24,6 @@ jobs:
 
       - name: Check Python scripts
         run: python -m compileall scripts
+
+      - name: Run Python tests
+        run: python -m unittest discover -s tests

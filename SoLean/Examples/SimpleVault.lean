@@ -13,7 +13,7 @@ def totalAssetsExpr : ValueExpr :=
 def totalSharesExpr : ValueExpr :=
   .slot totalSharesSlot
 
-def invariant (storage : Storage) : Prop :=
+def invariant : Invariant := fun storage =>
   storage.read totalSharesSlot <= storage.read totalAssetsSlot
 
 /--
@@ -24,7 +24,7 @@ Arithmetic is checked by expression evaluation. Overflow reverts with
 -/
 def depositProgram (assets : UInt256) : Stmt :=
   .seq
-    (.require (.gt (.const assets) (.const 0)))
+    (.require (.gt (.const assets) (.const UInt256.zero)))
     (.seq
       (.assign totalAssetsSlot (.add totalAssetsExpr (.const assets)))
       (.seq
@@ -40,7 +40,7 @@ the Solidity `require` checks and underflow reverts with
 -/
 def withdrawProgram (shares : UInt256) : Stmt :=
   .seq
-    (.require (.gt (.const shares) (.const 0)))
+    (.require (.gt (.const shares) (.const UInt256.zero)))
     (.seq
       (.require (.ge totalSharesExpr (.const shares)))
       (.seq
@@ -64,71 +64,62 @@ theorem deposit_preserves_invariant
       exec env (depositProgram assets) storage =
         ExecResult.success finalStorage) :
     invariant finalStorage := by
-  by_cases hAssets : assets > 0
-  · by_cases hAddAssets :
-        storage.read totalAssetsSlot + assets <= UInt256.maxValue
-    · by_cases hAddShares :
-          (Storage.write storage totalAssetsSlot
-                (storage.read totalAssetsSlot + assets)).read totalSharesSlot +
-              assets <= UInt256.maxValue
-      · have hPost :
+  by_cases hAssets : assets > UInt256.zero
+  · cases hAddAssets :
+        UInt256.checkedAdd (storage.read totalAssetsSlot) assets with
+    | none =>
+        have hImpossible :
+            ExecResult.revert Failure.arithmeticFailed =
+              ExecResult.success finalStorage := by
+          simp [depositProgram, totalAssetsExpr, totalSharesExpr, exec,
+            evalBool, evalValue, UInt256.gt, hAssets, hAddAssets] at h
+        cases hImpossible
+    | some newAssets =>
+      cases hAddShares :
+          UInt256.checkedAdd
+            ((Storage.write storage totalAssetsSlot newAssets).read
+              totalSharesSlot)
+            assets with
+      | none =>
+          have hImpossible :
+              ExecResult.revert Failure.arithmeticFailed =
+                ExecResult.success finalStorage := by
+            simp [depositProgram, totalAssetsExpr, totalSharesExpr, exec,
+              evalBool, evalValue, UInt256.gt, hAssets, hAddAssets,
+              hAddShares] at h
+          cases hImpossible
+      | some newShares =>
+        have hNewSharesLe : newShares <= newAssets := by
+          show newShares.toNat <= newAssets.toNat
+          rw [UInt256.checkedAdd_toNat hAddShares,
+            UInt256.checkedAdd_toNat hAddAssets]
+          simpa [totalAssetsSlot, totalSharesSlot, Storage.write] using
+            Nat.add_le_add_right hInv assets.toNat
+        have hPost :
             invariant
               (Storage.write
-                (Storage.write storage totalAssetsSlot
-                  (storage.read totalAssetsSlot + assets))
-                totalSharesSlot
-                ((Storage.write storage totalAssetsSlot
-                    (storage.read totalAssetsSlot + assets)).read
-                  totalSharesSlot + assets)) := by
+                (Storage.write storage totalAssetsSlot newAssets)
+                totalSharesSlot newShares) := by
           simpa [invariant, totalAssetsSlot, totalSharesSlot, Storage.write]
-            using hInv
-        have hAddInv : storage.read 1 + assets <= storage.read 0 + assets :=
-          Nat.add_le_add_right hInv assets
-        have hAddAssets0 : storage.read 0 + assets <= UInt256.maxValue := by
-          simpa [totalAssetsSlot] using hAddAssets
-        have hAddShares0 : storage.read 1 + assets <= UInt256.maxValue := by
+            using hNewSharesLe
+        have hAssert :
+            newShares <=
+              (Storage.write
+                (Storage.write storage totalAssetsSlot newAssets)
+                totalSharesSlot newShares).read totalAssetsSlot := by
           simpa [totalAssetsSlot, totalSharesSlot, Storage.write] using
-            hAddShares
+            hNewSharesLe
         have hFinal :
             ExecResult.success
                 (Storage.write
-                  (Storage.write storage totalAssetsSlot
-                    (storage.read totalAssetsSlot + assets))
-                  totalSharesSlot
-                  ((Storage.write storage totalAssetsSlot
-                      (storage.read totalAssetsSlot + assets)).read
-                    totalSharesSlot + assets)) =
+                  (Storage.write storage totalAssetsSlot newAssets)
+                  totalSharesSlot newShares) =
               ExecResult.success finalStorage := by
           simpa [depositProgram, totalAssetsExpr, totalSharesExpr, exec,
-            evalBool, evalValue, UInt256.gt, UInt256.ge, UInt256.checkedAdd,
-            invariant, totalAssetsSlot, totalSharesSlot, Storage.write,
-            hAssets, hAddAssets0, hAddShares0, hInv, hAddInv, hPost] using h
+            evalBool, evalValue, UInt256.gt, UInt256.ge, hAssets, hAddAssets,
+            hAddShares, hAssert] using h
         cases hFinal
         exact hPost
-      · have hImpossible :
-            ExecResult.revert Failure.arithmeticFailed =
-              ExecResult.success finalStorage := by
-          have hAddAssets0 : storage.read 0 + assets <= UInt256.maxValue := by
-            simpa [totalAssetsSlot] using hAddAssets
-          have hAddShares0 :
-              Not (storage.read 1 + assets <= UInt256.maxValue) := by
-            simpa [totalAssetsSlot, totalSharesSlot, Storage.write] using
-              hAddShares
-          simp [depositProgram, totalAssetsExpr, totalSharesExpr, exec,
-            evalBool, evalValue, UInt256.gt, UInt256.checkedAdd,
-            totalAssetsSlot, totalSharesSlot, Storage.write, hAssets,
-            hAddAssets0, hAddShares0] at h
-        cases hImpossible
-    · have hImpossible :
-          ExecResult.revert Failure.arithmeticFailed =
-            ExecResult.success finalStorage := by
-        have hAddAssets0 :
-            Not (storage.read 0 + assets <= UInt256.maxValue) := by
-          simpa [totalAssetsSlot] using hAddAssets
-        simp [depositProgram, totalAssetsExpr, totalSharesExpr, exec, evalBool,
-          evalValue, UInt256.gt, UInt256.checkedAdd, totalAssetsSlot,
-          totalSharesSlot, Storage.write, hAssets, hAddAssets0] at h
-      cases hImpossible
   · have hImpossible :
         ExecResult.revert Failure.requireFailed =
           ExecResult.success finalStorage := by
@@ -136,10 +127,10 @@ theorem deposit_preserves_invariant
         evalValue, UInt256.gt, hAssets] at h
     cases hImpossible
 
-theorem deposit_invariant_safe
-    (env : Env) (storage : Storage) (assets : UInt256)
-    (hInv : invariant storage) :
-    succeedsWith (exec env (depositProgram assets) storage) invariant := by
+theorem deposit_invariant_safe (assets : UInt256) :
+    PreservesInvariant (depositProgram assets) invariant := by
+  unfold PreservesInvariant FunctionEnsures
+  intro env storage hInv
   cases h :
       exec env (depositProgram assets) storage with
   | success finalStorage =>
@@ -159,62 +150,79 @@ theorem withdraw_preserves_invariant
       exec env (withdrawProgram shares) storage =
         ExecResult.success finalStorage) :
     invariant finalStorage := by
-  by_cases hShares : shares > 0
+  by_cases hShares : shares > UInt256.zero
   · by_cases hEnoughShares : shares <= storage.read totalSharesSlot
     · by_cases hEnoughAssets : shares <= storage.read totalAssetsSlot
-      · have hPost :
-            invariant
-              (Storage.write
-                (Storage.write storage totalAssetsSlot
-                  (storage.read totalAssetsSlot - shares))
-                totalSharesSlot
-                ((Storage.write storage totalAssetsSlot
-                    (storage.read totalAssetsSlot - shares)).read
-                  totalSharesSlot - shares)) := by
-          simp [invariant, totalAssetsSlot, totalSharesSlot, Storage.write]
-          exact UInt256.sub_le_sub_right hInv
-        have hSubInv : storage.read 1 - shares <= storage.read 0 - shares :=
-          UInt256.sub_le_sub_right hInv
-        have hEnoughShares0 : shares <= storage.read 1 := by
-          simpa [totalSharesSlot] using hEnoughShares
-        have hEnoughAssets0 : shares <= storage.read 0 := by
-          simpa [totalAssetsSlot] using hEnoughAssets
-        have hFinal :
-            ExecResult.success
-                (Storage.write
-                  (Storage.write storage totalAssetsSlot
-                    (storage.read totalAssetsSlot - shares))
-                  totalSharesSlot
-                  ((Storage.write storage totalAssetsSlot
-                      (storage.read totalAssetsSlot - shares)).read
-                    totalSharesSlot - shares)) =
-              ExecResult.success finalStorage := by
-          simpa [withdrawProgram, totalAssetsExpr, totalSharesExpr, exec,
-            evalBool, evalValue, UInt256.gt, UInt256.ge, UInt256.checkedSub,
-            invariant, totalAssetsSlot, totalSharesSlot, Storage.write,
-            hShares, hEnoughShares0, hEnoughAssets0, hSubInv, hPost] using h
-        cases hFinal
-        exact hPost
+      · cases hSubAssets :
+            UInt256.checkedSub (storage.read totalAssetsSlot) shares with
+        | none =>
+            have hImpossible :
+                ExecResult.revert Failure.arithmeticFailed =
+                  ExecResult.success finalStorage := by
+              simp [withdrawProgram, totalAssetsExpr, totalSharesExpr, exec,
+                evalBool, evalValue, UInt256.gt, UInt256.ge, hShares,
+                hEnoughShares, hEnoughAssets, hSubAssets] at h
+            cases hImpossible
+        | some newAssets =>
+          cases hSubShares :
+              UInt256.checkedSub
+                ((Storage.write storage totalAssetsSlot newAssets).read
+                  totalSharesSlot)
+                shares with
+          | none =>
+              have hImpossible :
+                  ExecResult.revert Failure.arithmeticFailed =
+                    ExecResult.success finalStorage := by
+                simp [withdrawProgram, totalAssetsExpr, totalSharesExpr, exec,
+                  evalBool, evalValue, UInt256.gt, UInt256.ge, hShares,
+                  hEnoughShares, hEnoughAssets, hSubAssets, hSubShares] at h
+              cases hImpossible
+          | some newShares =>
+            have hNewSharesLe : newShares <= newAssets := by
+              show newShares.toNat <= newAssets.toNat
+              rw [UInt256.checkedSub_toNat hSubShares,
+                UInt256.checkedSub_toNat hSubAssets]
+              simpa [totalAssetsSlot, totalSharesSlot, Storage.write] using
+                UInt256.sub_le_sub_right hInv (c := shares)
+            have hPost :
+                invariant
+                  (Storage.write
+                    (Storage.write storage totalAssetsSlot newAssets)
+                    totalSharesSlot newShares) := by
+              simpa [invariant, totalAssetsSlot, totalSharesSlot, Storage.write]
+                using hNewSharesLe
+            have hAssert :
+                newShares <=
+                  (Storage.write
+                    (Storage.write storage totalAssetsSlot newAssets)
+                    totalSharesSlot newShares).read totalAssetsSlot := by
+              simpa [totalAssetsSlot, totalSharesSlot, Storage.write] using
+                hNewSharesLe
+            have hFinal :
+                ExecResult.success
+                    (Storage.write
+                      (Storage.write storage totalAssetsSlot newAssets)
+                      totalSharesSlot newShares) =
+                  ExecResult.success finalStorage := by
+              simpa [withdrawProgram, totalAssetsExpr, totalSharesExpr, exec,
+                evalBool, evalValue, UInt256.gt, UInt256.ge, hShares,
+                hEnoughShares, hEnoughAssets, hSubAssets, hSubShares,
+                hAssert] using h
+            cases hFinal
+            exact hPost
       · have hImpossible :
             ExecResult.revert Failure.requireFailed =
               ExecResult.success finalStorage := by
-          have hEnoughShares0 : shares <= storage.read 1 := by
-            simpa [totalSharesSlot] using hEnoughShares
-          have hEnoughAssets0 : Not (shares <= storage.read 0) := by
-            simpa [totalAssetsSlot] using hEnoughAssets
           simp [withdrawProgram, totalAssetsExpr, totalSharesExpr, exec,
-            evalBool, evalValue, UInt256.gt, UInt256.ge, totalAssetsSlot,
-            totalSharesSlot, Storage.write, hShares, hEnoughShares,
-            hEnoughShares0, hEnoughAssets0] at h
+            evalBool, evalValue, UInt256.gt, UInt256.ge, hShares,
+            hEnoughShares, hEnoughAssets] at h
         cases hImpossible
     · have hImpossible :
           ExecResult.revert Failure.requireFailed =
             ExecResult.success finalStorage := by
-        have hEnoughShares0 : Not (shares <= storage.read 1) := by
-          simpa [totalSharesSlot] using hEnoughShares
         simp [withdrawProgram, totalAssetsExpr, totalSharesExpr, exec,
-          evalBool, evalValue, UInt256.gt, UInt256.ge, totalAssetsSlot,
-          totalSharesSlot, Storage.write, hShares, hEnoughShares0] at h
+          evalBool, evalValue, UInt256.gt, UInt256.ge, hShares,
+          hEnoughShares] at h
       cases hImpossible
   · have hImpossible :
         ExecResult.revert Failure.requireFailed =
@@ -223,10 +231,10 @@ theorem withdraw_preserves_invariant
         evalValue, UInt256.gt, hShares] at h
     cases hImpossible
 
-theorem withdraw_invariant_safe
-    (env : Env) (storage : Storage) (shares : UInt256)
-    (hInv : invariant storage) :
-    succeedsWith (exec env (withdrawProgram shares) storage) invariant := by
+theorem withdraw_invariant_safe (shares : UInt256) :
+    PreservesInvariant (withdrawProgram shares) invariant := by
+  unfold PreservesInvariant FunctionEnsures
+  intro env storage hInv
   cases h :
       exec env (withdrawProgram shares) storage with
   | success finalStorage =>

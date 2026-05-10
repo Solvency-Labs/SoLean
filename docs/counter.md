@@ -16,6 +16,9 @@ The hand-written SoLean model stores `x` at storage slot `0`. It checks
 `amount > 0`, performs checked `uint256` addition, writes the new value of `x`,
 and models the Solidity assertion as a SoLean `assert`.
 
+Stored values are bounded `UInt256` values, so the storage model cannot contain
+out-of-range integers.
+
 Arithmetic overflow is not ignored. If the modeled addition exceeds
 `2^256 - 1`, expression evaluation fails and execution reverts with
 `Failure.arithmeticFailed`.

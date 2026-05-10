@@ -24,7 +24,7 @@ models. The Yul pipeline remains placeholder tooling.
 
 - A Lake-based Lean 4 project.
 - A minimal SoLean DSL:
-  - `UInt256` modeled as `Nat` with checked add/sub helpers.
+  - `UInt256` modeled as a bounded natural-number structure.
   - Storage modeled as `Slot -> UInt256`.
   - An environment with `msg.sender`.
   - Statements for `require`, `assert`, assignment, sequencing, and skip.
@@ -41,7 +41,8 @@ models. The Yul pipeline remains placeholder tooling.
   - SoLean to Yul-like text for `Counter`.
   - Yul text normalization.
   - Normalized-text equivalence checking.
-- GitHub Actions CI that runs `lake build` and Python bytecode checks.
+- GitHub Actions CI that runs `lake build`, Python bytecode checks, and Python
+  unit tests.
 
 ## Trusted Components
 
@@ -50,8 +51,6 @@ For the current prototype, the trusted base includes:
 - Lean's kernel and the Lake/Lean toolchain.
 - The hand-written SoLean model matching the intended Solidity fragment.
 - The small-step choices encoded in `SoLean.Semantics`.
-- The assumption that existing storage values are valid `uint256` values when a
-  case study relies on bounded storage.
 - `solc`, when used to produce Yul IR.
 - The placeholder Python scripts, where their behavior is used.
 
@@ -60,7 +59,6 @@ model, and emitted Yul all have the same semantics.
 
 ## Not Supported Yet
 
-- `UInt256` as a bounded subtype; it is still represented as `Nat`.
 - EVM wraparound arithmetic.
 - ABI decoding, calldata, memory, events, external calls, gas, reentrancy, or
   contract creation.
@@ -71,8 +69,8 @@ model, and emitted Yul all have the same semantics.
 - Broad Solidity or DeFi verification claims.
 
 Checked addition and subtraction are modeled for the current expression DSL.
-Existing stored values are not yet type-enforced as bounded `uint256` values, so
-case studies that rely on storage boundedness must state that assumption.
+Stored values are type-enforced as bounded `UInt256` values, but the model is
+still a small Solidity subset rather than an EVM semantics.
 
 ## Repository Layout
 
@@ -86,7 +84,8 @@ case studies that rely on storage boundedness must state that assumption.
 ├── pyproject.toml
 ├── docs/
 │   ├── assumptions.md
-│   └── counter.md
+│   ├── counter.md
+│   └── simple-vault.md
 ├── SoLean.lean
 ├── SoLean/
 │   ├── Basic.lean
@@ -125,10 +124,11 @@ If `lake` is installed under `elan` but not on your shell path, either add
 /Users/ricardoperello/.elan/bin/lake build
 ```
 
-The central proof currently lives in:
+The main proof files currently live in:
 
 ```text
 SoLean/Examples/Counter.lean
+SoLean/Examples/SimpleVault.lean
 ```
 
 ## Running The Scripts
@@ -169,12 +169,10 @@ python3 -m unittest discover -s tests
 
 ## Next Milestones
 
-1. Strengthen the Counter and SimpleVault models with explicit pre/post
-   specification structures.
-2. Move from `Nat` plus checked helpers to a bounded `UInt256` representation if
-   the proof burden remains manageable.
-3. Parse or ingest a small structured Solidity/Yul subset instead of relying on
+1. Continue extracting reusable proof lemmas from the Counter and SimpleVault
+   examples.
+2. Parse or ingest a small structured Solidity/Yul subset instead of relying on
    hand-written models.
-4. Replace textual Yul comparison with a restricted semantic equivalence
+3. Replace textual Yul comparison with a restricted semantic equivalence
    checker.
-5. Add generated artifacts only when they are deterministic and easy to audit.
+4. Add generated artifacts only when they are deterministic and easy to audit.
