@@ -40,9 +40,9 @@ models. The Yul pipeline remains placeholder tooling.
   - Solidity to Yul via `solc`.
   - SoLean to restricted Yul-like text for `Counter`.
   - Yul text normalization.
-  - Restricted-subset AST comparison, with normalized-text comparison as an
-    explicit fallback.
-  - Counter-only Solidity-to-SoLean sketching.
+  - Restricted-subset bounded trace comparison, with strict AST and
+    normalized-text modes as explicit fallbacks.
+  - Counter-only Solidity-to-SoLean sketching through a tiny explicit parser.
 - GitHub Actions CI that runs `lake build`, Python bytecode checks, and Python
   unit tests.
 
@@ -64,7 +64,7 @@ model, and emitted Yul all have the same semantics.
 - EVM wraparound arithmetic.
 - ABI decoding, calldata, memory, events, external calls, gas, reentrancy, or
   contract creation.
-- Parsing Solidity or Yul into verified syntax trees.
+- Verified parsing of Solidity or Yul.
 - Generated SoLean from Solidity.
 - Generated Yul from arbitrary SoLean.
 - Semantic Yul equivalence.
@@ -141,8 +141,22 @@ SoLean/Examples/SimpleVault.lean
 Compile Solidity to Yul IR, if `solc` is installed:
 
 ```bash
+mkdir -p build
 python3 scripts/solc_to_yul.py examples/Counter.sol -o build/Counter.yul
 ```
+
+For reproducible local compiler setup, install `solc 0.8.20`. The recommended
+version-manager path is `solc-select`:
+
+```bash
+python3 -m pip install solc-select
+solc-select install 0.8.20
+solc-select use 0.8.20
+solc --version
+```
+
+Generated `build/` artifacts are intentionally uncommitted until the compiler
+version and artifact workflow are pinned in CI.
 
 Emit placeholder SoLean-derived Yul-like text for `Counter`:
 
@@ -157,15 +171,17 @@ Normalize Yul-like text:
 python3 scripts/normalize_yul.py build/Counter.solean.yul
 ```
 
-Compare two Yul files using the current restricted-subset AST checker:
+Compare two Yul files using the current bounded restricted-subset trace checker:
 
 ```bash
 python3 scripts/check_equiv.py build/Counter.yul build/Counter.solean.yul --diff
 ```
 
-By default, this compares AST equality for the restricted Yul subset documented
-in `docs/yul-subset.md`. This comparison is not a semantic equivalence proof.
-The old normalized-text comparison is still available with `--text`.
+By default, this parses the restricted Yul subset documented in
+`docs/yul-subset.md` and compares a finite set of Counter-shaped execution
+traces. This is useful smoke-test tooling, not a semantic equivalence proof.
+Strict AST equality is available with `--ast`, and the old normalized-text
+comparison is still available with `--text`.
 
 Sketch the exact Counter Solidity example into a Lean reference:
 
@@ -173,8 +189,8 @@ Sketch the exact Counter Solidity example into a Lean reference:
 python3 scripts/solidity_to_solean.py examples/Counter.sol
 ```
 
-This is not a Solidity parser. It recognizes only the exact Counter example and
-rejects unsupported input.
+This is not a general Solidity parser. It tokenizes and validates only a tiny
+Counter subset and rejects unsupported input.
 
 Run the Python tests:
 
@@ -186,7 +202,7 @@ python3 -m unittest discover -s tests
 
 1. Continue extracting reusable proof lemmas from the Counter and SimpleVault
    examples.
-2. Expand the Counter-only Solidity sketch into a real, explicit parser for a
-   tiny Solidity subset.
-3. Replace AST equality with a restricted semantic equivalence checker.
+2. Expand the Counter-only Solidity subset only as needed by the proof path.
+3. Replace bounded trace comparison with a small semantic equivalence checker
+   for the supported Yul subset.
 4. Add generated artifacts only when they are deterministic and easy to audit.

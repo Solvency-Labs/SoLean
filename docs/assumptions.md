@@ -27,9 +27,13 @@ results.
 ## Solidity And Yul
 
 - Solidity parsing and generation of SoLean models are not implemented beyond a
-  Counter-only shape recognizer.
+  tiny explicit Counter-subset parser.
 - Yul parsing is limited to the restricted subset in `docs/yul-subset.md`.
 - The current SoLean-to-Yul output is deterministic placeholder text for the
   Counter example only.
-- The current equivalence checker compares restricted-subset AST equality only;
-  it is not semantic Yul equivalence.
+- The default Yul checker runs bounded trace comparison for Counter-shaped
+  restricted-subset programs. This is not semantic Yul equivalence.
+- Strict restricted-subset AST equality is available as an explicit `--ast`
+  mode, and normalized text comparison remains available as `--text`.
+- `solc 0.8.20` is the intended pinned compiler version for local Counter Yul
+  generation. Generated `build/` artifacts are not committed yet.

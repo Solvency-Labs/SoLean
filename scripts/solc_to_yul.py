@@ -37,8 +37,8 @@ def main(argv: list[str] | None = None) -> int:
     solc = shutil.which("solc")
     if solc is None:
         print(
-            "error: solc was not found on PATH. Install solc 0.8.x to produce "
-            "Yul IR for this prototype.",
+            "error: solc was not found on PATH. Install or select solc 0.8.20 "
+            "to produce pinned Yul IR for this prototype.",
             file=sys.stderr,
         )
         return 127

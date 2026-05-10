@@ -41,23 +41,48 @@ AST. The output mirrors the intended checked-arithmetic path:
 
 ## solc Output
 
-If `solc` is installed, generate local Yul output with:
+For reproducible local compiler setup, use `solc 0.8.20`. We recommend
+`solc-select` as a version manager, similar in spirit to `elan` for Lean:
+
+```bash
+python3 -m pip install solc-select
+solc-select install 0.8.20
+solc-select use 0.8.20
+solc --version
+```
+
+If `solc` is installed, generate local Counter Yul output with:
 
 ```bash
 mkdir -p build
 python3 scripts/solc_to_yul.py examples/Counter.sol -o build/Counter.solc.yul
 ```
 
-Do not commit `build/` artifacts yet. A pinned solc version and reproducible
-artifact workflow should come before checked-in compiler output.
+Do not commit `build/` artifacts yet. The repository should keep generated
+compiler output local until a pinned solc workflow exists in CI.
 
 ## Equivalence Checker
 
-`scripts/check_equiv.py` compares AST equality for this restricted subset by
-default. It is useful for catching deterministic emitter drift.
+`scripts/check_equiv.py` parses this subset into typed AST nodes. By default, it
+runs a tiny bounded trace comparison over Counter-shaped inputs:
 
-It is not semantic Yul equivalence. Unsupported syntax returns a distinct
-nonzero result instead of pretending to compare semantics.
+- `amount = 0`
+- small successful additions
+- edge cases near `2^256 - 1`
+
+The interpreter models `add` with EVM-style 256-bit wraparound, then observes
+whether the emitted overflow guard reverts. This is useful for catching obvious
+Counter emitter regressions.
+
+It is not semantic Yul equivalence. It is a finite smoke-test over a deliberately
+small subset. Unsupported syntax returns a distinct nonzero result instead of
+pretending to compare semantics.
+
+Strict AST equality is available with:
+
+```bash
+python3 scripts/check_equiv.py --ast left.yul right.yul
+```
 
 The old normalized-text comparison remains available:
 

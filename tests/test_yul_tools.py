@@ -10,7 +10,15 @@ from scripts.check_equiv import main as check_equiv_main
 from scripts.normalize_yul import normalize_text
 from scripts.solidity_to_solean import is_supported_counter, main as solidity_to_solean_main
 from scripts.solean_to_yul import main as solean_to_yul_main
-from scripts.yul_subset import counter_object, parse_object, render_object
+from scripts.yul_subset import (
+    UINT256_MAX,
+    TraceCase,
+    compare_counter_traces,
+    counter_object,
+    parse_object,
+    render_object,
+    run_counter_trace,
+)
 
 
 class NormalizeYulTests(unittest.TestCase):
@@ -53,9 +61,43 @@ class YulSubsetTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(parse_object(output.getvalue()), counter_object())
 
+    def test_store_parser_handles_nested_value_expression(self) -> None:
+        source = """
+        object "Nested" {
+          code {
+            function f(amount) {
+              sstore(0, add(amount, 1))
+            }
+          }
+        }
+        """
+
+        self.assertIn("add(amount, 1)", render_object(parse_object(source)))
+
+    def test_counter_trace_interpreter_models_revert_success_and_overflow(self) -> None:
+        obj = counter_object()
+
+        self.assertEqual(run_counter_trace(obj, TraceCase(amount=0, slot0=0)).reverted, True)
+        self.assertEqual(run_counter_trace(obj, TraceCase(amount=3, slot0=5)).slot0, 8)
+        self.assertEqual(
+            run_counter_trace(obj, TraceCase(amount=1, slot0=UINT256_MAX)).reverted,
+            True,
+        )
+
+    def test_counter_trace_comparison_finds_removed_overflow_guard(self) -> None:
+        left = counter_object()
+        right = parse_object(
+            render_object(counter_object()).replace(
+                "      if lt(new_x, old_x) { revert(0, 0) }\n", ""
+            )
+        )
+
+        diffs = compare_counter_traces(left, right)
+        self.assertGreaterEqual(len(diffs), 1)
+
 
 class CheckEquivTests(unittest.TestCase):
-    def test_equivalent_subset_ast(self) -> None:
+    def test_default_uses_bounded_trace_checker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             left = Path(tmp) / "left.yul"
             right = Path(tmp) / "right.yul"
@@ -67,6 +109,20 @@ class CheckEquivTests(unittest.TestCase):
                 code = check_equiv_main([str(left), str(right)])
 
         self.assertEqual(code, 0)
+        self.assertIn("bounded restricted-subset trace checker", output.getvalue())
+
+    def test_ast_mode_uses_strict_subset_ast(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            left = Path(tmp) / "left.yul"
+            right = Path(tmp) / "right.yul"
+            left.write_text(render_object(counter_object()))
+            right.write_text("// comment\n" + render_object(counter_object()))
+
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = check_equiv_main(["--ast", str(left), str(right)])
+
+        self.assertEqual(code, 0)
         self.assertIn("restricted Yul subset AST checker", output.getvalue())
 
     def test_difference_returns_nonzero_and_explains_limit(self) -> None:
@@ -74,7 +130,11 @@ class CheckEquivTests(unittest.TestCase):
             left = Path(tmp) / "left.yul"
             right = Path(tmp) / "right.yul"
             left.write_text(render_object(counter_object()))
-            right.write_text(render_object(counter_object()).replace("old_x", "old_y"))
+            right.write_text(
+                render_object(counter_object()).replace(
+                    "      if lt(new_x, old_x) { revert(0, 0) }\n", ""
+                )
+            )
 
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
@@ -115,6 +175,23 @@ class CheckEquivTests(unittest.TestCase):
 class SolidityToSoLeanTests(unittest.TestCase):
     def test_counter_shape_is_supported(self) -> None:
         source = Path("examples/Counter.sol").read_text()
+        self.assertTrue(is_supported_counter(source))
+
+    def test_counter_parser_allows_whitespace_and_comments(self) -> None:
+        source = """
+        // SPDX-License-Identifier: MIT
+        pragma solidity ^0.8.20;
+        contract Counter {
+            uint256 public x;
+
+            function inc(uint256 amount) public {
+                /* precondition */
+                require(amount > 0);
+                x += amount;
+                assert(x >= amount);
+            }
+        }
+        """
         self.assertTrue(is_supported_counter(source))
 
     def test_counter_script_outputs_model_reference(self) -> None:

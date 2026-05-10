@@ -1,7 +1,8 @@
 """Tiny Yul-like subset used by the prototype scripts.
 
-This is intentionally not a full Yul parser. It accepts only the deterministic
-subset emitted by `solean_to_yul.py` and documented in `docs/yul-subset.md`.
+This is intentionally not a full Yul parser or semantic model. It accepts only
+the deterministic subset emitted by `solean_to_yul.py` and documented in
+`docs/yul-subset.md`.
 """
 
 from __future__ import annotations
@@ -19,9 +20,27 @@ class UnsupportedYulError(ValueError):
     """Raised when input is outside the supported prototype subset."""
 
 
+class YulExecutionError(ValueError):
+    """Raised when a supported AST cannot be executed by the tiny interpreter."""
+
+
 @dataclass(frozen=True)
-class Expr:
-    text: str
+class Literal:
+    value: int
+
+
+@dataclass(frozen=True)
+class Ident:
+    name: str
+
+
+@dataclass(frozen=True)
+class Call:
+    name: str
+    args: tuple[Expr, ...]
+
+
+Expr = Literal | Ident | Call
 
 
 @dataclass(frozen=True)
@@ -57,6 +76,31 @@ class YulObject:
     function: Function
 
 
+@dataclass(frozen=True)
+class ExecutionResult:
+    reverted: bool
+    storage: dict[int, int]
+
+
+@dataclass(frozen=True)
+class TraceCase:
+    amount: int
+    slot0: int
+
+
+@dataclass(frozen=True)
+class TraceResult:
+    reverted: bool
+    slot0: int
+
+
+@dataclass(frozen=True)
+class TraceDiff:
+    case: TraceCase
+    left: TraceResult
+    right: TraceResult
+
+
 IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
 SUPPORTED_CALLS = {
     "add": 2,
@@ -65,10 +109,17 @@ SUPPORTED_CALLS = {
     "lt": 2,
     "sload": 1,
 }
+UINT256_MODULUS = 2**256
+UINT256_MAX = UINT256_MODULUS - 1
 
 
 def counter_object() -> YulObject:
     """Return the hand-authored Counter subset AST."""
+
+    amount = Ident("amount")
+    old_x = Ident("old_x")
+    new_x = Ident("new_x")
+    zero = Literal(0)
 
     return YulObject(
         name="Counter",
@@ -76,12 +127,12 @@ def counter_object() -> YulObject:
             name="inc",
             params=("amount",),
             body=(
-                IfRevert(Expr("iszero(gt(amount, 0))")),
-                Let("old_x", Expr("sload(0)")),
-                Let("new_x", Expr("add(old_x, amount)")),
-                IfRevert(Expr("lt(new_x, old_x)")),
-                Store(Expr("0"), Expr("new_x")),
-                IfRevert(Expr("lt(new_x, amount)")),
+                IfRevert(Call("iszero", (Call("gt", (amount, zero)),))),
+                Let("old_x", Call("sload", (zero,))),
+                Let("new_x", Call("add", (old_x, amount))),
+                IfRevert(Call("lt", (new_x, old_x))),
+                Store(zero, new_x),
+                IfRevert(Call("lt", (new_x, amount))),
             ),
         ),
     )
@@ -101,12 +152,22 @@ def render_object(obj: YulObject) -> str:
 
 def render_stmt(stmt: Stmt) -> str:
     if isinstance(stmt, Let):
-        return f"let {stmt.name} := {stmt.expr.text}"
+        return f"let {stmt.name} := {render_expr(stmt.expr)}"
     if isinstance(stmt, Store):
-        return f"sstore({stmt.slot.text}, {stmt.value.text})"
+        return f"sstore({render_expr(stmt.slot)}, {render_expr(stmt.value)})"
     if isinstance(stmt, IfRevert):
-        return f"if {stmt.cond.text} {{ revert(0, 0) }}"
+        return f"if {render_expr(stmt.cond)} {{ revert(0, 0) }}"
     raise TypeError(f"unsupported statement: {stmt!r}")
+
+
+def render_expr(expr: Expr) -> str:
+    if isinstance(expr, Literal):
+        return str(expr.value)
+    if isinstance(expr, Ident):
+        return expr.name
+    if isinstance(expr, Call):
+        return f"{expr.name}({', '.join(render_expr(arg) for arg in expr.args)})"
+    raise TypeError(f"unsupported expression: {expr!r}")
 
 
 def parse_object(text: str) -> YulObject:
@@ -150,9 +211,11 @@ def parse_stmt(line: str) -> Stmt:
     if let_match:
         return Let(let_match.group(1), parse_expr(let_match.group(2)))
 
-    store_match = re.fullmatch(r"sstore\((.+), (.+)\)", line)
-    if store_match:
-        return Store(parse_expr(store_match.group(1)), parse_expr(store_match.group(2)))
+    if line.startswith("sstore(") and line.endswith(")"):
+        name, args = _split_call(line)
+        if name != "sstore" or len(args) != 2:
+            raise UnsupportedYulError("expected sstore with two arguments")
+        return Store(parse_expr(args[0]), parse_expr(args[1]))
 
     if_match = re.fullmatch(r"if (.+) \{ revert\(0, 0\) \}", line)
     if if_match:
@@ -163,24 +226,20 @@ def parse_stmt(line: str) -> Stmt:
 
 def parse_expr(raw: str) -> Expr:
     text = raw.strip()
-    _validate_expr(text)
-    return Expr(text)
+    if re.fullmatch(r"[0-9]+", text):
+        return Literal(int(text))
+    if re.fullmatch(IDENT, text):
+        return Ident(text)
 
-
-def _validate_expr(text: str) -> None:
-    if re.fullmatch(r"[0-9]+", text) or re.fullmatch(IDENT, text):
-        return
-
-    name, args = _split_call(text)
+    name, arg_texts = _split_call(text)
     expected = SUPPORTED_CALLS.get(name)
     if expected is None:
         raise UnsupportedYulError(f"unsupported expression function: {name}")
-    if len(args) != expected:
+    if len(arg_texts) != expected:
         raise UnsupportedYulError(
-            f"{name} expects {expected} argument(s), got {len(args)}"
+            f"{name} expects {expected} argument(s), got {len(arg_texts)}"
         )
-    for arg in args:
-        _validate_expr(arg)
+    return Call(name, tuple(parse_expr(arg) for arg in arg_texts))
 
 
 def _split_call(text: str) -> tuple[str, list[str]]:
@@ -214,3 +273,95 @@ def _split_args(raw: str) -> list[str]:
     if tail:
         args.append(tail)
     return args
+
+
+def execute_object(
+    obj: YulObject, args: dict[str, int], storage: dict[int, int]
+) -> ExecutionResult:
+    """Run the tiny bounded interpreter over one supported subset function."""
+
+    env = dict(args)
+    current_storage = dict(storage)
+    for stmt in obj.function.body:
+        if isinstance(stmt, Let):
+            env[stmt.name] = eval_expr(stmt.expr, env, current_storage)
+        elif isinstance(stmt, Store):
+            slot = eval_expr(stmt.slot, env, current_storage)
+            value = eval_expr(stmt.value, env, current_storage)
+            current_storage[slot] = value % UINT256_MODULUS
+        elif isinstance(stmt, IfRevert):
+            if eval_expr(stmt.cond, env, current_storage) != 0:
+                return ExecutionResult(reverted=True, storage=current_storage)
+        else:
+            raise YulExecutionError(f"unsupported statement: {stmt!r}")
+    return ExecutionResult(reverted=False, storage=current_storage)
+
+
+def eval_expr(expr: Expr, env: dict[str, int], storage: dict[int, int]) -> int:
+    """Evaluate one typed subset expression with EVM-style UInt256 add."""
+
+    if isinstance(expr, Literal):
+        return expr.value
+    if isinstance(expr, Ident):
+        if expr.name not in env:
+            raise YulExecutionError(f"unknown identifier: {expr.name}")
+        return env[expr.name]
+    if not isinstance(expr, Call):
+        raise YulExecutionError(f"unsupported expression: {expr!r}")
+
+    values = tuple(eval_expr(arg, env, storage) for arg in expr.args)
+    if expr.name == "add":
+        return (values[0] + values[1]) % UINT256_MODULUS
+    if expr.name == "gt":
+        return int(values[0] > values[1])
+    if expr.name == "iszero":
+        return int(values[0] == 0)
+    if expr.name == "lt":
+        return int(values[0] < values[1])
+    if expr.name == "sload":
+        return storage.get(values[0], 0)
+    raise YulExecutionError(f"unsupported expression function: {expr.name}")
+
+
+def counter_trace_cases() -> tuple[TraceCase, ...]:
+    """Finite smoke-test inputs for the current Counter compiler path."""
+
+    return (
+        TraceCase(amount=0, slot0=0),
+        TraceCase(amount=1, slot0=0),
+        TraceCase(amount=3, slot0=5),
+        TraceCase(amount=1, slot0=UINT256_MAX - 1),
+        TraceCase(amount=1, slot0=UINT256_MAX),
+        TraceCase(amount=2, slot0=UINT256_MAX - 1),
+    )
+
+
+def run_counter_trace(obj: YulObject, case: TraceCase) -> TraceResult:
+    """Execute one Counter-shaped trace case over storage slot 0."""
+
+    if len(obj.function.params) != 1:
+        raise YulExecutionError("bounded trace checker expects one function parameter")
+
+    param = obj.function.params[0]
+    result = execute_object(obj, {param: case.amount}, {0: case.slot0})
+    return TraceResult(reverted=result.reverted, slot0=result.storage.get(0, 0))
+
+
+def compare_counter_traces(
+    left: YulObject,
+    right: YulObject,
+    cases: tuple[TraceCase, ...] | None = None,
+) -> list[TraceDiff]:
+    """Compare two objects on the finite Counter trace set.
+
+    This is a bounded regression checker for the prototype, not a proof of Yul
+    equivalence.
+    """
+
+    diffs: list[TraceDiff] = []
+    for case in cases or counter_trace_cases():
+        left_result = run_counter_trace(left, case)
+        right_result = run_counter_trace(right, case)
+        if left_result != right_result:
+            diffs.append(TraceDiff(case, left_result, right_result))
+    return diffs
