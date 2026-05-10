@@ -15,10 +15,65 @@ from scripts.yul_subset import (
     TraceCase,
     compare_counter_traces,
     counter_object,
+    object_to_data,
     parse_object,
     render_object,
     run_counter_trace,
 )
+
+LEAN_COUNTER_YUL_DATA = {
+    "object": "Counter",
+    "function": {
+        "name": "inc",
+        "params": ["amount"],
+        "body": [
+            {
+                "stmt": "ifRevert",
+                "cond": {
+                    "call": "iszero",
+                    "args": [
+                        {
+                            "call": "gt",
+                            "args": [{"ident": "amount"}, {"const": 0}],
+                        }
+                    ],
+                },
+            },
+            {
+                "stmt": "let",
+                "name": "old_x",
+                "expr": {"call": "sload", "args": [{"const": 0}]},
+            },
+            {
+                "stmt": "let",
+                "name": "new_x",
+                "expr": {
+                    "call": "add",
+                    "args": [{"ident": "old_x"}, {"ident": "amount"}],
+                },
+            },
+            {
+                "stmt": "ifRevert",
+                "cond": {
+                    "call": "lt",
+                    "args": [{"ident": "new_x"}, {"ident": "old_x"}],
+                },
+            },
+            {
+                "stmt": "sstore",
+                "slot": {"const": 0},
+                "value": {"ident": "new_x"},
+            },
+            {
+                "stmt": "ifRevert",
+                "cond": {
+                    "call": "lt",
+                    "args": [{"ident": "new_x"}, {"ident": "amount"}],
+                },
+            },
+        ],
+    },
+}
 
 
 class NormalizeYulTests(unittest.TestCase):
@@ -47,6 +102,9 @@ class NormalizeYulTests(unittest.TestCase):
 
 
 class YulSubsetTests(unittest.TestCase):
+    def test_counter_object_matches_lean_proved_counter_yul_shape(self) -> None:
+        self.assertEqual(object_to_data(counter_object()), LEAN_COUNTER_YUL_DATA)
+
     def test_counter_render_round_trips_through_subset_parser(self) -> None:
         rendered = render_object(counter_object())
         self.assertEqual(parse_object(rendered), counter_object())
@@ -60,6 +118,14 @@ class YulSubsetTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(parse_object(output.getvalue()), counter_object())
+
+    def test_solean_to_yul_matches_counter_golden_file(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = solean_to_yul_main(["--example", "counter"])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(output.getvalue(), Path("tests/golden/Counter.solean.yul").read_text())
 
     def test_store_parser_handles_nested_value_expression(self) -> None:
         source = """

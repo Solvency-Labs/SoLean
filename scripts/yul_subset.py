@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
+from typing import Any
 
 try:
     from .normalize_yul import normalize_text
@@ -114,7 +115,11 @@ UINT256_MAX = UINT256_MODULUS - 1
 
 
 def counter_object() -> YulObject:
-    """Return the hand-authored Counter subset AST."""
+    """Return the hand-authored Counter subset AST.
+
+    This mirrors `SoLean.Examples.CounterYul.counterProgram` on the Lean side.
+    Tests keep this Python structure aligned with that proved Counter shape.
+    """
 
     amount = Ident("amount")
     old_x = Ident("old_x")
@@ -148,6 +153,53 @@ def render_object(obj: YulObject) -> str:
         lines.append(f"      {render_stmt(stmt)}")
     lines.extend(["    }", "  }", "}"])
     return "\n".join(lines) + "\n"
+
+
+def object_to_data(obj: YulObject) -> dict[str, Any]:
+    """Return a deterministic JSON-like structural view of a Yul object."""
+
+    return {
+        "object": obj.name,
+        "function": {
+            "name": obj.function.name,
+            "params": list(obj.function.params),
+            "body": [stmt_to_data(stmt) for stmt in obj.function.body],
+        },
+    }
+
+
+def stmt_to_data(stmt: Stmt) -> dict[str, Any]:
+    if isinstance(stmt, Let):
+        return {
+            "stmt": "let",
+            "name": stmt.name,
+            "expr": expr_to_data(stmt.expr),
+        }
+    if isinstance(stmt, Store):
+        return {
+            "stmt": "sstore",
+            "slot": expr_to_data(stmt.slot),
+            "value": expr_to_data(stmt.value),
+        }
+    if isinstance(stmt, IfRevert):
+        return {
+            "stmt": "ifRevert",
+            "cond": expr_to_data(stmt.cond),
+        }
+    raise TypeError(f"unsupported statement: {stmt!r}")
+
+
+def expr_to_data(expr: Expr) -> dict[str, Any]:
+    if isinstance(expr, Literal):
+        return {"const": expr.value}
+    if isinstance(expr, Ident):
+        return {"ident": expr.name}
+    if isinstance(expr, Call):
+        return {
+            "call": expr.name,
+            "args": [expr_to_data(arg) for arg in expr.args],
+        }
+    raise TypeError(f"unsupported expression: {expr!r}")
 
 
 def render_stmt(stmt: Stmt) -> str:

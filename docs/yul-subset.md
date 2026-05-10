@@ -104,3 +104,9 @@ wrapping `add`, `gt`, `lt`, `iszero`, and revert guards. See
 `SoLean/Compiler.lean` now contains a tiny partial compiler that can emit this
 restricted Lean Yul shape for the Counter source function. See
 `docs/compiler.md` for the current compiler proof.
+
+Python tests check that `scripts/yul_subset.py`'s Counter structure matches a
+canonical JSON-like mirror of the Lean-proved Counter Yul shape and that
+`scripts/solean_to_yul.py --example counter` matches
+`tests/golden/Counter.solean.yul`. This is structural/golden alignment, not a
+verified translation theorem.

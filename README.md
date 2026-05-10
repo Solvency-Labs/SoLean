@@ -54,6 +54,8 @@ For the current intuition and next steps, see `docs/roadmap.md`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.
   - SoLean to restricted Yul-like text for `Counter`.
+  - Counter Yul structural/golden checks against the Lean-proved Counter Yul
+    shape.
   - Yul text normalization.
   - Restricted-subset bounded trace comparison, with strict AST and
     normalized-text modes as explicit fallbacks.
@@ -74,8 +76,8 @@ For the current prototype, the trusted base includes:
 - `solc`, when used to produce Yul IR.
 - The placeholder Python scripts, where their behavior is used.
 
-The project does not yet establish that the Solidity source, solc Yul, SoLean
-model, Python emitter output, and solc Yul all have the same semantics.
+The project does not yet establish that the Solidity source, SoLean model,
+Python emitter output, and solc Yul all have the same semantics.
 
 ## Not Supported Yet
 
@@ -88,6 +90,7 @@ model, Python emitter output, and solc Yul all have the same semantics.
 - Generated Yul from arbitrary SoLean.
 - Semantic Yul equivalence.
 - Verified correspondence between the Python Yul emitter and the Lean Yul data.
+  Python tests currently check structural/golden alignment, not a proof.
 - Verified Solidity-to-source-language translation.
 - Broad Solidity or DeFi verification claims.
 
@@ -138,6 +141,8 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── solidity_to_solean.py
 │   └── yul_subset.py
 └── tests/
+    ├── golden/
+    │   └── Counter.solean.yul
     ├── README.md
     └── test_yul_tools.py
 ```
