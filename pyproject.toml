@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "solean-tools"
+version = "0.1.0"
+description = "Prototype scripts for the SoLean research scaffold."
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+solc-to-yul = "scripts.solc_to_yul:main"
+solean-to-yul = "scripts.solean_to_yul:main"
+normalize-yul = "scripts.normalize_yul:main"
+check-yul-equiv = "scripts.check_equiv:main"
+
+[tool.setuptools]
+packages = ["scripts"]
