@@ -42,13 +42,15 @@ AST. The output mirrors the intended checked-arithmetic path:
 
 ## solc Output
 
-For reproducible local compiler setup, use `solc 0.8.20`. We recommend
-`solc-select` as a version manager, similar in spirit to `elan` for Lean:
+For reproducible local compiler setup, use `solc 0.8.35`. This is SoLean's
+current stable compiler target, not a proof-relevant semantic assumption. We
+recommend `solc-select` as a version manager, similar in spirit to `elan` for
+Lean:
 
 ```bash
 python3 -m pip install solc-select
-solc-select install 0.8.20
-solc-select use 0.8.20
+solc-select install 0.8.35
+solc-select use 0.8.35
 solc --version
 ```
 
@@ -56,11 +58,34 @@ If `solc` is installed, generate local Counter Yul output with:
 
 ```bash
 mkdir -p build
-python3 scripts/solc_to_yul.py examples/Counter.sol -o build/Counter.solc.yul
+PATH="$(python3 -m site --user-base)/bin:$PATH" \
+  python3 scripts/solc_to_yul.py examples/Counter.sol -o build/Counter.solc.yul
 ```
 
 Do not commit `build/` artifacts yet. The repository should keep generated
 compiler output local until a pinned solc workflow exists in CI.
+
+## Counter solc IR Findings
+
+With `solc 0.8.35 --ir`, the local Counter output is not in SoLean's current
+restricted subset.
+
+The first blocker reported by `scripts/classify_yul.py` is:
+
+```text
+unsupported-wrapper: solc output preamble is not supported: IR:
+```
+
+After that preamble, the real IR also contains constructs outside the subset:
+
+- a top-level creation object plus a nested deployed object
+- memory setup such as `mstore(64, memoryguard(128))`
+- constructor/deployment code and helper functions
+- ABI dispatch using calldata, selector extraction, `switch`, and `case`
+- expression helpers such as `mload`, `shr`, `mul`, `sub`, and `slt`
+
+These are future subset-expansion targets. The current checker must reject this
+output rather than claiming semantic equivalence.
 
 ## Equivalence Checker
 
@@ -89,6 +114,13 @@ The old normalized-text comparison remains available:
 
 ```bash
 python3 scripts/check_equiv.py --text left.yul right.yul
+```
+
+Classify support without comparing two files:
+
+```bash
+python3 scripts/classify_yul.py build/Counter.solean.yul
+python3 scripts/classify_yul.py build/Counter.solc.yul
 ```
 
 ## Lean Restricted Yul Model

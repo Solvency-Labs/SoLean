@@ -9,6 +9,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+TARGET_SOLC_VERSION = "0.8.35"
+
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -37,11 +39,29 @@ def main(argv: list[str] | None = None) -> int:
     solc = shutil.which("solc")
     if solc is None:
         print(
-            "error: solc was not found on PATH. Install or select solc 0.8.20 "
-            "to produce pinned Yul IR for this prototype.",
+            "error: solc was not found on PATH. Install or select solc "
+            f"{TARGET_SOLC_VERSION} to produce pinned Yul IR for this prototype.",
             file=sys.stderr,
         )
         return 127
+
+    version_result = subprocess.run(
+        [solc, "--version"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if version_result.returncode != 0:
+        if version_result.stderr:
+            print(version_result.stderr, end="", file=sys.stderr)
+        return version_result.returncode
+    if f"Version: {TARGET_SOLC_VERSION}" not in version_result.stdout:
+        print(
+            f"error: expected solc {TARGET_SOLC_VERSION}, got:\n"
+            f"{version_result.stdout.strip()}",
+            file=sys.stderr,
+        )
+        return 2
 
     ir_flag = "--ir-optimized" if args.optimized else "--ir"
     result = subprocess.run(

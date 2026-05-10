@@ -14,6 +14,7 @@ solc-to-yul = "scripts.solc_to_yul:main"
 solean-to-yul = "scripts.solean_to_yul:main"
 normalize-yul = "scripts.normalize_yul:main"
 check-yul-equiv = "scripts.check_equiv:main"
+classify-yul = "scripts.classify_yul:main"
 solidity-to-solean = "scripts.solidity_to_solean:main"
 
 [tool.setuptools]

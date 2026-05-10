@@ -9,6 +9,8 @@ Current checks:
   restricted-subset renderer/parser, bounded trace checker behavior, explicit
   AST/text checker modes, Counter Yul structural/golden alignment, and
   Counter Solidity source-shape structural/golden alignment.
+- The tests also cover Yul subset classification for supported Counter Yul and
+  representative unsupported solc-style wrapper/statement forms.
 
 Future tests should add small golden files for normalization and equivalence
 checking before adding broader generated examples.

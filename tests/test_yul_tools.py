@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from scripts.classify_yul import classify_text, main as classify_yul_main
 from scripts.check_equiv import main as check_equiv_main
 from scripts.normalize_yul import normalize_text
 from scripts.solidity_to_solean import (
@@ -83,7 +84,7 @@ LEAN_COUNTER_YUL_DATA = {
 LEAN_COUNTER_SOURCE_DATA = {
     "contract": {
         "name": "Counter",
-        "pragma": "0.8.20",
+        "pragma": "0.8.35",
     },
     "function": {
         "body": {
@@ -221,6 +222,50 @@ class YulSubsetTests(unittest.TestCase):
         self.assertGreaterEqual(len(diffs), 1)
 
 
+class ClassifyYulTests(unittest.TestCase):
+    def test_counter_subset_classifies_as_supported(self) -> None:
+        classification = classify_text(render_object(counter_object()))
+
+        self.assertEqual(classification.kind, "supported-subset")
+        self.assertTrue(classification.is_supported)
+
+    def test_solc_preamble_classifies_as_unsupported_wrapper(self) -> None:
+        classification = classify_text(
+            "======= examples/Counter.sol:Counter =======\n"
+            "IR:\n"
+            + render_object(counter_object())
+        )
+
+        self.assertEqual(classification.kind, "unsupported-wrapper")
+        self.assertIn("solc output preamble", classification.message)
+
+    def test_unsupported_statement_classifies_distinctly(self) -> None:
+        classification = classify_text(
+            'object "Counter" {\n'
+            "  code {\n"
+            "    function inc(amount) {\n"
+            "      mstore(0, amount)\n"
+            "    }\n"
+            "  }\n"
+            "}\n"
+        )
+
+        self.assertEqual(classification.kind, "unsupported-statement")
+        self.assertIn("mstore", classification.message)
+
+    def test_classifier_cli_returns_zero_for_supported_subset(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "Counter.yul"
+            source.write_text(render_object(counter_object()))
+
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = classify_yul_main([str(source)])
+
+        self.assertEqual(code, 0)
+        self.assertIn("supported-subset", output.getvalue())
+
+
 class CheckEquivTests(unittest.TestCase):
     def test_default_uses_bounded_trace_checker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -309,7 +354,7 @@ class SolidityToSoLeanTests(unittest.TestCase):
     def test_counter_parser_allows_whitespace_and_comments(self) -> None:
         source = """
         // SPDX-License-Identifier: MIT
-        pragma solidity ^0.8.20;
+        pragma solidity ^0.8.35;
         contract Counter {
             uint256 public x;
 
@@ -353,7 +398,7 @@ class SolidityToSoLeanTests(unittest.TestCase):
     def test_unsupported_solidity_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "Unsupported.sol"
-            source.write_text("pragma solidity ^0.8.20; contract NotCounter {}\n")
+            source.write_text("pragma solidity ^0.8.35; contract NotCounter {}\n")
 
             error = io.StringIO()
             with contextlib.redirect_stderr(error):

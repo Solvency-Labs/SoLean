@@ -366,7 +366,7 @@ def source_data_json(contract: Contract) -> str:
 
 def validate_counter(contract: Contract) -> None:
     expected = Contract(
-        pragma_version="0.8.20",
+        pragma_version="0.8.35",
         name="Counter",
         state_vars=(StateVar("uint256", "public", "x"),),
         functions=(

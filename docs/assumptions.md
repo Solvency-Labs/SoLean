@@ -48,8 +48,13 @@ results.
   restricted-subset programs. This is not semantic Yul equivalence.
 - Strict restricted-subset AST equality is available as an explicit `--ast`
   mode, and normalized text comparison remains available as `--text`.
-- `solc 0.8.20` is the intended pinned compiler version for local Counter Yul
-  generation. Generated `build/` artifacts are not committed yet.
+- `solc 0.8.35` is the intended pinned compiler version for local Counter Yul
+  generation. It was chosen as the current stable Solidity compiler target when
+  adopted, not because the proofs depend on that patch version.
+  `scripts/solc_to_yul.py` rejects other solc versions. Generated `build/`
+  artifacts are not committed yet.
+- Real `solc 0.8.35 --ir` Counter output is currently outside the supported
+  subset. The first observed blocker is the solc `IR:` preamble/wrapper.
 - The Python emitter, Python parser, Solidity source, and real solc output are
   not yet connected to the Lean compiler by a verified translation. Current
   Python tests provide auditable structural alignment for Counter only.

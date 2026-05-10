@@ -53,6 +53,7 @@ For the current intuition and next steps, see `docs/roadmap.md`.
 - Solidity examples in `examples/`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.
+  - Yul subset classification for supported/unsupported compiler output.
   - SoLean to restricted Yul-like text for `Counter`.
   - Counter Yul structural/golden checks against the Lean-proved Counter Yul
     shape.
@@ -141,6 +142,7 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── solc_to_yul.py
 │   ├── solean_to_yul.py
 │   ├── normalize_yul.py
+│   ├── classify_yul.py
 │   ├── check_equiv.py
 │   ├── solidity_to_solean.py
 │   └── yul_subset.py
@@ -182,17 +184,25 @@ Compile Solidity to Yul IR, if `solc` is installed:
 
 ```bash
 mkdir -p build
-python3 scripts/solc_to_yul.py examples/Counter.sol -o build/Counter.yul
+PATH="$(python3 -m site --user-base)/bin:$PATH" \
+  python3 scripts/solc_to_yul.py examples/Counter.sol -o build/Counter.solc.yul
 ```
 
-For reproducible local compiler setup, install `solc 0.8.20`. The recommended
-version-manager path is `solc-select`:
+For reproducible local compiler setup, install `solc 0.8.35`. This is SoLean's
+current stable compiler target, not a proof-relevant semantic assumption. The
+recommended version-manager path is `solc-select`:
 
 ```bash
 python3 -m pip install solc-select
-solc-select install 0.8.20
-solc-select use 0.8.20
+solc-select install 0.8.35
+solc-select use 0.8.35
 solc --version
+```
+
+If `solc-select` is installed with `--user` and not on `PATH`, use:
+
+```bash
+PATH="$(python3 -m site --user-base)/bin:$PATH" solc --version
 ```
 
 Generated `build/` artifacts are intentionally uncommitted until the compiler
@@ -210,6 +220,17 @@ Normalize Yul-like text:
 ```bash
 python3 scripts/normalize_yul.py build/Counter.solean.yul
 ```
+
+Classify a Yul file against the current restricted subset:
+
+```bash
+python3 scripts/classify_yul.py build/Counter.solean.yul
+python3 scripts/classify_yul.py build/Counter.solc.yul
+```
+
+Real `solc 0.8.35 --ir` Counter output is currently expected to classify as
+unsupported; the first observed blocker is solc's `IR:` preamble/wrapper before
+the object accepted by the restricted parser.
 
 Compare two Yul files using the current bounded restricted-subset trace checker:
 

@@ -61,7 +61,12 @@ This is real progress, but it does not yet start from Solidity text or real
 - Python recognizes a tiny Counter-shaped Solidity subset.
 - Python emits deterministic Counter source-shape JSON that is tested against a
   JSON-like mirror of `CounterCompiler.counterFunction`.
-- `solc_to_yul.py` can call `solc` when it is installed.
+- `solc_to_yul.py` enforces the pinned `solc 0.8.35` target when `solc` is
+  installed.
+- Local `solc 0.8.35 --ir` Counter output has been generated and classified as
+  unsupported by the current restricted subset.
+- `classify_yul.py` reports whether Yul text is in the supported subset or
+  names the first unsupported wrapper/statement/expression/shape blocker.
 
 These are useful engineering tools, but they are not part of the trusted Lean
 proof chain yet.
@@ -74,7 +79,7 @@ proof chain yet.
 - Verified connection between the Python Yul emitter and the Lean compiler. The
   current connection is an auditable structural/golden test, not a proof.
 - Parsing emitted Yul text back into Lean Yul data.
-- Real `solc 0.8.20 --ir` Counter output comparison.
+- Real `solc 0.8.35 --ir` Counter semantic comparison.
 - Semantic equivalence against real Yul.
 - SimpleVault compilation to restricted Yul.
 - ABI, calldata, memory, calls, gas, events, reentrancy, or full EVM semantics.
@@ -128,22 +133,31 @@ Definition of done:
 - For Counter, the path from `examples/Counter.sol` to the Lean source function
   has less hand-maintained duplication than the current source-shape mirror.
 
-### 3. Bring In Real `solc 0.8.20` Output
+### 3. Bring In Real `solc 0.8.35` Output
 
 Goal: compare against the real compiler without pretending the whole solc IR is
 supported.
 
+Done:
+
+- Install/select `solc 0.8.35` locally with `solc-select`.
+- Generate `build/Counter.solc.yul` locally without committing it.
+- Reject unsupported solc output by default.
+- Record the first blocker: solc's `IR:` preamble/wrapper is outside the
+  current restricted parser.
+
 Next tasks:
 
-- Install/select `solc 0.8.20` locally with `solc-select`.
-- Generate `build/Counter.solc.yul` locally, but do not commit it yet.
-- Inspect the real IR and decide the smallest additional subset needed.
-- Reject unsupported solc output by default.
+- Add a solc-output preprocessor that can intentionally select the deployed
+  object, or decide that this selection should happen in a separate trusted
+  extraction step.
+- Decide the next minimal subset target after wrapper handling: likely nested
+  objects, multiple functions, memory setup, or ABI dispatch.
 
 Definition of done:
 
-- There is a documented, reproducible local command for generating Counter solc
-  Yul, and a clear list of unsupported constructs still blocking comparison.
+- The repo can classify real Counter solc IR with a blocker more semantic than
+  the outer solc wrapper, without claiming full equivalence.
 
 ### 4. Replace Bounded Trace Checks With Small Semantics
 
@@ -181,22 +195,23 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Bring in real solc 0.8.20 Counter output.
+Handle the solc IR wrapper boundary.
 ```
 
 Why this matters:
 
-- We now have Counter structural alignment from Solidity text to Lean source
-  shape, then to the Lean compiler/Yul path.
-- The remaining outside-world compiler bridge is real `solc --ir` output.
-- Inspecting real IR will show the smallest honest next Yul subset expansion.
+- We can now generate and classify real `solc 0.8.35 --ir` Counter output.
+- The first blocker is not yet arithmetic or storage semantics; it is the solc
+  output wrapper and deployed-object selection problem.
+- Handling that boundary will expose the next real semantic subset gap.
 
 Smallest useful version:
 
-1. Use documented `solc-select` setup for `solc 0.8.20`.
-2. Generate local `build/Counter.solc.yul` without committing it.
-3. Document the first unsupported solc IR constructs blocking comparison.
-4. Keep unsupported output rejection explicit.
+1. Add an explicit, documented extraction/classification mode for solc IR
+   wrapper text.
+2. Identify the deployed object and report the first unsupported construct
+   inside it.
+3. Keep extraction trusted and auditable; do not claim semantic equivalence.
 
 ## Updating This Roadmap
 
