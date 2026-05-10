@@ -31,9 +31,17 @@ results.
 - Yul parsing is limited to the restricted subset in `docs/yul-subset.md`.
 - The current SoLean-to-Yul output is deterministic placeholder text for the
   Counter example only.
+- `SoLean/Yul.lean` contains a hand-written Lean semantics for a tiny restricted
+  Yul subset. It is not full Yul or full EVM semantics.
+- The restricted Lean Yul semantics models wrapping `add`, local variables,
+  storage load/store, and revert guards for the Counter path.
+- `SoLean/Examples/CounterYul.lean` proves that successful SoLean Counter
+  executions are reproduced by the hand-written restricted Yul Counter model.
 - The default Yul checker runs bounded trace comparison for Counter-shaped
   restricted-subset programs. This is not semantic Yul equivalence.
 - Strict restricted-subset AST equality is available as an explicit `--ast`
   mode, and normalized text comparison remains available as `--text`.
 - `solc 0.8.20` is the intended pinned compiler version for local Counter Yul
   generation. Generated `build/` artifacts are not committed yet.
+- The Python emitter, Python parser, and Lean Yul AST are not yet connected by a
+  verified translation.

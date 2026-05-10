@@ -18,7 +18,8 @@ The intended long-term loop is:
 5. Check that Yul1 and Yul2 are equivalent for a restricted subset.
 
 Today, the proof side has checked-arithmetic semantics for small hand-written
-models. The Yul pipeline remains placeholder tooling.
+models plus a tiny Lean model of the restricted Counter Yul path. The broader
+Solidity and Yul pipeline remains placeholder tooling.
 
 ## What Exists Now
 
@@ -33,6 +34,12 @@ models. The Yul pipeline remains placeholder tooling.
 - A manual SoLean model of `Counter.inc`.
 - A theorem showing that if modeled `Counter.inc(amount)` succeeds, then the
   final modeled `x` is at least `amount`.
+- A tiny restricted Yul AST and execution semantics in Lean.
+- A hand-written restricted Yul model of `Counter.inc`, with a theorem showing
+  that successful SoLean Counter executions are reproduced by the restricted Yul
+  model with the same final storage.
+- A Yul-side Counter theorem showing successful restricted Yul execution implies
+  the final modeled `x` is at least `amount`.
 - A `SimpleVault` model with successful-execution preservation proofs for
   `totalAssets >= totalShares`.
 - Solidity examples in `examples/`.
@@ -52,22 +59,26 @@ For the current prototype, the trusted base includes:
 
 - Lean's kernel and the Lake/Lean toolchain.
 - The hand-written SoLean model matching the intended Solidity fragment.
+- The hand-written restricted Yul model matching the intended Counter emitter.
 - The small-step choices encoded in `SoLean.Semantics`.
+- The restricted Yul semantics encoded in `SoLean.Yul`.
 - `solc`, when used to produce Yul IR.
 - The placeholder Python scripts, where their behavior is used.
 
 The project does not yet establish that the Solidity source, solc Yul, SoLean
-model, and emitted Yul all have the same semantics.
+model, Python emitter output, and solc Yul all have the same semantics.
 
 ## Not Supported Yet
 
-- EVM wraparound arithmetic.
+- Full EVM wraparound arithmetic in the SoLean DSL. The restricted Lean Yul
+  model currently covers only wrapping `add`.
 - ABI decoding, calldata, memory, events, external calls, gas, reentrancy, or
   contract creation.
 - Verified parsing of Solidity or Yul.
 - Generated SoLean from Solidity.
 - Generated Yul from arbitrary SoLean.
 - Semantic Yul equivalence.
+- Verified correspondence between the Python Yul emitter and the Lean Yul data.
 - Broad Solidity or DeFi verification claims.
 
 Checked addition and subtraction are modeled for the current expression DSL.
@@ -86,6 +97,7 @@ still a small Solidity subset rather than an EVM semantics.
 ├── pyproject.toml
 ├── docs/
 │   ├── assumptions.md
+│   ├── counter-yul.md
 │   ├── counter.md
 │   ├── simple-vault.md
 │   └── yul-subset.md
@@ -96,8 +108,10 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── DSL.lean
 │   ├── Semantics.lean
 │   ├── Specs.lean
+│   ├── Yul.lean
 │   └── Examples/
 │       ├── Counter.lean
+│       ├── CounterYul.lean
 │       └── SimpleVault.lean
 ├── examples/
 │   ├── Counter.sol
@@ -133,6 +147,7 @@ The main proof files currently live in:
 
 ```text
 SoLean/Examples/Counter.lean
+SoLean/Examples/CounterYul.lean
 SoLean/Examples/SimpleVault.lean
 ```
 
@@ -200,9 +215,10 @@ python3 -m unittest discover -s tests
 
 ## Next Milestones
 
-1. Continue extracting reusable proof lemmas from the Counter and SimpleVault
-   examples.
-2. Expand the Counter-only Solidity subset only as needed by the proof path.
-3. Replace bounded trace comparison with a small semantic equivalence checker
-   for the supported Yul subset.
-4. Add generated artifacts only when they are deterministic and easy to audit.
+1. Prove that the Python Counter emitter renders the same program shape as the
+   Lean `CounterYul` data, or generate both from one small source of truth.
+2. Parse the emitted restricted Yul back into Lean data for a checked round trip.
+3. Compare real `solc 0.8.20 --ir` Counter output against the restricted model,
+   only after the supported subset is explicit.
+4. Continue extracting reusable proof lemmas from Counter before extending the
+   verified Yul path to SimpleVault.

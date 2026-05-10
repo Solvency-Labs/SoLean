@@ -34,13 +34,25 @@ amount <= x
 
 This is exactly the modeled assertion `x >= amount`.
 
+## Restricted Yul Proof
+
+The Counter case study now also has a hand-written restricted Yul model in
+`SoLean/Examples/CounterYul.lean`.
+
+The theorem `counter_refines_solean_success` proves that whenever the SoLean
+Counter model succeeds, the restricted Yul Counter model succeeds with the same
+final storage.
+
+The theorem `counter_yul_success_assertion` proves the assertion property
+directly for successful executions of the restricted Yul Counter model.
+
 ## Limitations
 
 - The model is hand-written, not generated from Solidity.
 - The proof is about the SoLean semantics, not solc output.
 - The Solidity-to-SoLean script parses only a tiny Counter subset and references
   the hand-written Lean model.
-- The placeholder Yul output is not yet connected to the Lean model by a
-  verified compiler or semantic equivalence checker.
+- The restricted Yul proof is about hand-written Lean Yul data, not yet about
+  parsed Python emitter output or real `solc` output.
 - The Yul checker can run bounded Counter-shaped traces, but this is still a
   finite smoke test rather than a proof of Yul equivalence.

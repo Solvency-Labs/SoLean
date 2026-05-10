@@ -106,6 +106,13 @@ theorem checkedAdd_ge_right {a b result : UInt256}
   rw [Nat.add_comm]
   exact Nat.le_add_right b.toNat a.toNat
 
+theorem checkedAdd_ge_left {a b result : UInt256}
+    (h : checkedAdd a b = some result) :
+    a <= result := by
+  show a.toNat <= result.toNat
+  rw [checkedAdd_toNat h]
+  exact Nat.le_add_right a.toNat b.toNat
+
 theorem checkedSub_toNat {a b result : UInt256}
     (h : checkedSub a b = some result) :
     result.toNat = a.toNat - b.toNat := by

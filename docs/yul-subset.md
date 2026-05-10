@@ -1,7 +1,8 @@
 # Restricted Yul Subset
 
-SoLean currently works with a tiny Yul-like subset for prototype scripting only.
-This subset is not a full Yul grammar and is not a semantic equivalence system.
+SoLean currently works with a tiny Yul-like subset for prototype scripting and
+for the first Lean-side restricted Yul proof. This subset is not a full Yul
+grammar and is not a semantic equivalence system.
 
 ## Supported Shape
 
@@ -89,3 +90,13 @@ The old normalized-text comparison remains available:
 ```bash
 python3 scripts/check_equiv.py --text left.yul right.yul
 ```
+
+## Lean Restricted Yul Model
+
+`SoLean/Yul.lean` defines a separate Lean model for a similarly tiny restricted
+Yul subset. It is intentionally hand-written and proof-oriented rather than a
+parser for arbitrary Yul text.
+
+The Lean model currently supports the Counter path: locals, storage load/store,
+wrapping `add`, `gt`, `lt`, `iszero`, and revert guards. See
+`docs/counter-yul.md` for the current Counter theorem.
