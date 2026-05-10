@@ -1,6 +1,6 @@
 # Counter Restricted Yul Proof
 
-This page documents the first verified compiler-path slice in SoLean.
+This page documents the first restricted Yul proof slice in SoLean.
 
 ## What Was Added
 
@@ -47,9 +47,14 @@ then final x >= amount.
 This is a qualitative step beyond Python trace testing: part of the Yul path is
 now represented and checked inside Lean.
 
+The next layer is documented in `docs/compiler.md`: a tiny Lean compiler emits
+this Counter Yul program from a parameterized Counter source function.
+
 ## Limitations
 
-- The Yul program is still hand-written Lean data.
+- The Yul program is still hand-written Lean data, though
+  `SoLean/Examples/CounterCompiler.lean` now proves the tiny Lean compiler emits
+  this exact program for Counter.
 - The Python emitter is not verified against this Lean Yul data.
 - The Solidity parser is not verified.
 - Real `solc --ir` output is not parsed into this Lean Yul model.

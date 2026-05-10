@@ -46,6 +46,22 @@ final storage.
 The theorem `counter_yul_success_assertion` proves the assertion property
 directly for successful executions of the restricted Yul Counter model.
 
+## Compiler Proof
+
+The Counter case study now has a tiny verified compiler slice in
+`SoLean/Examples/CounterCompiler.lean`.
+
+The generic `counterFunction` source program has one parameter, `amount`.
+The theorem `counter_instantiates_to_existing_model` proves that instantiating
+it with an `amount` gives the existing SoLean `Counter.incProgram amount`.
+
+The theorem `compile_counter_eq_counter_yul` proves that compiling this source
+function produces the existing restricted Yul Counter program.
+
+The theorem `compiled_counter_refines_solean_success` combines those pieces:
+successful executions of the instantiated SoLean Counter source are reproduced
+by the compiled restricted Yul program with the same final storage.
+
 ## Limitations
 
 - The model is hand-written, not generated from Solidity.
@@ -54,5 +70,6 @@ directly for successful executions of the restricted Yul Counter model.
   the hand-written Lean model.
 - The restricted Yul proof is about hand-written Lean Yul data, not yet about
   parsed Python emitter output or real `solc` output.
+- The compiler proof covers only the tiny Counter source shape.
 - The Yul checker can run bounded Counter-shaped traces, but this is still a
   finite smoke test rather than a proof of Yul equivalence.

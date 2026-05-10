@@ -18,8 +18,9 @@ The intended long-term loop is:
 5. Check that Yul1 and Yul2 are equivalent for a restricted subset.
 
 Today, the proof side has checked-arithmetic semantics for small hand-written
-models plus a tiny Lean model of the restricted Counter Yul path. The broader
-Solidity and Yul pipeline remains placeholder tooling.
+models, a tiny Lean model of the restricted Counter Yul path, and a tiny
+verified Counter compiler slice. The broader Solidity and Yul pipeline remains
+placeholder tooling.
 
 ## What Exists Now
 
@@ -40,6 +41,11 @@ Solidity and Yul pipeline remains placeholder tooling.
   model with the same final storage.
 - A Yul-side Counter theorem showing successful restricted Yul execution implies
   the final modeled `x` is at least `amount`.
+- A tiny parameter-aware source language and partial compiler to restricted
+  Lean Yul for the Counter pattern.
+- A theorem showing the generic Counter source function instantiates to the
+  existing SoLean Counter model and compiles to the existing restricted Yul
+  Counter program.
 - A `SimpleVault` model with successful-execution preservation proofs for
   `totalAssets >= totalShares`.
 - Solidity examples in `examples/`.
@@ -60,6 +66,7 @@ For the current prototype, the trusted base includes:
 - Lean's kernel and the Lake/Lean toolchain.
 - The hand-written SoLean model matching the intended Solidity fragment.
 - The hand-written restricted Yul model matching the intended Counter emitter.
+- The tiny Counter compiler implemented in Lean.
 - The small-step choices encoded in `SoLean.Semantics`.
 - The restricted Yul semantics encoded in `SoLean.Yul`.
 - `solc`, when used to produce Yul IR.
@@ -79,6 +86,7 @@ model, Python emitter output, and solc Yul all have the same semantics.
 - Generated Yul from arbitrary SoLean.
 - Semantic Yul equivalence.
 - Verified correspondence between the Python Yul emitter and the Lean Yul data.
+- Verified Solidity-to-source-language translation.
 - Broad Solidity or DeFi verification claims.
 
 Checked addition and subtraction are modeled for the current expression DSL.
@@ -97,6 +105,7 @@ still a small Solidity subset rather than an EVM semantics.
 ├── pyproject.toml
 ├── docs/
 │   ├── assumptions.md
+│   ├── compiler.md
 │   ├── counter-yul.md
 │   ├── counter.md
 │   ├── simple-vault.md
@@ -108,9 +117,11 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── DSL.lean
 │   ├── Semantics.lean
 │   ├── Specs.lean
+│   ├── Compiler.lean
 │   ├── Yul.lean
 │   └── Examples/
 │       ├── Counter.lean
+│       ├── CounterCompiler.lean
 │       ├── CounterYul.lean
 │       └── SimpleVault.lean
 ├── examples/
@@ -147,6 +158,7 @@ The main proof files currently live in:
 
 ```text
 SoLean/Examples/Counter.lean
+SoLean/Examples/CounterCompiler.lean
 SoLean/Examples/CounterYul.lean
 SoLean/Examples/SimpleVault.lean
 ```
@@ -215,10 +227,10 @@ python3 -m unittest discover -s tests
 
 ## Next Milestones
 
-1. Prove that the Python Counter emitter renders the same program shape as the
-   Lean `CounterYul` data, or generate both from one small source of truth.
-2. Parse the emitted restricted Yul back into Lean data for a checked round trip.
+1. Generate the Python Counter Yul output from the same structure as the Lean
+   compiler, or add a checked round trip from emitted text back to Lean data.
+2. Connect the Counter Solidity parser to the Lean source-language shape.
 3. Compare real `solc 0.8.20 --ir` Counter output against the restricted model,
    only after the supported subset is explicit.
-4. Continue extracting reusable proof lemmas from Counter before extending the
-   verified Yul path to SimpleVault.
+4. Generalize the tiny compiler only as needed before extending the verified Yul
+   path to SimpleVault.

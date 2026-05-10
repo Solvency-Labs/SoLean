@@ -100,3 +100,7 @@ parser for arbitrary Yul text.
 The Lean model currently supports the Counter path: locals, storage load/store,
 wrapping `add`, `gt`, `lt`, `iszero`, and revert guards. See
 `docs/counter-yul.md` for the current Counter theorem.
+
+`SoLean/Compiler.lean` now contains a tiny partial compiler that can emit this
+restricted Lean Yul shape for the Counter source function. See
+`docs/compiler.md` for the current compiler proof.

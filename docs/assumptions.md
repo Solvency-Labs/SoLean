@@ -37,11 +37,16 @@ results.
   storage load/store, and revert guards for the Counter path.
 - `SoLean/Examples/CounterYul.lean` proves that successful SoLean Counter
   executions are reproduced by the hand-written restricted Yul Counter model.
+- `SoLean/Compiler.lean` contains a tiny partial compiler from a one-parameter
+  source language to restricted Lean Yul.
+- `SoLean/Examples/CounterCompiler.lean` proves that the generic Counter source
+  function instantiates to the existing Counter model and compiles to the
+  existing restricted Yul Counter model.
 - The default Yul checker runs bounded trace comparison for Counter-shaped
   restricted-subset programs. This is not semantic Yul equivalence.
 - Strict restricted-subset AST equality is available as an explicit `--ast`
   mode, and normalized text comparison remains available as `--text`.
 - `solc 0.8.20` is the intended pinned compiler version for local Counter Yul
   generation. Generated `build/` artifacts are not committed yet.
-- The Python emitter, Python parser, and Lean Yul AST are not yet connected by a
-  verified translation.
+- The Python emitter, Python parser, Solidity source, and real solc output are
+  not yet connected to the Lean compiler by a verified translation.
