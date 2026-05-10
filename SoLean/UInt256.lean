@@ -31,7 +31,8 @@ def ge (a b : UInt256) : Bool :=
   decide (a >= b)
 
 theorem amount_le_add_left (x amount : UInt256) : amount <= x + amount := by
-  simpa [Nat.add_comm] using Nat.le_add_right amount x
+  rw [Nat.add_comm]
+  exact Nat.le_add_right amount x
 
 end UInt256
 

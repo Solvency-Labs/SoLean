@@ -35,8 +35,8 @@ theorem inc_success_assertion
         amount <=
           (Storage.write storage xSlot (storage.read xSlot + amount)).read
             xSlot := by
-      simpa [xSlot, Storage.write] using
-        UInt256.amount_le_add_left (storage.read xSlot) amount
+      rw [Storage.read_write_same]
+      exact UInt256.amount_le_add_left (storage.read xSlot) amount
     have hFinal :
         ExecResult.success
             (Storage.write storage xSlot (storage.read xSlot + amount)) =
@@ -48,8 +48,8 @@ theorem inc_success_assertion
   · have hImpossible :
         ExecResult.revert Failure.requireFailed =
           ExecResult.success finalStorage := by
-      simpa [incProgram, xExpr, exec, evalBool, evalValue, UInt256.gt,
-        hAmount] using h
+      simp [incProgram, xExpr, exec, evalBool, evalValue, UInt256.gt,
+        hAmount] at h
     cases hImpossible
 
 theorem inc_assertion_safe
