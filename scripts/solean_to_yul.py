@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Placeholder SoLean-to-Yul emitter for the first Counter case study."""
+"""Structured placeholder SoLean-to-Yul emitter for Counter."""
 
 from __future__ import annotations
 
@@ -7,23 +7,15 @@ import argparse
 import sys
 from pathlib import Path
 
+try:
+    from .yul_subset import counter_object, render_object
+except ImportError:  # Allows `python scripts/solean_to_yul.py ...`.
+    from yul_subset import counter_object, render_object
 
-COUNTER_YUL = """// Deterministic placeholder Yul-like output for SoLean.Examples.Counter.inc.
+
+HEADER = """// Deterministic placeholder Yul-like output for SoLean.Examples.Counter.inc.
 // This is not generated from Lean and is not bytecode-ready Yul.
 // It mirrors the current checked-arithmetic intent for the Counter case study.
-object "Counter" {
-  code {
-    // x is modeled at storage slot 0.
-    function inc(amount) {
-      if iszero(gt(amount, 0)) { revert(0, 0) }
-      let old_x := sload(0)
-      let new_x := add(old_x, amount)
-      if lt(new_x, old_x) { revert(0, 0) }
-      sstore(0, new_x)
-      if lt(new_x, amount) { revert(0, 0) }
-    }
-  }
-}
 """
 
 
@@ -50,10 +42,11 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: unsupported example: {args.example}", file=sys.stderr)
         return 2
 
+    output = HEADER + render_object(counter_object())
     if args.output:
-        args.output.write_text(COUNTER_YUL)
+        args.output.write_text(output)
     else:
-        print(COUNTER_YUL, end="")
+        print(output, end="")
     return 0
 
 

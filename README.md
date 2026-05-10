@@ -38,9 +38,11 @@ models. The Yul pipeline remains placeholder tooling.
 - Solidity examples in `examples/`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.
-  - SoLean to Yul-like text for `Counter`.
+  - SoLean to restricted Yul-like text for `Counter`.
   - Yul text normalization.
-  - Normalized-text equivalence checking.
+  - Restricted-subset AST comparison, with normalized-text comparison as an
+    explicit fallback.
+  - Counter-only Solidity-to-SoLean sketching.
 - GitHub Actions CI that runs `lake build`, Python bytecode checks, and Python
   unit tests.
 
@@ -85,7 +87,8 @@ still a small Solidity subset rather than an EVM semantics.
 ├── docs/
 │   ├── assumptions.md
 │   ├── counter.md
-│   └── simple-vault.md
+│   ├── simple-vault.md
+│   └── yul-subset.md
 ├── SoLean.lean
 ├── SoLean/
 │   ├── Basic.lean
@@ -103,7 +106,9 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── solc_to_yul.py
 │   ├── solean_to_yul.py
 │   ├── normalize_yul.py
-│   └── check_equiv.py
+│   ├── check_equiv.py
+│   ├── solidity_to_solean.py
+│   └── yul_subset.py
 └── tests/
     ├── README.md
     └── test_yul_tools.py
@@ -152,14 +157,24 @@ Normalize Yul-like text:
 python3 scripts/normalize_yul.py build/Counter.solean.yul
 ```
 
-Compare two Yul files using the current textual checker:
+Compare two Yul files using the current restricted-subset AST checker:
 
 ```bash
 python3 scripts/check_equiv.py build/Counter.yul build/Counter.solean.yul --diff
 ```
 
-This comparison is not a semantic equivalence proof. It only compares normalized
-text and is expected to be replaced.
+By default, this compares AST equality for the restricted Yul subset documented
+in `docs/yul-subset.md`. This comparison is not a semantic equivalence proof.
+The old normalized-text comparison is still available with `--text`.
+
+Sketch the exact Counter Solidity example into a Lean reference:
+
+```bash
+python3 scripts/solidity_to_solean.py examples/Counter.sol
+```
+
+This is not a Solidity parser. It recognizes only the exact Counter example and
+rejects unsupported input.
 
 Run the Python tests:
 
@@ -171,8 +186,7 @@ python3 -m unittest discover -s tests
 
 1. Continue extracting reusable proof lemmas from the Counter and SimpleVault
    examples.
-2. Parse or ingest a small structured Solidity/Yul subset instead of relying on
-   hand-written models.
-3. Replace textual Yul comparison with a restricted semantic equivalence
-   checker.
+2. Expand the Counter-only Solidity sketch into a real, explicit parser for a
+   tiny Solidity subset.
+3. Replace AST equality with a restricted semantic equivalence checker.
 4. Add generated artifacts only when they are deterministic and easy to audit.

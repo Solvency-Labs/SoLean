@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare two Yul files using the current textual normalizer."""
+"""Compare two Yul files in the current restricted prototype subset."""
 
 from __future__ import annotations
 
@@ -9,8 +9,10 @@ from pathlib import Path
 
 try:
     from .normalize_yul import normalize_text
+    from .yul_subset import UnsupportedYulError, parse_object
 except ImportError:  # Allows `python scripts/check_equiv.py ...`.
     from normalize_yul import normalize_text
+    from yul_subset import UnsupportedYulError, parse_object
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -20,37 +22,78 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--diff",
         action="store_true",
-        help="Print a unified diff when normalized text differs",
+        help="Print a unified diff when comparison text differs",
+    )
+    parser.add_argument(
+        "--text",
+        action="store_true",
+        help="Use the legacy normalized-text comparison instead of subset ASTs",
     )
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
-    left = normalize_text(args.left.read_text())
-    right = normalize_text(args.right.read_text())
+def compare_text(left_path: Path, right_path: Path, show_diff: bool) -> int:
+    left = normalize_text(left_path.read_text())
+    right = normalize_text(right_path.read_text())
 
     if left == right:
-        print("equivalent under the current normalized-text checker")
+        print("equivalent under the normalized-text checker")
         return 0
 
     print(
-        "not equivalent under the current normalized-text checker; semantic "
+        "not equivalent under the normalized-text checker; semantic Yul "
+        "equivalence is not implemented yet"
+    )
+    if show_diff:
+        print_diff(left, right, left_path, right_path)
+    return 1
+
+
+def compare_subset(left_path: Path, right_path: Path, show_diff: bool) -> int:
+    left_text = left_path.read_text()
+    right_text = right_path.read_text()
+    try:
+        left = parse_object(left_text)
+        right = parse_object(right_text)
+    except UnsupportedYulError as exc:
+        print(
+            "unsupported Yul subset: "
+            f"{exc}. This checker is not semantic Yul equivalence."
+        )
+        return 2
+
+    if left == right:
+        print("equivalent under the restricted Yul subset AST checker")
+        return 0
+
+    print(
+        "not equivalent under the restricted Yul subset AST checker; semantic "
         "Yul equivalence is not implemented yet"
     )
-    if args.diff:
-        print(
-            "".join(
-                difflib.unified_diff(
-                    left.splitlines(keepends=True),
-                    right.splitlines(keepends=True),
-                    fromfile=str(args.left),
-                    tofile=str(args.right),
-                )
-            ),
-            end="",
-        )
+    if show_diff:
+        print_diff(normalize_text(left_text), normalize_text(right_text), left_path, right_path)
     return 1
+
+
+def print_diff(left: str, right: str, left_path: Path, right_path: Path) -> None:
+    print(
+        "".join(
+            difflib.unified_diff(
+                left.splitlines(keepends=True),
+                right.splitlines(keepends=True),
+                fromfile=str(left_path),
+                tofile=str(right_path),
+            )
+        ),
+        end="",
+    )
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.text:
+        return compare_text(args.left, args.right, args.diff)
+    return compare_subset(args.left, args.right, args.diff)
 
 
 if __name__ == "__main__":

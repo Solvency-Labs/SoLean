@@ -38,5 +38,7 @@ This is exactly the modeled assertion `x >= amount`.
 
 - The model is hand-written, not generated from Solidity.
 - The proof is about the SoLean semantics, not solc output.
+- The Solidity-to-SoLean script recognizes only this exact Counter shape and
+  references the hand-written Lean model.
 - The placeholder Yul output is not yet connected to the Lean model by a
   verified compiler or semantic equivalence checker.

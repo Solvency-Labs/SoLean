@@ -26,8 +26,10 @@ results.
 
 ## Solidity And Yul
 
-- Solidity parsing and generation of SoLean models are not implemented.
-- Yul parsing and semantic equivalence are not implemented.
+- Solidity parsing and generation of SoLean models are not implemented beyond a
+  Counter-only shape recognizer.
+- Yul parsing is limited to the restricted subset in `docs/yul-subset.md`.
 - The current SoLean-to-Yul output is deterministic placeholder text for the
   Counter example only.
-- The current equivalence checker compares normalized text only.
+- The current equivalence checker compares restricted-subset AST equality only;
+  it is not semantic Yul equivalence.
