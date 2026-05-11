@@ -113,6 +113,7 @@ class SolcFunctionSummary:
     selected_object: SolcObjectBlock
     selected_function: SolcFunctionBlock
     normalized_object: YulObject
+    trusted_rules: tuple[str, ...]
 
 
 UNSUPPORTED_STATEMENT_PREFIXES = (
@@ -243,10 +244,12 @@ def summarize_solc_function_text(text: str, function_query: str) -> SolcFunction
             f"object {selected_object.name}"
         )
 
+    normalized_object, trusted_rules = normalize_counter_function_body(selected_function)
     return SolcFunctionSummary(
         selected_object=selected_object,
         selected_function=selected_function,
-        normalized_object=normalize_counter_function_body(selected_function),
+        normalized_object=normalized_object,
+        trusted_rules=trusted_rules,
     )
 
 
@@ -255,6 +258,7 @@ def solc_function_summary_to_data(summary: SolcFunctionSummary) -> dict:
         "kind": "solcFunctionSummary",
         "sourceFunction": summary.selected_function.name,
         "sourceObject": summary.selected_object.name,
+        "trustedRules": list(summary.trusted_rules),
         "normalized": object_to_data(summary.normalized_object),
     }
 
@@ -396,7 +400,9 @@ def classify_function_body(function: SolcFunctionBlock) -> Classification:
     )
 
 
-def normalize_counter_function_body(function: SolcFunctionBlock) -> YulObject:
+def normalize_counter_function_body(
+    function: SolcFunctionBlock,
+) -> tuple[YulObject, tuple[str, ...]]:
     """Summarize the real solc Counter `fun_inc_*` body into restricted Yul.
 
     This is a trusted, Counter-specific inspection pass. It recognizes only the
@@ -409,8 +415,19 @@ def normalize_counter_function_body(function: SolcFunctionBlock) -> YulObject:
     env: dict[str, Expr] = {function.params[0]: Ident("amount")}
     storage: dict[int, Expr] = {}
     emitted: list[Stmt] = []
+    trusted_rules: list[str] = []
     old_x_emitted = False
     new_x_emitted = False
+
+    def add_rule(name: str) -> None:
+        if name not in trusted_rules:
+            trusted_rules.append(name)
+
+    def record_text_rules(text: str) -> None:
+        if re.search(r"\b0[xX][0-9a-fA-F]+\b", text):
+            add_rule("hexLiteralAsNat")
+        if any(f"{helper}(" in text for helper in TRANSPARENT_VALUE_HELPERS):
+            add_rule("transparentValueHelper")
 
     def resolve(expr: Expr) -> Expr:
         if isinstance(expr, Ident) and expr.name in env:
@@ -420,6 +437,7 @@ def normalize_counter_function_body(function: SolcFunctionBlock) -> YulObject:
         return expr
 
     def parse_supported_expr(raw: str) -> Expr:
+        record_text_rules(raw)
         return resolve(parse_expr(summarize_transparent_helpers(raw)))
 
     def literal_value(raw: str) -> int:
@@ -437,11 +455,13 @@ def normalize_counter_function_body(function: SolcFunctionBlock) -> YulObject:
     def summarize_expr(raw: str) -> Expr:
         nonlocal old_x_emitted, new_x_emitted
 
+        record_text_rules(raw)
         text = summarize_transparent_helpers(raw.strip())
         call = parse_any_call(text)
         if call is not None:
             name, args = call
             if name == "read_from_storage_split_offset_0_t_uint256":
+                add_rule("storageReadSlot0AsSload")
                 if len(args) != 1:
                     raise UnsupportedYulError(f"{name} expects one argument")
                 slot = literal_value(args[0])
@@ -456,6 +476,7 @@ def normalize_counter_function_body(function: SolcFunctionBlock) -> YulObject:
                 return Ident("old_x")
 
             if name == "checked_add_t_uint256":
+                add_rule("checkedAddUInt256AsAddWithOverflowGuard")
                 if len(args) != 2:
                     raise UnsupportedYulError(f"{name} expects two arguments")
                 lhs = parse_supported_expr(args[0])
@@ -476,18 +497,21 @@ def normalize_counter_function_body(function: SolcFunctionBlock) -> YulObject:
         return Call("iszero", (cond,))
 
     def handle_call_statement(line: str) -> bool:
+        record_text_rules(line)
         call = parse_any_call(summarize_transparent_helpers(line))
         if call is None:
             return False
 
         name, args = call
         if name == "require_helper":
+            add_rule("requireHelperAsRevertGuard")
             if len(args) != 1:
                 raise UnsupportedYulError("require_helper expects one argument")
             emitted.append(IfRevert(Call("iszero", (parse_supported_expr(args[0]),))))
             return True
 
         if name == "assert_helper":
+            add_rule("assertHelperAsRevertGuard")
             if len(args) != 1:
                 raise UnsupportedYulError("assert_helper expects one argument")
             emitted.append(
@@ -496,6 +520,7 @@ def normalize_counter_function_body(function: SolcFunctionBlock) -> YulObject:
             return True
 
         if name == "update_storage_value_offset_0_t_uint256_to_t_uint256":
+            add_rule("storageUpdateSlot0AsSstore")
             if len(args) != 2:
                 raise UnsupportedYulError(f"{name} expects two arguments")
             slot = literal_value(args[0])
@@ -523,9 +548,12 @@ def normalize_counter_function_body(function: SolcFunctionBlock) -> YulObject:
 
         raise UnsupportedYulError(f"unsupported Counter solc statement: {line}")
 
-    return YulObject(
-        name="Counter",
-        function=Function("inc", ("amount",), tuple(emitted)),
+    return (
+        YulObject(
+            name="Counter",
+            function=Function("inc", ("amount",), tuple(emitted)),
+        ),
+        tuple(trusted_rules),
     )
 
 

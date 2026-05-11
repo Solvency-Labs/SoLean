@@ -127,14 +127,21 @@ against real solc IR.
 
 Current trusted Counter summary rules:
 
-- `require_helper(condition)` becomes a revert guard.
-- `read_from_storage_split_offset_0_t_uint256(0)` becomes `sload(0)`.
-- `checked_add_t_uint256(old, amount)` becomes `add(old, amount)` plus the
-  checked-add overflow guard.
-- `update_storage_value_offset_0_t_uint256_to_t_uint256(0, value)` becomes
-  `sstore(0, value)`.
-- `assert_helper(iszero(lt(lhs, rhs)))` becomes the final `lt(lhs, rhs)` revert
+- `hexLiteralAsNat`: hexadecimal literals become natural-number literals.
+- `transparentValueHelper`: current one-argument value helpers are treated as
+  transparent wrappers.
+- `requireHelperAsRevertGuard`: `require_helper(condition)` becomes a revert
   guard.
+- `storageReadSlot0AsSload`: `read_from_storage_split_offset_0_t_uint256(0)`
+  becomes `sload(0)`.
+- `checkedAddUInt256AsAddWithOverflowGuard`: `checked_add_t_uint256(old,
+  amount)` becomes `add(old, amount)` plus the
+  checked-add overflow guard.
+- `storageUpdateSlot0AsSstore`:
+  `update_storage_value_offset_0_t_uint256_to_t_uint256(0, value)` becomes
+  `sstore(0, value)`.
+- `assertHelperAsRevertGuard`: `assert_helper(iszero(lt(lhs, rhs)))` becomes
+  the final `lt(lhs, rhs)` revert guard.
 
 After that, the real IR also contains constructs outside the subset:
 

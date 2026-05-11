@@ -43,7 +43,8 @@ Counter source function in Lean
 This is real progress, but it does not yet start from Solidity text or real
 `solc` output.
 
-See `docs/counter-bridge-v1.md` for the crisp Counter success condition.
+See `docs/counter-bridge-v1.md` for the crisp Counter success condition and
+`docs/counter-bridge-v2.md` for the current auditable bridge report.
 
 ## Current State
 
@@ -67,6 +68,9 @@ See `docs/counter-bridge-v1.md` for the crisp Counter success condition.
 - Lean exports deterministic Counter source and restricted-Yul shape artifacts.
 - Python tests check the Counter Yul emitter against the Lean-exported
   `CounterYul.counterProgram` artifact and a text golden file.
+- `check_counter_bridge.py` produces one deterministic Counter bridge report
+  tying the trusted Solidity source projection, Python Yul emitter, and solc
+  function-body summary back to Lean-owned artifacts.
 - Python parses and normalizes a restricted Yul-like subset.
 - Python performs symbolic state-transform checks for Counter-shaped restricted
   Yul programs, with bounded trace checks still available as an explicit legacy
@@ -184,13 +188,15 @@ Done:
   and assert helper as trusted inspection patterns.
 - Test that the normalized solc Counter function summary matches the
   Lean-exported `CounterYul.counterProgram` artifact.
+- Emit a stable `trustedRules` list for the Counter-specific solc summary and
+  surface it in the Counter bridge report.
 
 Next tasks:
 
-- Decide whether the solc summary schema should become a stable checked bridge
-  artifact or remain an internal audit/test format.
-- Reduce trust further by moving the Counter summary rules closer to Lean, or
-  by exporting a Lean-side expected summary for comparison.
+- Reduce trust further by moving the Counter solc summary rules closer to Lean,
+  or by exporting a Lean-owned expected summary/rule manifest for comparison.
+- Decide whether the `counterBridgeReport` JSON should remain an internal audit
+  format or become a stable checked artifact.
 
 Definition of done:
 
@@ -199,6 +205,9 @@ Definition of done:
 - The repo can summarize the actual Counter `fun_inc_*` body into the same
   canonical restricted Counter Yul shape exported from Lean, without claiming
   full equivalence.
+- The repo can produce one deterministic Counter bridge report that names the
+  trusted solc summary rules and fails if source, emitted Yul, or solc summary
+  artifacts drift away from Lean-owned artifacts.
 
 ### 4. Replace Bounded Trace Checks With Small Semantics
 
@@ -245,25 +254,26 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Turn the solc Counter summary into a sharper bridge artifact.
+Move one Counter bridge adapter rule closer to Lean.
 ```
 
 Why this matters:
 
-- We can now normalize the real `fun_inc_*` body into the same restricted
-  Counter Yul shape Lean exports.
-- The current summary is still trusted Python pattern recognition.
-- The next trust-reduction move is to make that summary boundary easier to
-  audit, compare, or eventually reproduce from Lean-owned data.
+- `Counter Bridge v2` now produces one deterministic report tying Solidity
+  source shape, Python-emitted Yul, and solc function summary back to
+  Lean-owned artifacts.
+- The solc summary rules are named and tested, but they are still trusted
+  Python pattern recognition.
+- The next trust-reduction move is to make at least one rule checked against
+  Lean-owned data rather than only documented in Python.
 
 Smallest useful version:
 
-1. Add a dedicated docs section for the solc Counter summary rules and their
-   trusted assumptions.
-2. Keep the JSON shape deterministic and compare it to the Lean-exported Yul
-   artifact in tests.
-3. Decide whether the next code step is Lean-side summary export/checking or a
-   narrower Python schema cleanup.
+1. Export a Lean-owned rule manifest or expected Counter bridge summary.
+2. Compare the Python `trustedRules` list against that Lean-owned artifact.
+3. Pick one simple rule, such as `hexLiteralAsNat` or
+   `requireHelperAsRevertGuard`, and document exactly what would be required to
+   prove or mechanize it in Lean.
 
 ## Updating This Roadmap
 

@@ -81,5 +81,16 @@ storage read helper, checked-add helper, storage update helper, and assert
 helper patterns, then emits the canonical restricted Counter Yul shape. Tests
 compare that normalized shape with the Lean-exported Counter Yul artifact.
 
+`Counter Bridge v2` packages these checks into one deterministic audit report:
+
+```bash
+python3 scripts/check_counter_bridge.py \
+  --solidity examples/Counter.sol \
+  --solc-yul build/Counter.solc.yul
+```
+
+See `docs/counter-bridge-v2.md` for the exact report shape and trusted solc
+summary rules.
+
 That is progress, but it is still trusted Python pattern recognition rather than
 verified solc parsing or semantic equivalence.

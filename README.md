@@ -272,6 +272,20 @@ This is a trusted, Counter-specific inspection summary. It checks structural
 alignment with the Lean-owned Counter Yul shape in tests, but it is not a proof
 of semantic equivalence with real solc IR.
 
+Run the current Counter bridge audit:
+
+```bash
+python3 scripts/check_counter_bridge.py \
+  --solidity examples/Counter.sol \
+  --solc-yul build/Counter.solc.yul
+```
+
+This emits deterministic JSON tying the trusted Solidity source projection,
+Python Counter Yul emitter, and trusted solc `fun_inc_*` summary back to
+Lean-owned artifacts. A passing report is an audit/regression signal, not a
+proof of Solidity parsing or semantic equivalence with solc output. See
+`docs/counter-bridge-v2.md` for the named trust rules.
+
 Compare two Yul files using the current symbolic restricted-subset
 state-transform checker:
 

@@ -22,6 +22,10 @@ from scripts.classify_yul import (
     summarize_transparent_helpers,
 )
 from scripts.check_equiv import main as check_equiv_main
+from scripts.check_counter_bridge import (
+    build_counter_bridge_report,
+    main as check_counter_bridge_main,
+)
 from scripts.normalize_yul import normalize_text
 from scripts.solidity_to_solean import (
     contract_to_source_data,
@@ -103,6 +107,16 @@ object "Counter_26" {
 }
 """
 
+EXPECTED_COUNTER_SUMMARY_RULES = [
+    "hexLiteralAsNat",
+    "transparentValueHelper",
+    "requireHelperAsRevertGuard",
+    "storageReadSlot0AsSload",
+    "checkedAddUInt256AsAddWithOverflowGuard",
+    "storageUpdateSlot0AsSstore",
+    "assertHelperAsRevertGuard",
+]
+
 
 def lake_command() -> str:
     if lake := shutil.which("lake"):
@@ -133,6 +147,17 @@ def lean_artifact_text(kind: str) -> str:
 @lru_cache(maxsize=None)
 def lean_artifact(kind: str) -> dict:
     return json.loads(lean_artifact_text(kind))
+
+
+def copied_json(data: dict) -> dict:
+    return json.loads(json.dumps(data))
+
+
+def check_named(report: dict, name: str) -> dict:
+    for check in report["checks"]:
+        if check["name"] == name:
+            return check
+    raise AssertionError(f"missing check: {name}")
 
 
 class NormalizeYulTests(unittest.TestCase):
@@ -343,11 +368,13 @@ class ClassifyYulTests(unittest.TestCase):
 
     def test_solc_counter_function_summary_matches_lean_yul_shape(self) -> None:
         summary = summarize_solc_function_text(SOLC_COUNTER_IR_SAMPLE, "inc")
+        summary_data = solc_function_summary_to_data(summary)
 
         self.assertEqual(
-            solc_function_summary_to_data(summary)["normalized"],
+            summary_data["normalized"],
             lean_artifact("yul-json"),
         )
+        self.assertEqual(summary_data["trustedRules"], EXPECTED_COUNTER_SUMMARY_RULES)
 
     def test_solc_counter_function_summary_cli_outputs_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -362,6 +389,7 @@ class ClassifyYulTests(unittest.TestCase):
         data = json.loads(output.getvalue())
         self.assertEqual(data["kind"], "solcFunctionSummary")
         self.assertEqual(data["normalized"], lean_artifact("yul-json"))
+        self.assertEqual(data["trustedRules"], EXPECTED_COUNTER_SUMMARY_RULES)
 
     def test_solc_function_inspection_can_accept_supported_body(self) -> None:
         inspection = inspect_solc_function_text(SOLC_SUPPORTED_FUNCTION_SAMPLE, "inc")
@@ -395,6 +423,117 @@ class ClassifyYulTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertIn("supported-subset", output.getvalue())
+
+
+class CounterBridgeTests(unittest.TestCase):
+    def write_bridge_inputs(self, tmp: str, solc_text: str = SOLC_COUNTER_IR_SAMPLE) -> tuple[Path, Path]:
+        solidity = Path(tmp) / "Counter.sol"
+        solc_yul = Path(tmp) / "Counter.solc.yul"
+        solidity.write_text(Path("examples/Counter.sol").read_text())
+        solc_yul.write_text(solc_text)
+        return solidity, solc_yul
+
+    def test_counter_bridge_report_passes_on_current_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            solidity, solc_yul = self.write_bridge_inputs(tmp)
+            report = build_counter_bridge_report(
+                solidity,
+                solc_yul,
+                lean_source=lean_artifact("source-json"),
+                lean_yul=lean_artifact("yul-json"),
+            )
+
+        self.assertEqual(report["kind"], "counterBridgeReport")
+        self.assertEqual(report["status"], "passed")
+        self.assertEqual(
+            [check["status"] for check in report["checks"]],
+            ["passed", "passed", "passed"],
+        )
+        self.assertEqual(report["solc"]["sourceFunction"], "fun_inc_25")
+        self.assertEqual(report["solc"]["trustedRules"], EXPECTED_COUNTER_SUMMARY_RULES)
+        self.assertIn("not semantic equivalence", " ".join(report["limitations"]))
+
+    def test_counter_bridge_cli_outputs_deterministic_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            solidity, solc_yul = self.write_bridge_inputs(tmp)
+            args = [
+                "--solidity",
+                str(solidity),
+                "--solc-yul",
+                str(solc_yul),
+            ]
+
+            first = io.StringIO()
+            with contextlib.redirect_stdout(first):
+                first_code = check_counter_bridge_main(args)
+
+            second = io.StringIO()
+            with contextlib.redirect_stdout(second):
+                second_code = check_counter_bridge_main(args)
+
+        self.assertEqual(first_code, 0)
+        self.assertEqual(second_code, 0)
+        self.assertEqual(first.getvalue(), second.getvalue())
+        self.assertEqual(json.loads(first.getvalue())["status"], "passed")
+
+    def test_counter_bridge_reports_source_shape_mismatch(self) -> None:
+        bad_source = copied_json(lean_artifact("source-json"))
+        bad_source["function"]["name"] = "dec"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            solidity, solc_yul = self.write_bridge_inputs(tmp)
+            report = build_counter_bridge_report(
+                solidity,
+                solc_yul,
+                lean_source=bad_source,
+                lean_yul=lean_artifact("yul-json"),
+            )
+
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(
+            check_named(report, "soliditySourceToLeanSource")["status"],
+            "failed",
+        )
+
+    def test_counter_bridge_reports_python_emitter_mismatch(self) -> None:
+        bad_yul = copied_json(lean_artifact("yul-json"))
+        bad_yul["function"]["name"] = "dec"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            solidity, solc_yul = self.write_bridge_inputs(tmp)
+            report = build_counter_bridge_report(
+                solidity,
+                solc_yul,
+                lean_source=lean_artifact("source-json"),
+                lean_yul=bad_yul,
+            )
+
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(
+            check_named(report, "pythonYulEmitterToLeanYul")["status"],
+            "failed",
+        )
+
+    def test_counter_bridge_reports_solc_summary_mismatch(self) -> None:
+        changed_solc = SOLC_COUNTER_IR_SAMPLE.replace(
+            "checked_add_t_uint256(_3, expr_15)",
+            "checked_add_t_uint256(expr_15, _3)",
+        )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            solidity, solc_yul = self.write_bridge_inputs(tmp, changed_solc)
+            report = build_counter_bridge_report(
+                solidity,
+                solc_yul,
+                lean_source=lean_artifact("source-json"),
+                lean_yul=lean_artifact("yul-json"),
+            )
+
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(
+            check_named(report, "solcFunctionSummaryToLeanYul")["status"],
+            "failed",
+        )
 
 
 class CheckEquivTests(unittest.TestCase):
