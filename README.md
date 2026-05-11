@@ -252,6 +252,15 @@ python3 scripts/classify_yul.py --inspect-solc build/Counter.solc.yul
 This still does not claim equivalence. It is an auditable extraction aid that
 reports the next unsupported construct inside the selected object.
 
+Inspect the generated Counter function body inside solc IR:
+
+```bash
+python3 scripts/classify_yul.py --inspect-function inc build/Counter.solc.yul
+```
+
+This currently selects `fun_inc_*` in the deployed object and reports the first
+unsupported function-body construct.
+
 Compare two Yul files using the current symbolic restricted-subset
 state-transform checker:
 

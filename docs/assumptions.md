@@ -63,6 +63,9 @@ results.
   preamble/wrapper. The explicit solc-inspection mode selects the deployed
   object and currently reports memory setup such as
   `mstore(64, memoryguard(128))` as the next unsupported blocker.
+- The explicit solc function-inspection mode selects the generated `fun_inc_*`
+  body for `inc` and currently reports the hexadecimal literal `0x00` as the
+  first unsupported function-body expression form.
 - The Python emitter, Python parser, Solidity source, and real solc output are
   not yet connected to the Lean compiler by a verified translation. Current
   Python tests provide auditable structural alignment for Counter only.

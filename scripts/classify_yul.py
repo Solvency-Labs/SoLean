@@ -36,11 +36,36 @@ class SolcObjectBlock:
 
 
 @dataclass(frozen=True)
+class SolcFunctionBlock:
+    name: str
+    start_line: int
+    end_line: int
+    text: str
+    body_lines: tuple[tuple[int, str], ...]
+
+
+@dataclass(frozen=True)
 class SolcInspection:
     kind: str
     message: str
     objects: tuple[SolcObjectBlock, ...]
     selected_object: SolcObjectBlock | None
+    selected_classification: Classification | None
+
+    @property
+    def is_supported(self) -> bool:
+        return (
+            self.selected_classification is not None
+            and self.selected_classification.is_supported
+        )
+
+
+@dataclass(frozen=True)
+class SolcFunctionInspection:
+    kind: str
+    message: str
+    selected_object: SolcObjectBlock | None
+    selected_function: SolcFunctionBlock | None
     selected_classification: Classification | None
 
     @property
@@ -63,6 +88,7 @@ UNSUPPORTED_STATEMENT_PREFIXES = (
     "switch ",
 )
 OBJECT_HEADER_RE = re.compile(r'object "([^"]+)" \{')
+FUNCTION_HEADER_RE = re.compile(r"function ([A-Za-z_][A-Za-z0-9_]*)\([^)]*\)(?: -> [^{]+)? \{")
 
 
 def classify_text(text: str) -> Classification:
@@ -110,6 +136,51 @@ def inspect_solc_text(text: str) -> SolcInspection:
     )
 
 
+def inspect_solc_function_text(text: str, function_query: str) -> SolcFunctionInspection:
+    """Inspect the selected solc runtime object and classify one function body."""
+
+    objects = find_object_blocks(text)
+    if not objects:
+        return SolcFunctionInspection(
+            "parse-shape-failure",
+            "no Yul object blocks found in solc output",
+            None,
+            None,
+            None,
+        )
+
+    selected_object = select_runtime_object(objects)
+    functions = find_function_blocks(
+        selected_object.text, line_offset=selected_object.start_line - 1
+    )
+    selected_function = select_function(functions, function_query)
+    if selected_function is None:
+        return SolcFunctionInspection(
+            "parse-shape-failure",
+            (
+                f"no function matching {function_query!r} found in selected "
+                f"object {selected_object.name}"
+            ),
+            selected_object,
+            None,
+            None,
+        )
+
+    classification = classify_function_body(selected_function)
+    return SolcFunctionInspection(
+        classification.kind,
+        (
+            f"selected object {selected_object.name}; selected function "
+            f"{selected_function.name} at normalized lines "
+            f"{selected_function.start_line}-{selected_function.end_line}: "
+            f"{classification.message}"
+        ),
+        selected_object,
+        selected_function,
+        classification,
+    )
+
+
 def find_object_blocks(text: str) -> list[SolcObjectBlock]:
     lines = normalize_text(text).splitlines()
     stack: list[tuple[str, int, int]] = []
@@ -138,11 +209,98 @@ def find_object_blocks(text: str) -> list[SolcObjectBlock]:
     return sorted(blocks, key=lambda block: (block.start_line, block.depth))
 
 
+def find_function_blocks(text: str, line_offset: int = 0) -> list[SolcFunctionBlock]:
+    lines = normalize_text(text).splitlines()
+    stack: list[tuple[str, int, int]] = []
+    blocks: list[SolcFunctionBlock] = []
+    depth = 0
+
+    for index, line in enumerate(lines, start=1):
+        function_match = FUNCTION_HEADER_RE.fullmatch(line)
+        if function_match is not None:
+            stack.append((function_match.group(1), index, depth))
+
+        depth += line.count("{") - line.count("}")
+        while stack and depth <= stack[-1][2]:
+            name, start_line, _function_depth = stack.pop()
+            block_lines = lines[start_line - 1 : index]
+            body_lines = tuple(
+                (line_offset + line_number, body_line)
+                for line_number, body_line in enumerate(
+                    lines[start_line : index - 1], start=start_line + 1
+                )
+            )
+            blocks.append(
+                SolcFunctionBlock(
+                    name=name,
+                    start_line=line_offset + start_line,
+                    end_line=line_offset + index,
+                    text="\n".join(block_lines) + "\n",
+                    body_lines=body_lines,
+                )
+            )
+
+    return sorted(blocks, key=lambda block: block.start_line)
+
+
 def select_runtime_object(objects: list[SolcObjectBlock]) -> SolcObjectBlock:
     deployed = [block for block in objects if "deployed" in block.name.lower()]
     if deployed:
         return deployed[0]
     return max(objects, key=lambda block: (block.depth, block.start_line))
+
+
+def select_function(
+    functions: list[SolcFunctionBlock], function_query: str
+) -> SolcFunctionBlock | None:
+    scored: list[tuple[int, int, SolcFunctionBlock]] = []
+    for function in functions:
+        score = function_match_score(function.name, function_query)
+        if score is not None:
+            scored.append((score, function.start_line, function))
+    if not scored:
+        return None
+    return sorted(scored, key=lambda item: (item[0], item[1]))[0][2]
+
+
+def function_match_score(name: str, function_query: str) -> int | None:
+    if name == function_query:
+        return 0
+    if name.startswith(f"fun_{function_query}_") or name == f"fun_{function_query}":
+        return 1
+    if (
+        name.startswith(f"external_fun_{function_query}_")
+        or name == f"external_fun_{function_query}"
+    ):
+        return 2
+    if f"_{function_query}_" in name or name.endswith(f"_{function_query}"):
+        return 3
+    if function_query in name:
+        return 4
+    return None
+
+
+def classify_function_body(function: SolcFunctionBlock) -> Classification:
+    try:
+        from .yul_subset import parse_stmt
+    except ImportError:  # Allows `python scripts/classify_yul.py ...`.
+        from yul_subset import parse_stmt
+
+    for line_number, line in function.body_lines:
+        if line in {"{", "}"}:
+            continue
+        try:
+            parse_stmt(line)
+        except UnsupportedYulError as exc:
+            classification = _classify_unsupported(line, exc)
+            return Classification(
+                classification.kind,
+                f"line {line_number}: {classification.message}",
+            )
+    return Classification(
+        "supported-subset",
+        f"supported restricted subset function body: {function.name}",
+    )
 
 
 def _classify_unsupported(text: str, exc: UnsupportedYulError) -> Classification:
@@ -184,6 +342,13 @@ def _classify_unsupported(text: str, exc: UnsupportedYulError) -> Classification
     if "unsupported statement:" in str(exc):
         return Classification("unsupported-statement", str(exc))
 
+    unsupported_expr = re.search(r"unsupported expression: ([^;\n]+)", str(exc))
+    if unsupported_expr is not None:
+        return Classification(
+            "unsupported-expression",
+            f"unsupported expression form: {unsupported_expr.group(1)}",
+        )
+
     return Classification("parse-shape-failure", str(exc))
 
 
@@ -195,6 +360,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Classify the selected runtime/deployed object inside solc-style IR",
     )
+    parser.add_argument(
+        "--inspect-function",
+        metavar="NAME",
+        help=(
+            "Within solc-style IR, select the runtime/deployed object and "
+            "classify the generated function body matching NAME"
+        ),
+    )
     return parser
 
 
@@ -205,6 +378,25 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     text = args.source.read_text()
+    if args.inspect_function:
+        inspection = inspect_solc_function_text(text, args.inspect_function)
+        print(f"{inspection.kind}: {inspection.message}")
+        if inspection.selected_object is not None:
+            print(
+                "selected object: "
+                f"{inspection.selected_object.name}@"
+                f"{inspection.selected_object.start_line}-"
+                f"{inspection.selected_object.end_line}"
+            )
+        if inspection.selected_function is not None:
+            print(
+                "selected function: "
+                f"{inspection.selected_function.name}@"
+                f"{inspection.selected_function.start_line}-"
+                f"{inspection.selected_function.end_line}"
+            )
+        return 0 if inspection.is_supported else 2
+
     if args.inspect_solc:
         inspection = inspect_solc_text(text)
         print(f"{inspection.kind}: {inspection.message}")

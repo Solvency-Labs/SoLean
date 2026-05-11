@@ -50,6 +50,9 @@ Implemented:
   supported restricted Yul programs.
 - `scripts/classify_yul.py --inspect-solc` selects the deployed object in
   solc-style IR and reports the first unsupported construct inside it.
+- `scripts/classify_yul.py --inspect-function inc` selects the generated
+  `fun_inc_*` body inside the deployed object and reports the first unsupported
+  function-body construct.
 
 Not implemented:
 
@@ -66,6 +69,11 @@ rejects the outer solc wrapper. The solc inspection mode gets one boundary
 further: it identifies the deployed object and reports memory setup such as
 `mstore(64, memoryguard(128))` as the first unsupported construct.
 
+The function inspection mode gets past deployment/runtime setup and identifies
+the generated `fun_inc_*` body. The current first function-body blocker is the
+hexadecimal literal `0x00`.
+
 That is progress, but it is still classification rather than verification. The
-next useful boundary is to inspect the actual `fun_inc_*` body and name the
-first unsupported function-body construct.
+next useful boundary is to support that tiny expression form and classify again
+until the blocker is a helper call or storage operation that matters to the
+Counter semantics.

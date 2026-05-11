@@ -12,6 +12,7 @@ from pathlib import Path
 
 from scripts.classify_yul import (
     classify_text,
+    inspect_solc_function_text,
     inspect_solc_text,
     main as classify_yul_main,
 )
@@ -49,6 +50,32 @@ object "Counter_26" {
       mstore(64, memoryguard(128))
       function fun_inc_25(var_amount_5) {
         let expr_9 := var_amount_5
+        let expr_10 := 0x00
+        require_helper(expr_9)
+      }
+    }
+  }
+}
+"""
+
+SOLC_SUPPORTED_FUNCTION_SAMPLE = """
+IR:
+
+object "Counter_26" {
+  code {
+  }
+  object "Counter_26_deployed" {
+    code {
+      function external_fun_inc_25() {
+        external_call()
+      }
+      function fun_inc_25(amount) {
+        if iszero(gt(amount, 0)) { revert(0, 0) }
+        let old_x := sload(0)
+        let new_x := add(old_x, amount)
+        if lt(new_x, old_x) { revert(0, 0) }
+        sstore(0, new_x)
+        if lt(new_x, amount) { revert(0, 0) }
       }
     }
   }
@@ -219,6 +246,21 @@ class ClassifyYulTests(unittest.TestCase):
         self.assertIsNotNone(inspection.selected_object)
         self.assertEqual(inspection.selected_object.name, "Counter_26_deployed")
         self.assertIn("mstore", inspection.message)
+
+    def test_solc_function_inspection_selects_fun_inc_body(self) -> None:
+        inspection = inspect_solc_function_text(SOLC_COUNTER_IR_SAMPLE, "inc")
+
+        self.assertEqual(inspection.kind, "unsupported-expression")
+        self.assertIsNotNone(inspection.selected_function)
+        self.assertEqual(inspection.selected_function.name, "fun_inc_25")
+        self.assertIn("0x00", inspection.message)
+
+    def test_solc_function_inspection_can_accept_supported_body(self) -> None:
+        inspection = inspect_solc_function_text(SOLC_SUPPORTED_FUNCTION_SAMPLE, "inc")
+
+        self.assertEqual(inspection.kind, "supported-subset")
+        self.assertIsNotNone(inspection.selected_function)
+        self.assertEqual(inspection.selected_function.name, "fun_inc_25")
 
     def test_unsupported_statement_classifies_distinctly(self) -> None:
         classification = classify_text(

@@ -12,7 +12,7 @@ Current checks:
   alignment against Lean-exported artifacts.
 - The tests also cover Yul subset classification for supported Counter Yul and
   representative unsupported solc-style wrapper/statement forms, including
-  deployed-object inspection for solc-style IR.
+  deployed-object and generated-function-body inspection for solc-style IR.
 
 Future tests should add small golden files for normalization and equivalence
 checking before adding broader generated examples.

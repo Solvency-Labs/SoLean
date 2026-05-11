@@ -165,19 +165,21 @@ Done:
 - Inspect solc-style wrapper text, select the deployed object, and report the
   first unsupported construct inside it. For current Counter IR this is memory
   setup such as `mstore(64, memoryguard(128))`.
+- Inspect the generated `fun_inc_*` function body inside the deployed object
+  and report the first unsupported function-body construct. For current Counter
+  IR this is the hexadecimal literal `0x00`.
 
 Next tasks:
 
-- Decide whether to skip trusted deployment/ABI boilerplate and extract the
-  `fun_inc_*` body for classification, or model enough memory/ABI setup to
-  justify that path.
-- Name the next minimal solc IR subset target: likely helper-function calls,
-  storage read/write helpers, or checked-add panic helpers inside `fun_inc_*`.
+- Add the next minimal solc IR expression form: hexadecimal literals.
+- After that, classify again and decide between helper-function summaries
+  (`cleanup_t_uint256`, `require_helper`, `checked_add_t_uint256`) and storage
+  helper expansion.
 
 Definition of done:
 
-- The repo can classify the actual Counter `fun_inc_*` body with a blocker more
-  semantic than deployment/memory setup, without claiming full equivalence.
+- The repo can classify the actual Counter `fun_inc_*` body through the first
+  helper-call/storage operation blocker, without claiming full equivalence.
 
 ### 4. Replace Bounded Trace Checks With Small Semantics
 
@@ -224,23 +226,24 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Extract and classify the real solc Counter inc body.
+Support the first real solc Counter function-body expression form.
 ```
 
 Why this matters:
 
-- We can now get past the outer solc wrapper and deployed-object selection.
-- The next blocker is still deployment/memory setup, not the actual Counter
-  arithmetic/storage behavior.
-- A trusted, auditable `fun_inc_*` extraction would expose the first real
-  function-body subset gap.
+- We can now select the real `fun_inc_*` body from solc IR.
+- The first actual function-body blocker is the hex literal `0x00`, which is a
+  tiny, honest subset expansion.
+- Once hex literals are supported, the classifier should expose the next more
+  semantic blocker, likely cleanup/helper calls around the Solidity checked
+  arithmetic path.
 
 Smallest useful version:
 
-1. Add a solc IR function-body inspector that finds the `fun_inc_*` body inside
-   the deployed object.
-2. Report the first unsupported statement/expression inside that body.
-3. Keep extraction trusted and auditable; do not claim semantic equivalence.
+1. Parse hexadecimal integer literals in the Python restricted Yul subset.
+2. Re-run `--inspect-function inc` on real Counter solc IR and record the next
+   unsupported function-body construct.
+3. Keep this as classification only; do not claim semantic equivalence.
 
 ## Updating This Roadmap
 

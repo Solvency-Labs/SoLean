@@ -90,6 +90,23 @@ IR, the next blocker is memory setup like:
 unsupported-statement: unsupported statement form: mstore(64, memoryguard(128))
 ```
 
+The function-body inspection mode gets one boundary further:
+
+```bash
+python3 scripts/classify_yul.py --inspect-function inc build/Counter.solc.yul
+```
+
+It selects `fun_inc_*` inside the deployed object. For current Counter IR, the
+first function-body blocker is:
+
+```text
+unsupported-expression: ... line ...: unsupported expression form: 0x00
+```
+
+That names the next tiny subset target: hexadecimal literals. After that, the
+likely blockers are helper calls such as `cleanup_t_uint256`, `require_helper`,
+`checked_add_t_uint256`, and storage update helpers.
+
 After that, the real IR also contains constructs outside the subset:
 
 - a top-level creation object plus a nested deployed object
