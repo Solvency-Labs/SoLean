@@ -51,6 +51,9 @@ partial def renderJsonAux (level : Nat) : Json -> String
 def renderJson (json : Json) : String :=
   renderJsonAux 0 json ++ "\n"
 
+def stringsJson (values : List String) : Json :=
+  .arr (values.map Json.str)
+
 namespace Source
 
 def valueJson (paramName : String) : SoLean.Source.ValueExpr -> Json
@@ -152,6 +155,48 @@ def counterSourceJson : String :=
 
 def counterYulJson : String :=
   renderJson (Yul.programJson Examples.CounterYul.counterProgram)
+
+def counterBridgeTrustedRules : List String :=
+  [
+    "hexLiteralAsNat",
+    "transparentValueHelper",
+    "requireHelperAsRevertGuard",
+    "storageReadSlot0AsSload",
+    "checkedAddUInt256AsAddWithOverflowGuard",
+    "storageUpdateSlot0AsSstore",
+    "assertHelperAsRevertGuard"
+  ]
+
+def counterBridgeManifest : Json :=
+  .obj [
+    ("kind", .str "counterBridgeManifest"),
+    ("version", .num 1),
+    ("sourceArtifact", .obj [
+      ("name", .str "SoLean.Examples.CounterCompiler.counterFunction"),
+      ("export", .str "source-json")
+    ]),
+    ("yulArtifact", .obj [
+      ("name", .str "SoLean.Examples.CounterYul.counterProgram"),
+      ("export", .str "yul-json")
+    ]),
+    ("expectedTrustedRules", stringsJson counterBridgeTrustedRules),
+    ("proofReferences", stringsJson [
+      "SoLean.Examples.Counter.inc_assertion_safe",
+      "SoLean.Examples.CounterCompiler.compile_counter_eq_counter_yul",
+      "SoLean.Examples.CounterCompiler.compiled_counter_refines_solean_success",
+      "SoLean.Examples.CounterCompiler.compiled_counter_success_assertion"
+    ]),
+    ("limitations", stringsJson [
+      "Counter-only bridge audit.",
+      "Solidity parsing is trusted deterministic Python parsing for one tiny subset.",
+      "Python Yul rendering is tested against Lean-owned artifacts, not verified.",
+      "solc IR summarization is trusted Counter-specific pattern recognition.",
+      "This report is not semantic equivalence against real solc Yul."
+    ])
+  ]
+
+def counterBridgeManifestJson : String :=
+  renderJson counterBridgeManifest
 
 end Artifacts
 end SoLean

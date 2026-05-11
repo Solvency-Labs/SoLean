@@ -143,6 +143,17 @@ Current trusted Counter summary rules:
 - `assertHelperAsRevertGuard`: `assert_helper(iszero(lt(lhs, rhs)))` becomes
   the final `lt(lhs, rhs)` revert guard.
 
+The expected rule list is exported by Lean as part of the Counter bridge
+manifest:
+
+```bash
+lake env lean --run SoLean/CounterArtifactsMain.lean bridge-json
+```
+
+The Python bridge report checks the observed rule list against that manifest.
+This makes the boundary easier to audit, but the recognizers are still trusted
+Python code rather than Lean-proved solc helper semantics.
+
 After that, the real IR also contains constructs outside the subset:
 
 - a top-level creation object plus a nested deployed object

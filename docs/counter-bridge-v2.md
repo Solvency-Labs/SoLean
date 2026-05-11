@@ -17,7 +17,7 @@ It expects local `solc 0.8.35 --ir` output in `build/Counter.solc.yul`. The
 
 ## What The Report Checks
 
-The report has kind `counterBridgeReport` and succeeds only when all three
+The report has kind `counterBridgeReport` and succeeds only when all four
 checks pass:
 
 - `soliditySourceToLeanSource`: the trusted Counter-only Solidity parser emits
@@ -29,15 +29,25 @@ checks pass:
 - `solcFunctionSummaryToLeanYul`: the trusted Counter-specific solc function
   summary normalizes the generated `fun_inc_*` body to the same Lean-owned Yul
   artifact.
+- `solcTrustedRulesToLeanManifest`: the trusted-rule list observed by the
+  Python solc summary matches the Lean-owned bridge manifest.
 
-The report also includes SHA-256 hashes of the Lean-exported source and Yul
-artifacts. These hashes are for auditability and regression detection; they are
-not cryptographic commitments to a verified external artifact.
+The report also includes SHA-256 hashes of the Lean-exported source, Yul, and
+bridge-manifest artifacts. These hashes are for auditability and regression
+detection; they are not cryptographic commitments to a verified external
+artifact.
 
 ## Trusted Solc Summary Rules
 
-The solc summary rule list is emitted as `trustedRules` in stable first-use
-order. The current rules are:
+Lean exports the expected solc summary rule list through:
+
+```bash
+lake env lean --run SoLean/CounterArtifactsMain.lean bridge-json
+```
+
+The Python solc summary emits its observed `trustedRules` in stable first-use
+order, and the bridge report checks that observed list against the Lean-owned
+manifest. The current expected rules are:
 
 - `hexLiteralAsNat`: parse solc hexadecimal integer literals as natural-number
   literals in the restricted subset.
@@ -55,14 +65,15 @@ order. The current rules are:
 - `assertHelperAsRevertGuard`: summarize the current assertion helper as a
   final revert guard.
 
-These are trusted Python inspection rules. They are tested against Lean-owned
-artifacts, but they are not proved in Lean.
+These are still trusted Python inspection rules. Lean now owns the expected
+boundary list, but Lean does not yet prove that the Python recognizer implements
+these rules correctly.
 
 ## Trust Boundary
 
 This bridge report is useful because it makes the Counter path harder to fool:
-source shape, Python emitted Yul, and real solc function-body summary all have
-to agree with Lean-owned artifacts.
+source shape, Python emitted Yul, real solc function-body summary, and the
+trusted-rule list all have to agree with Lean-owned artifacts.
 
 The remaining trusted boundaries are still explicit:
 

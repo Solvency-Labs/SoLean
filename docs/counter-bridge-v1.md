@@ -89,8 +89,8 @@ python3 scripts/check_counter_bridge.py \
   --solc-yul build/Counter.solc.yul
 ```
 
-See `docs/counter-bridge-v2.md` for the exact report shape and trusted solc
-summary rules.
+See `docs/counter-bridge-v2.md` for the exact report shape and the Lean-owned
+trusted-rule manifest used by the bridge report.
 
 That is progress, but it is still trusted Python pattern recognition rather than
 verified solc parsing or semantic equivalence.

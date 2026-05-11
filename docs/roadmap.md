@@ -65,12 +65,15 @@ See `docs/counter-bridge-v1.md` for the crisp Counter success condition and
 ### Implemented But Not Verified End-To-End
 
 - Python emits deterministic Counter Yul-like text.
-- Lean exports deterministic Counter source and restricted-Yul shape artifacts.
+- Lean exports deterministic Counter source, restricted-Yul shape, and bridge
+  manifest artifacts.
 - Python tests check the Counter Yul emitter against the Lean-exported
   `CounterYul.counterProgram` artifact and a text golden file.
 - `check_counter_bridge.py` produces one deterministic Counter bridge report
   tying the trusted Solidity source projection, Python Yul emitter, and solc
   function-body summary back to Lean-owned artifacts.
+- The Counter bridge report checks observed solc summary rules against the
+  Lean-owned bridge manifest.
 - Python parses and normalizes a restricted Yul-like subset.
 - Python performs symbolic state-transform checks for Counter-shaped restricted
   Yul programs, with bounded trace checks still available as an explicit legacy
@@ -190,11 +193,14 @@ Done:
   Lean-exported `CounterYul.counterProgram` artifact.
 - Emit a stable `trustedRules` list for the Counter-specific solc summary and
   surface it in the Counter bridge report.
+- Export a Lean-owned bridge manifest with the expected trusted-rule list,
+  proof references, and limitations.
+- Check the Python-observed `trustedRules` list against that Lean-owned
+  manifest in the Counter bridge report.
 
 Next tasks:
 
-- Reduce trust further by moving the Counter solc summary rules closer to Lean,
-  or by exporting a Lean-owned expected summary/rule manifest for comparison.
+- Reduce trust further by moving one Counter solc summary rule closer to Lean.
 - Decide whether the `counterBridgeReport` JSON should remain an internal audit
   format or become a stable checked artifact.
 
@@ -208,6 +214,8 @@ Definition of done:
 - The repo can produce one deterministic Counter bridge report that names the
   trusted solc summary rules and fails if source, emitted Yul, or solc summary
   artifacts drift away from Lean-owned artifacts.
+- The expected trusted-rule list is owned by a Lean-exported bridge manifest
+  rather than only by Python tests/docs.
 
 ### 4. Replace Bounded Trace Checks With Small Semantics
 
@@ -254,26 +262,24 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Move one Counter bridge adapter rule closer to Lean.
+Model one Counter bridge adapter rule more seriously.
 ```
 
 Why this matters:
 
-- `Counter Bridge v2` now produces one deterministic report tying Solidity
-  source shape, Python-emitted Yul, and solc function summary back to
-  Lean-owned artifacts.
-- The solc summary rules are named and tested, but they are still trusted
-  Python pattern recognition.
-- The next trust-reduction move is to make at least one rule checked against
-  Lean-owned data rather than only documented in Python.
+- The expected solc summary rule list is now Lean-owned and checked by the
+  bridge report.
+- The implementation of each rule is still trusted Python pattern recognition.
+- The next trust-reduction move is to choose one rule and give it a clearer
+  formal or semi-formal model.
 
 Smallest useful version:
 
-1. Export a Lean-owned rule manifest or expected Counter bridge summary.
-2. Compare the Python `trustedRules` list against that Lean-owned artifact.
-3. Pick one simple rule, such as `hexLiteralAsNat` or
-   `requireHelperAsRevertGuard`, and document exactly what would be required to
-   prove or mechanize it in Lean.
+1. Pick one simple rule, probably `requireHelperAsRevertGuard`.
+2. Add a tiny Lean-side model of the source and target guard shape for that
+   rule.
+3. Prove or at least check that the target restricted-Yul guard has the same
+   revert behavior as the modeled helper under the current assumptions.
 
 ## Updating This Roadmap
 

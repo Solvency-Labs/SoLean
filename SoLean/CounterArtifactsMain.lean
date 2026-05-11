@@ -1,7 +1,7 @@
 import SoLean.Artifacts
 
 def usage : String :=
-  "usage: counter_artifacts <source-json|yul-json>"
+  "usage: counter_artifacts <source-json|yul-json|bridge-json>"
 
 def main (args : List String) : IO UInt32 := do
   match args with
@@ -10,6 +10,9 @@ def main (args : List String) : IO UInt32 := do
       pure 0
   | ["yul-json"] =>
       IO.print SoLean.Artifacts.counterYulJson
+      pure 0
+  | ["bridge-json"] =>
+      IO.print SoLean.Artifacts.counterBridgeManifestJson
       pure 0
   | _ =>
       IO.eprintln usage

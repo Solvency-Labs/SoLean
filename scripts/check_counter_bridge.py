@@ -123,9 +123,14 @@ def build_counter_bridge_report(
     *,
     lean_source: dict[str, Any] | None = None,
     lean_yul: dict[str, Any] | None = None,
+    lean_manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     lean_source = lean_source if lean_source is not None else lean_artifact("source-json")
     lean_yul = lean_yul if lean_yul is not None else lean_artifact("yul-json")
+    lean_manifest = (
+        lean_manifest if lean_manifest is not None else lean_artifact("bridge-json")
+    )
+    expected_rules = lean_manifest["expectedTrustedRules"]
 
     checks: list[dict[str, str]] = []
     solc_info: dict[str, Any] = {
@@ -133,6 +138,7 @@ def build_counter_bridge_report(
         "sourceFunction": None,
         "trustedRules": [],
     }
+    solc_summary_rules: list[str] | None = None
 
     if solidity_path.exists():
         try:
@@ -194,6 +200,7 @@ def build_counter_bridge_report(
                 "sourceFunction": summary_data["sourceFunction"],
                 "trustedRules": summary_data["trustedRules"],
             }
+            solc_summary_rules = summary_data["trustedRules"]
             checks.append(
                 check_data(
                     "solcFunctionSummaryToLeanYul",
@@ -229,6 +236,26 @@ def build_counter_bridge_report(
             )
         )
 
+    if solc_summary_rules is None:
+        checks.append(
+            failed_check(
+                "solcTrustedRulesToLeanManifest",
+                "Lean-owned manifest",
+                "solc summary did not produce trusted rules to compare",
+            )
+        )
+    else:
+        checks.append(
+            check_data(
+                "solcTrustedRulesToLeanManifest",
+                "Lean-owned manifest",
+                solc_summary_rules,
+                expected_rules,
+                "solc summary trusted rules match the Lean bridge manifest.",
+                "solc summary trusted rules do not match the Lean bridge manifest.",
+            )
+        )
+
     status = "passed" if all(check["status"] == "passed" for check in checks) else "failed"
     return {
         "kind": "counterBridgeReport",
@@ -242,10 +269,18 @@ def build_counter_bridge_report(
                 "name": "SoLean.Examples.CounterYul.counterProgram",
                 "sha256": artifact_hash(lean_yul),
             },
+            "bridgeManifest": {
+                "name": "SoLean.Artifacts.counterBridgeManifestJson",
+                "sha256": artifact_hash(lean_manifest),
+            },
+        },
+        "bridgeManifest": {
+            "expectedTrustedRules": expected_rules,
+            "proofReferences": lean_manifest["proofReferences"],
         },
         "checks": checks,
         "solc": solc_info,
-        "limitations": LIMITATIONS,
+        "limitations": lean_manifest["limitations"],
     }
 
 

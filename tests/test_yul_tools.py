@@ -107,17 +107,6 @@ object "Counter_26" {
 }
 """
 
-EXPECTED_COUNTER_SUMMARY_RULES = [
-    "hexLiteralAsNat",
-    "transparentValueHelper",
-    "requireHelperAsRevertGuard",
-    "storageReadSlot0AsSload",
-    "checkedAddUInt256AsAddWithOverflowGuard",
-    "storageUpdateSlot0AsSstore",
-    "assertHelperAsRevertGuard",
-]
-
-
 def lake_command() -> str:
     if lake := shutil.which("lake"):
         return lake
@@ -147,6 +136,10 @@ def lean_artifact_text(kind: str) -> str:
 @lru_cache(maxsize=None)
 def lean_artifact(kind: str) -> dict:
     return json.loads(lean_artifact_text(kind))
+
+
+def expected_counter_summary_rules() -> list[str]:
+    return lean_artifact("bridge-json")["expectedTrustedRules"]
 
 
 def copied_json(data: dict) -> dict:
@@ -192,6 +185,33 @@ class YulSubsetTests(unittest.TestCase):
             lean_artifact_text("source-json"),
         )
         self.assertEqual(lean_artifact_text("yul-json"), lean_artifact_text("yul-json"))
+        self.assertEqual(
+            lean_artifact_text("bridge-json"),
+            lean_artifact_text("bridge-json"),
+        )
+
+    def test_lean_bridge_manifest_exports_expected_boundary(self) -> None:
+        manifest = lean_artifact("bridge-json")
+
+        self.assertEqual(manifest["kind"], "counterBridgeManifest")
+        self.assertEqual(manifest["sourceArtifact"]["export"], "source-json")
+        self.assertEqual(manifest["yulArtifact"]["export"], "yul-json")
+        self.assertIn(
+            "SoLean.Examples.CounterCompiler.compiled_counter_success_assertion",
+            manifest["proofReferences"],
+        )
+        self.assertEqual(
+            manifest["expectedTrustedRules"],
+            [
+                "hexLiteralAsNat",
+                "transparentValueHelper",
+                "requireHelperAsRevertGuard",
+                "storageReadSlot0AsSload",
+                "checkedAddUInt256AsAddWithOverflowGuard",
+                "storageUpdateSlot0AsSstore",
+                "assertHelperAsRevertGuard",
+            ],
+        )
 
     def test_counter_object_matches_lean_exported_counter_yul_shape(self) -> None:
         self.assertEqual(object_to_data(counter_object()), lean_artifact("yul-json"))
@@ -374,7 +394,10 @@ class ClassifyYulTests(unittest.TestCase):
             summary_data["normalized"],
             lean_artifact("yul-json"),
         )
-        self.assertEqual(summary_data["trustedRules"], EXPECTED_COUNTER_SUMMARY_RULES)
+        self.assertEqual(
+            summary_data["trustedRules"],
+            expected_counter_summary_rules(),
+        )
 
     def test_solc_counter_function_summary_cli_outputs_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -389,7 +412,7 @@ class ClassifyYulTests(unittest.TestCase):
         data = json.loads(output.getvalue())
         self.assertEqual(data["kind"], "solcFunctionSummary")
         self.assertEqual(data["normalized"], lean_artifact("yul-json"))
-        self.assertEqual(data["trustedRules"], EXPECTED_COUNTER_SUMMARY_RULES)
+        self.assertEqual(data["trustedRules"], expected_counter_summary_rules())
 
     def test_solc_function_inspection_can_accept_supported_body(self) -> None:
         inspection = inspect_solc_function_text(SOLC_SUPPORTED_FUNCTION_SAMPLE, "inc")
@@ -441,16 +464,22 @@ class CounterBridgeTests(unittest.TestCase):
                 solc_yul,
                 lean_source=lean_artifact("source-json"),
                 lean_yul=lean_artifact("yul-json"),
+                lean_manifest=lean_artifact("bridge-json"),
             )
 
         self.assertEqual(report["kind"], "counterBridgeReport")
         self.assertEqual(report["status"], "passed")
         self.assertEqual(
             [check["status"] for check in report["checks"]],
-            ["passed", "passed", "passed"],
+            ["passed", "passed", "passed", "passed"],
         )
         self.assertEqual(report["solc"]["sourceFunction"], "fun_inc_25")
-        self.assertEqual(report["solc"]["trustedRules"], EXPECTED_COUNTER_SUMMARY_RULES)
+        self.assertEqual(report["solc"]["trustedRules"], expected_counter_summary_rules())
+        self.assertEqual(
+            report["bridgeManifest"]["expectedTrustedRules"],
+            expected_counter_summary_rules(),
+        )
+        self.assertIn("bridgeManifest", report["leanArtifacts"])
         self.assertIn("not semantic equivalence", " ".join(report["limitations"]))
 
     def test_counter_bridge_cli_outputs_deterministic_json(self) -> None:
@@ -487,6 +516,7 @@ class CounterBridgeTests(unittest.TestCase):
                 solc_yul,
                 lean_source=bad_source,
                 lean_yul=lean_artifact("yul-json"),
+                lean_manifest=lean_artifact("bridge-json"),
             )
 
         self.assertEqual(report["status"], "failed")
@@ -506,6 +536,7 @@ class CounterBridgeTests(unittest.TestCase):
                 solc_yul,
                 lean_source=lean_artifact("source-json"),
                 lean_yul=bad_yul,
+                lean_manifest=lean_artifact("bridge-json"),
             )
 
         self.assertEqual(report["status"], "failed")
@@ -527,11 +558,32 @@ class CounterBridgeTests(unittest.TestCase):
                 solc_yul,
                 lean_source=lean_artifact("source-json"),
                 lean_yul=lean_artifact("yul-json"),
+                lean_manifest=lean_artifact("bridge-json"),
             )
 
         self.assertEqual(report["status"], "failed")
         self.assertEqual(
             check_named(report, "solcFunctionSummaryToLeanYul")["status"],
+            "failed",
+        )
+
+    def test_counter_bridge_reports_trusted_rule_manifest_mismatch(self) -> None:
+        bad_manifest = copied_json(lean_artifact("bridge-json"))
+        bad_manifest["expectedTrustedRules"] = ["differentRule"]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            solidity, solc_yul = self.write_bridge_inputs(tmp)
+            report = build_counter_bridge_report(
+                solidity,
+                solc_yul,
+                lean_source=lean_artifact("source-json"),
+                lean_yul=lean_artifact("yul-json"),
+                lean_manifest=bad_manifest,
+            )
+
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(
+            check_named(report, "solcTrustedRulesToLeanManifest")["status"],
             "failed",
         )
 

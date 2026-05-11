@@ -282,8 +282,9 @@ python3 scripts/check_counter_bridge.py \
 
 This emits deterministic JSON tying the trusted Solidity source projection,
 Python Counter Yul emitter, and trusted solc `fun_inc_*` summary back to
-Lean-owned artifacts. A passing report is an audit/regression signal, not a
-proof of Solidity parsing or semantic equivalence with solc output. See
+Lean-owned artifacts. It also checks the observed solc summary rules against a
+Lean-owned bridge manifest. A passing report is an audit/regression signal, not
+a proof of Solidity parsing or semantic equivalence with solc output. See
 `docs/counter-bridge-v2.md` for the named trust rules.
 
 Compare two Yul files using the current symbolic restricted-subset
@@ -323,10 +324,13 @@ Export the Lean-owned Counter audit artifacts:
 ```bash
 lake env lean --run SoLean/CounterArtifactsMain.lean source-json
 lake env lean --run SoLean/CounterArtifactsMain.lean yul-json
+lake env lean --run SoLean/CounterArtifactsMain.lean bridge-json
 ```
 
 Python tests compare the Solidity source projection and Python Yul emitter
-shape against these Lean-exported artifacts.
+shape against these Lean-exported artifacts. The Counter bridge report also
+compares the observed solc summary rule list against the Lean-exported bridge
+manifest.
 
 Run the Python tests:
 
