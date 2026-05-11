@@ -26,15 +26,19 @@ from scripts.solidity_to_solean import (
 )
 from scripts.solean_to_yul import main as solean_to_yul_main
 from scripts.yul_subset import (
+    SymCall,
+    SymConst,
     UINT256_MAX,
     TraceCase,
     compare_counter_traces,
     compare_symbolic_summaries,
     counter_object,
+    execute_object,
     object_to_data,
     parse_object,
     render_object,
     run_counter_trace,
+    summarize_symbolic,
 )
 
 
@@ -51,6 +55,7 @@ object "Counter_26" {
       function fun_inc_25(var_amount_5) {
         let expr_9 := var_amount_5
         let expr_10 := 0x00
+        let expr_11 := gt(cleanup_t_uint256(expr_9), expr_10)
         require_helper(expr_9)
       }
     }
@@ -189,6 +194,43 @@ class YulSubsetTests(unittest.TestCase):
 
         self.assertIn("add(amount, 1)", render_object(parse_object(source)))
 
+    def test_hex_literals_parse_render_evaluate_and_summarize(self) -> None:
+        source = """
+        object "Hex" {
+          code {
+            function f(amount) {
+              let x := 0x10
+              let y := add(x, 0x02)
+              sstore(0x00, y)
+              if lt(y, 0x12) { revert(0, 0) }
+            }
+          }
+        }
+        """
+
+        obj = parse_object(source)
+        self.assertIn("let x := 16", render_object(obj))
+        self.assertIn("sstore(0, y)", render_object(obj))
+
+        result = execute_object(obj, {"amount": 0}, {})
+        self.assertFalse(result.reverted)
+        self.assertEqual(result.storage[0], 18)
+
+        summary = summarize_symbolic(obj)
+        self.assertEqual(
+            summary.final_writes,
+            ((0, SymCall("add", (SymConst(16), SymConst(2)))),),
+        )
+        self.assertEqual(
+            summary.revert_conditions,
+            (
+                SymCall(
+                    "lt",
+                    (SymCall("add", (SymConst(16), SymConst(2))), SymConst(18)),
+                ),
+            ),
+        )
+
     def test_counter_trace_interpreter_models_revert_success_and_overflow(self) -> None:
         obj = counter_object()
 
@@ -253,7 +295,7 @@ class ClassifyYulTests(unittest.TestCase):
         self.assertEqual(inspection.kind, "unsupported-expression")
         self.assertIsNotNone(inspection.selected_function)
         self.assertEqual(inspection.selected_function.name, "fun_inc_25")
-        self.assertIn("0x00", inspection.message)
+        self.assertIn("cleanup_t_uint256", inspection.message)
 
     def test_solc_function_inspection_can_accept_supported_body(self) -> None:
         inspection = inspect_solc_function_text(SOLC_SUPPORTED_FUNCTION_SAMPLE, "inc")

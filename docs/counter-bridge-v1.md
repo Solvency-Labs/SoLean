@@ -70,10 +70,10 @@ further: it identifies the deployed object and reports memory setup such as
 `mstore(64, memoryguard(128))` as the first unsupported construct.
 
 The function inspection mode gets past deployment/runtime setup and identifies
-the generated `fun_inc_*` body. The current first function-body blocker is the
-hexadecimal literal `0x00`.
+the generated `fun_inc_*` body. Hexadecimal literals are now supported; the
+current first function-body blocker is `cleanup_t_uint256`.
 
 That is progress, but it is still classification rather than verification. The
-next useful boundary is to support that tiny expression form and classify again
-until the blocker is a helper call or storage operation that matters to the
-Counter semantics.
+next useful boundary is to summarize transparent helper calls and classify again
+until the blocker is a helper or storage operation that matters to the Counter
+semantics.

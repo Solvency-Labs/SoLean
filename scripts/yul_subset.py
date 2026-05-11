@@ -319,6 +319,8 @@ def parse_expr(raw: str) -> Expr:
     text = raw.strip()
     if re.fullmatch(r"[0-9]+", text):
         return Literal(int(text))
+    if re.fullmatch(r"0[xX][0-9a-fA-F]+", text):
+        return Literal(int(text, 16))
     if re.fullmatch(IDENT, text):
         return Ident(text)
 

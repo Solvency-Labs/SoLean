@@ -167,14 +167,17 @@ Done:
   setup such as `mstore(64, memoryguard(128))`.
 - Inspect the generated `fun_inc_*` function body inside the deployed object
   and report the first unsupported function-body construct. For current Counter
-  IR this is the hexadecimal literal `0x00`.
+  IR this initially exposed the hexadecimal literal `0x00`.
+- Parse hexadecimal integer literals in the restricted Python Yul subset. After
+  this, the first current `fun_inc_*` blocker is the helper call
+  `cleanup_t_uint256`.
 
 Next tasks:
 
-- Add the next minimal solc IR expression form: hexadecimal literals.
-- After that, classify again and decide between helper-function summaries
-  (`cleanup_t_uint256`, `require_helper`, `checked_add_t_uint256`) and storage
-  helper expansion.
+- Add explicit helper-function summaries for transparent value helpers such as
+  `cleanup_t_uint256`, `identity`, and rational-to-uint conversion.
+- Classify again and decide between `require_helper`, `checked_add_t_uint256`,
+  and storage helper expansion.
 
 Definition of done:
 
@@ -226,21 +229,21 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Support the first real solc Counter function-body expression form.
+Summarize transparent solc Counter helper calls.
 ```
 
 Why this matters:
 
 - We can now select the real `fun_inc_*` body from solc IR.
-- The first actual function-body blocker is the hex literal `0x00`, which is a
-  tiny, honest subset expansion.
-- Once hex literals are supported, the classifier should expose the next more
-  semantic blocker, likely cleanup/helper calls around the Solidity checked
-  arithmetic path.
+- Hex literals are now supported, and the first actual function-body blocker is
+  `cleanup_t_uint256`.
+- The cleanup/conversion helpers are compiler boilerplate around values, so
+  summarizing them would expose the next semantic blocker in the checked
+  arithmetic/storage path.
 
 Smallest useful version:
 
-1. Parse hexadecimal integer literals in the Python restricted Yul subset.
+1. Add a trusted helper-summary mode for transparent one-argument value helpers.
 2. Re-run `--inspect-function inc` on real Counter solc IR and record the next
    unsupported function-body construct.
 3. Keep this as classification only; do not claim semantic equivalence.

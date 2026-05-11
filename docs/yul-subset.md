@@ -18,6 +18,7 @@ The subset accepts exactly:
   - `if expr { revert(0, 0) }`
 - Expressions:
   - decimal literals
+  - hexadecimal integer literals such as `0x00`
   - identifiers
   - `sload(expr)`
   - `add(expr, expr)`
@@ -100,11 +101,12 @@ It selects `fun_inc_*` inside the deployed object. For current Counter IR, the
 first function-body blocker is:
 
 ```text
-unsupported-expression: ... line ...: unsupported expression form: 0x00
+unsupported-expression: ... line ...: unsupported expression function: cleanup_t_uint256
 ```
 
-That names the next tiny subset target: hexadecimal literals. After that, the
-likely blockers are helper calls such as `cleanup_t_uint256`, `require_helper`,
+Hexadecimal literals are now parsed into the same `Literal` AST node as decimal
+literals and render back canonically as decimal. The next subset target is
+helper calls such as `cleanup_t_uint256`, `require_helper`,
 `checked_add_t_uint256`, and storage update helpers.
 
 After that, the real IR also contains constructs outside the subset:
