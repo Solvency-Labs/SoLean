@@ -42,11 +42,16 @@ results.
 - `SoLean/Examples/CounterCompiler.lean` proves that the generic Counter source
   function instantiates to the existing Counter model and compiles to the
   existing restricted Yul Counter model.
+- Lean exports deterministic Counter source and restricted-Yul artifacts for
+  tests and audits. These artifacts are generated from Lean definitions, not
+  proved to correspond to Python code.
 - The Counter Solidity parser can emit deterministic source-shape JSON that is
-  tested against a structural mirror of `CounterCompiler.counterFunction`.
-- The default Yul checker runs bounded trace comparison for Counter-shaped
-  restricted-subset programs. This is not semantic Yul equivalence.
-- Strict restricted-subset AST equality is available as an explicit `--ast`
+  tested against the Lean-exported `CounterCompiler.counterFunction` artifact.
+- The default Yul checker compares a tiny symbolic state-transform summary for
+  Counter-shaped restricted-subset programs. This is not semantic Yul
+  equivalence.
+- The old bounded trace checker remains available as `--bounded-traces`.
+  Strict restricted-subset AST equality is available as an explicit `--ast`
   mode, and normalized text comparison remains available as `--text`.
 - `solc 0.8.35` is the intended pinned compiler version for local Counter Yul
   generation. It was chosen as the current stable Solidity compiler target when
@@ -54,7 +59,10 @@ results.
   `scripts/solc_to_yul.py` rejects other solc versions. Generated `build/`
   artifacts are not committed yet.
 - Real `solc 0.8.35 --ir` Counter output is currently outside the supported
-  subset. The first observed blocker is the solc `IR:` preamble/wrapper.
+  subset. The default classifier first observes the solc `IR:`
+  preamble/wrapper. The explicit solc-inspection mode selects the deployed
+  object and currently reports memory setup such as
+  `mstore(64, memoryguard(128))` as the next unsupported blocker.
 - The Python emitter, Python parser, Solidity source, and real solc output are
   not yet connected to the Lean compiler by a verified translation. Current
   Python tests provide auditable structural alignment for Counter only.

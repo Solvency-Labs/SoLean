@@ -9,6 +9,11 @@ case studies, starting with `Counter` and then `SimpleVault`.
 
 ## Planned Pipeline
 
+The sharper north star is traceable trust reduction: build a boundary-aware
+verification pipeline where a tiny Solidity subset can be connected to a Lean
+model, proved, compiled to restricted Yul, and compared against pinned `solc`
+output, with every trusted step explicitly identified.
+
 The intended long-term loop is:
 
 1. Compile Solidity with `solc` to Yul1.
@@ -22,7 +27,8 @@ models, a tiny Lean model of the restricted Counter Yul path, and a tiny
 verified Counter compiler slice. The broader Solidity and Yul pipeline remains
 placeholder tooling.
 
-For the current intuition and next steps, see `docs/roadmap.md`.
+For the current intuition and next steps, see `docs/roadmap.md`. For the exact
+Counter bridge success condition, see `docs/counter-bridge-v1.md`.
 
 ## What Exists Now
 
@@ -48,6 +54,8 @@ For the current intuition and next steps, see `docs/roadmap.md`.
 - A theorem showing the generic Counter source function instantiates to the
   existing SoLean Counter model and compiles to the existing restricted Yul
   Counter program.
+- Lean-owned Counter source and restricted-Yul audit artifacts exported from
+  the proved Counter shapes.
 - A `SimpleVault` model with successful-execution preservation proofs for
   `totalAssets >= totalShares`.
 - Solidity examples in `examples/`.
@@ -55,13 +63,12 @@ For the current intuition and next steps, see `docs/roadmap.md`.
   - Solidity to Yul via `solc`.
   - Yul subset classification for supported/unsupported compiler output.
   - SoLean to restricted Yul-like text for `Counter`.
-  - Counter Yul structural/golden checks against the Lean-proved Counter Yul
-    shape.
-  - Counter Solidity source-shape JSON aligned with the Lean
-    `CounterCompiler.counterFunction` shape.
+  - Counter Yul structural checks against a Lean-exported Counter Yul artifact.
+  - Counter Solidity source-shape JSON aligned with a Lean-exported
+    `CounterCompiler.counterFunction` artifact.
   - Yul text normalization.
-  - Restricted-subset bounded trace comparison, with strict AST and
-    normalized-text modes as explicit fallbacks.
+  - Restricted-subset symbolic state-transform comparison, with bounded trace,
+    strict AST, and normalized-text modes as explicit fallbacks.
   - Counter-only Solidity-to-SoLean sketching through a tiny explicit parser.
 - GitHub Actions CI that runs `lake build`, Python bytecode checks, and Python
   unit tests.
@@ -93,10 +100,11 @@ Python emitter output, and solc Yul all have the same semantics.
 - Generated Yul from arbitrary SoLean.
 - Semantic Yul equivalence.
 - Verified correspondence between the Python Yul emitter and the Lean Yul data.
-  Python tests currently check structural/golden alignment, not a proof.
-- Verified Solidity-to-source-language translation.
-  Python tests currently check structural/golden alignment for Counter, not a
+  Python tests currently check alignment against Lean-exported artifacts, not a
   proof.
+- Verified Solidity-to-source-language translation.
+  Python tests currently check Counter source-shape alignment against a
+  Lean-exported artifact, not a proof.
 - Broad Solidity or DeFi verification claims.
 
 Checked addition and subtraction are modeled for the current expression DSL.
@@ -116,6 +124,7 @@ still a small Solidity subset rather than an EVM semantics.
 ├── docs/
 │   ├── assumptions.md
 │   ├── compiler.md
+│   ├── counter-bridge-v1.md
 │   ├── counter-yul.md
 │   ├── counter.md
 │   ├── roadmap.md
@@ -130,6 +139,8 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── Specs.lean
 │   ├── Compiler.lean
 │   ├── Yul.lean
+│   ├── Artifacts.lean
+│   ├── CounterArtifactsMain.lean
 │   └── Examples/
 │       ├── Counter.lean
 │       ├── CounterCompiler.lean
@@ -148,7 +159,6 @@ still a small Solidity subset rather than an EVM semantics.
 │   └── yul_subset.py
 └── tests/
     ├── golden/
-    │   ├── Counter.source.json
     │   └── Counter.solean.yul
     ├── README.md
     └── test_yul_tools.py
@@ -232,17 +242,29 @@ Real `solc 0.8.35 --ir` Counter output is currently expected to classify as
 unsupported; the first observed blocker is solc's `IR:` preamble/wrapper before
 the object accepted by the restricted parser.
 
-Compare two Yul files using the current bounded restricted-subset trace checker:
+Inspect solc-style IR and select the deployed/runtime object before
+classification:
+
+```bash
+python3 scripts/classify_yul.py --inspect-solc build/Counter.solc.yul
+```
+
+This still does not claim equivalence. It is an auditable extraction aid that
+reports the next unsupported construct inside the selected object.
+
+Compare two Yul files using the current symbolic restricted-subset
+state-transform checker:
 
 ```bash
 python3 scripts/check_equiv.py build/Counter.yul build/Counter.solean.yul --diff
 ```
 
 By default, this parses the restricted Yul subset documented in
-`docs/yul-subset.md` and compares a finite set of Counter-shaped execution
-traces. This is useful smoke-test tooling, not a semantic equivalence proof.
-Strict AST equality is available with `--ast`, and the old normalized-text
-comparison is still available with `--text`.
+`docs/yul-subset.md` and compares a tiny symbolic summary of parameters,
+ordered revert conditions, and final storage writes. This is useful
+state-transform tooling for the restricted subset, not a semantic equivalence
+proof. The old bounded trace checker is available with `--bounded-traces`,
+strict AST equality with `--ast`, and normalized-text comparison with `--text`.
 
 Sketch the exact Counter Solidity example into a Lean reference:
 
@@ -259,8 +281,18 @@ Emit the same parsed Counter shape as deterministic JSON:
 python3 scripts/solidity_to_solean.py --format source-json examples/Counter.sol
 ```
 
-This JSON is an audit/test artifact that mirrors the Lean
+This JSON is an audit/test artifact that is checked against the Lean-exported
 `CounterCompiler.counterFunction` shape; it is not a verified parser output.
+
+Export the Lean-owned Counter audit artifacts:
+
+```bash
+lake env lean --run SoLean/CounterArtifactsMain.lean source-json
+lake env lean --run SoLean/CounterArtifactsMain.lean yul-json
+```
+
+Python tests compare the Solidity source projection and Python Yul emitter
+shape against these Lean-exported artifacts.
 
 Run the Python tests:
 

@@ -1,12 +1,20 @@
 from __future__ import annotations
 
 import contextlib
+from functools import lru_cache
 import io
+import json
+import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-from scripts.classify_yul import classify_text, main as classify_yul_main
+from scripts.classify_yul import (
+    classify_text,
+    inspect_solc_text,
+    main as classify_yul_main,
+)
 from scripts.check_equiv import main as check_equiv_main
 from scripts.normalize_yul import normalize_text
 from scripts.solidity_to_solean import (
@@ -20,6 +28,7 @@ from scripts.yul_subset import (
     UINT256_MAX,
     TraceCase,
     compare_counter_traces,
+    compare_symbolic_summaries,
     counter_object,
     object_to_data,
     parse_object,
@@ -27,113 +36,55 @@ from scripts.yul_subset import (
     run_counter_trace,
 )
 
-LEAN_COUNTER_YUL_DATA = {
-    "object": "Counter",
-    "function": {
-        "name": "inc",
-        "params": ["amount"],
-        "body": [
-            {
-                "stmt": "ifRevert",
-                "cond": {
-                    "call": "iszero",
-                    "args": [
-                        {
-                            "call": "gt",
-                            "args": [{"ident": "amount"}, {"const": 0}],
-                        }
-                    ],
-                },
-            },
-            {
-                "stmt": "let",
-                "name": "old_x",
-                "expr": {"call": "sload", "args": [{"const": 0}]},
-            },
-            {
-                "stmt": "let",
-                "name": "new_x",
-                "expr": {
-                    "call": "add",
-                    "args": [{"ident": "old_x"}, {"ident": "amount"}],
-                },
-            },
-            {
-                "stmt": "ifRevert",
-                "cond": {
-                    "call": "lt",
-                    "args": [{"ident": "new_x"}, {"ident": "old_x"}],
-                },
-            },
-            {
-                "stmt": "sstore",
-                "slot": {"const": 0},
-                "value": {"ident": "new_x"},
-            },
-            {
-                "stmt": "ifRevert",
-                "cond": {
-                    "call": "lt",
-                    "args": [{"ident": "new_x"}, {"ident": "amount"}],
-                },
-            },
-        ],
-    },
-}
 
-LEAN_COUNTER_SOURCE_DATA = {
-    "contract": {
-        "name": "Counter",
-        "pragma": "0.8.35",
-    },
-    "function": {
-        "body": {
-            "seq": [
-                {
-                    "require": {
-                        "gt": [
-                            {"param": "amount"},
-                            {"const": 0},
-                        ]
-                    }
-                },
-                {
-                    "assign": {
-                        "expr": {
-                            "add": [
-                                {"slot": 0},
-                                {"param": "amount"},
-                            ]
-                        },
-                        "slot": 0,
-                    }
-                },
-                {
-                    "assert": {
-                        "ge": [
-                            {"slot": 0},
-                            {"param": "amount"},
-                        ]
-                    }
-                },
-            ]
-        },
-        "name": "inc",
-        "param": {
-            "name": "amount",
-            "type": "uint256",
-        },
-    },
-    "kind": "sourceFunction",
-    "lean": "SoLean.Examples.CounterCompiler.counterFunction",
-    "storage": {
-        "x": {
-            "slot": 0,
-            "type": "uint256",
-            "visibility": "public",
-        }
-    },
+SOLC_COUNTER_IR_SAMPLE = """
+IR:
+
+object "Counter_26" {
+  code {
+    mstore(64, memoryguard(128))
+  }
+  object "Counter_26_deployed" {
+    code {
+      mstore(64, memoryguard(128))
+      function fun_inc_25(var_amount_5) {
+        let expr_9 := var_amount_5
+      }
+    }
+  }
 }
+"""
+
+
+def lake_command() -> str:
+    if lake := shutil.which("lake"):
+        return lake
+    elan_lake = Path.home() / ".elan" / "bin" / "lake"
+    if elan_lake.exists():
+        return str(elan_lake)
+    return "lake"
+
+
+def lean_artifact_text(kind: str) -> str:
+    result = subprocess.run(
+        [
+            lake_command(),
+            "env",
+            "lean",
+            "--run",
+            "SoLean/CounterArtifactsMain.lean",
+            kind,
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return result.stdout
+
+
+@lru_cache(maxsize=None)
+def lean_artifact(kind: str) -> dict:
+    return json.loads(lean_artifact_text(kind))
 
 
 class NormalizeYulTests(unittest.TestCase):
@@ -162,8 +113,15 @@ class NormalizeYulTests(unittest.TestCase):
 
 
 class YulSubsetTests(unittest.TestCase):
-    def test_counter_object_matches_lean_proved_counter_yul_shape(self) -> None:
-        self.assertEqual(object_to_data(counter_object()), LEAN_COUNTER_YUL_DATA)
+    def test_lean_counter_artifact_output_is_deterministic(self) -> None:
+        self.assertEqual(
+            lean_artifact_text("source-json"),
+            lean_artifact_text("source-json"),
+        )
+        self.assertEqual(lean_artifact_text("yul-json"), lean_artifact_text("yul-json"))
+
+    def test_counter_object_matches_lean_exported_counter_yul_shape(self) -> None:
+        self.assertEqual(object_to_data(counter_object()), lean_artifact("yul-json"))
 
     def test_counter_render_round_trips_through_subset_parser(self) -> None:
         rendered = render_object(counter_object())
@@ -178,6 +136,10 @@ class YulSubsetTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(parse_object(output.getvalue()), counter_object())
+        self.assertEqual(
+            object_to_data(parse_object(output.getvalue())),
+            lean_artifact("yul-json"),
+        )
 
     def test_solean_to_yul_matches_counter_golden_file(self) -> None:
         output = io.StringIO()
@@ -221,6 +183,17 @@ class YulSubsetTests(unittest.TestCase):
         diffs = compare_counter_traces(left, right)
         self.assertGreaterEqual(len(diffs), 1)
 
+    def test_symbolic_summary_finds_removed_overflow_guard(self) -> None:
+        left = counter_object()
+        right = parse_object(
+            render_object(counter_object()).replace(
+                "      if lt(new_x, old_x) { revert(0, 0) }\n", ""
+            )
+        )
+
+        diffs = compare_symbolic_summaries(left, right)
+        self.assertEqual(len(diffs), 1)
+
 
 class ClassifyYulTests(unittest.TestCase):
     def test_counter_subset_classifies_as_supported(self) -> None:
@@ -238,6 +211,14 @@ class ClassifyYulTests(unittest.TestCase):
 
         self.assertEqual(classification.kind, "unsupported-wrapper")
         self.assertIn("solc output preamble", classification.message)
+
+    def test_solc_inspection_selects_deployed_object_blocker(self) -> None:
+        inspection = inspect_solc_text(SOLC_COUNTER_IR_SAMPLE)
+
+        self.assertEqual(inspection.kind, "unsupported-statement")
+        self.assertIsNotNone(inspection.selected_object)
+        self.assertEqual(inspection.selected_object.name, "Counter_26_deployed")
+        self.assertIn("mstore", inspection.message)
 
     def test_unsupported_statement_classifies_distinctly(self) -> None:
         classification = classify_text(
@@ -267,7 +248,7 @@ class ClassifyYulTests(unittest.TestCase):
 
 
 class CheckEquivTests(unittest.TestCase):
-    def test_default_uses_bounded_trace_checker(self) -> None:
+    def test_default_uses_symbolic_state_transform_checker(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             left = Path(tmp) / "left.yul"
             right = Path(tmp) / "right.yul"
@@ -277,6 +258,20 @@ class CheckEquivTests(unittest.TestCase):
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
                 code = check_equiv_main([str(left), str(right)])
+
+        self.assertEqual(code, 0)
+        self.assertIn("symbolic restricted-subset state-transform", output.getvalue())
+
+    def test_bounded_trace_mode_remains_available(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            left = Path(tmp) / "left.yul"
+            right = Path(tmp) / "right.yul"
+            left.write_text(render_object(counter_object()))
+            right.write_text("// comment\n" + render_object(counter_object()))
+
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = check_equiv_main(["--bounded-traces", str(left), str(right)])
 
         self.assertEqual(code, 0)
         self.assertIn("bounded restricted-subset trace checker", output.getvalue())
@@ -348,7 +343,7 @@ class SolidityToSoLeanTests(unittest.TestCase):
         self.assertTrue(is_supported_counter(source))
         self.assertEqual(
             contract_to_source_data(parse_counter(source)),
-            LEAN_COUNTER_SOURCE_DATA,
+            lean_artifact("source-json"),
         )
 
     def test_counter_parser_allows_whitespace_and_comments(self) -> None:
@@ -369,7 +364,7 @@ class SolidityToSoLeanTests(unittest.TestCase):
         self.assertTrue(is_supported_counter(source))
         self.assertEqual(
             contract_to_source_data(parse_counter(source)),
-            LEAN_COUNTER_SOURCE_DATA,
+            lean_artifact("source-json"),
         )
 
     def test_counter_script_outputs_model_reference(self) -> None:
@@ -380,7 +375,7 @@ class SolidityToSoLeanTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("SoLean.Examples.Counter.incProgram", output.getvalue())
 
-    def test_counter_script_outputs_source_json_golden_file(self) -> None:
+    def test_counter_script_outputs_lean_exported_source_json(self) -> None:
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
             code = solidity_to_solean_main([
@@ -390,10 +385,7 @@ class SolidityToSoLeanTests(unittest.TestCase):
             ])
 
         self.assertEqual(code, 0)
-        self.assertEqual(
-            output.getvalue(),
-            Path("tests/golden/Counter.source.json").read_text(),
-        )
+        self.assertEqual(json.loads(output.getvalue()), lean_artifact("source-json"))
 
     def test_unsupported_solidity_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

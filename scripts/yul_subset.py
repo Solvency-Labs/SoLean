@@ -102,6 +102,45 @@ class TraceDiff:
     right: TraceResult
 
 
+@dataclass(frozen=True)
+class SymConst:
+    value: int
+
+
+@dataclass(frozen=True)
+class SymParam:
+    name: str
+
+
+@dataclass(frozen=True)
+class SymSlot:
+    slot: int
+
+
+@dataclass(frozen=True)
+class SymCall:
+    name: str
+    args: tuple[SymExpr, ...]
+
+
+SymExpr = SymConst | SymParam | SymSlot | SymCall
+
+
+@dataclass(frozen=True)
+class SymbolicSummary:
+    object_name: str
+    function_name: str
+    params: tuple[str, ...]
+    revert_conditions: tuple[SymExpr, ...]
+    final_writes: tuple[tuple[int, SymExpr], ...]
+
+
+@dataclass(frozen=True)
+class SymbolicDiff:
+    left: SymbolicSummary
+    right: SymbolicSummary
+
+
 IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
 SUPPORTED_CALLS = {
     "add": 2,
@@ -417,3 +456,69 @@ def compare_counter_traces(
         if left_result != right_result:
             diffs.append(TraceDiff(case, left_result, right_result))
     return diffs
+
+
+def summarize_symbolic(obj: YulObject) -> SymbolicSummary:
+    """Summarize storage behavior for the tiny restricted subset.
+
+    This is a deliberately small state-transform model. It tracks function
+    parameters, symbolic initial storage slots, ordered revert conditions, and
+    final storage writes. It is not a proof and does not simplify expressions.
+    """
+
+    env: dict[str, SymExpr] = {param: SymParam(param) for param in obj.function.params}
+    storage: dict[int, SymExpr] = {}
+    reverts: list[SymExpr] = []
+
+    for stmt in obj.function.body:
+        if isinstance(stmt, Let):
+            env[stmt.name] = symbolic_eval_expr(stmt.expr, env, storage)
+        elif isinstance(stmt, IfRevert):
+            reverts.append(symbolic_eval_expr(stmt.cond, env, storage))
+        elif isinstance(stmt, Store):
+            slot = symbolic_eval_expr(stmt.slot, env, storage)
+            if not isinstance(slot, SymConst):
+                raise YulExecutionError(
+                    f"symbolic checker supports only constant sstore slots: {slot!r}"
+                )
+            storage[slot.value] = symbolic_eval_expr(stmt.value, env, storage)
+        else:
+            raise YulExecutionError(f"unsupported statement: {stmt!r}")
+
+    return SymbolicSummary(
+        object_name=obj.name,
+        function_name=obj.function.name,
+        params=obj.function.params,
+        revert_conditions=tuple(reverts),
+        final_writes=tuple(sorted(storage.items())),
+    )
+
+
+def symbolic_eval_expr(
+    expr: Expr, env: dict[str, SymExpr], storage: dict[int, SymExpr]
+) -> SymExpr:
+    if isinstance(expr, Literal):
+        return SymConst(expr.value)
+    if isinstance(expr, Ident):
+        if expr.name not in env:
+            raise YulExecutionError(f"unknown identifier: {expr.name}")
+        return env[expr.name]
+    if not isinstance(expr, Call):
+        raise YulExecutionError(f"unsupported expression: {expr!r}")
+
+    args = tuple(symbolic_eval_expr(arg, env, storage) for arg in expr.args)
+    if expr.name == "sload":
+        slot = args[0]
+        if isinstance(slot, SymConst):
+            return storage.get(slot.value, SymSlot(slot.value))
+    if expr.name in SUPPORTED_CALLS:
+        return SymCall(expr.name, args)
+    raise YulExecutionError(f"unsupported expression function: {expr.name}")
+
+
+def compare_symbolic_summaries(left: YulObject, right: YulObject) -> list[SymbolicDiff]:
+    left_summary = summarize_symbolic(left)
+    right_summary = summarize_symbolic(right)
+    if left_summary == right_summary:
+        return []
+    return [SymbolicDiff(left_summary, right_summary)]

@@ -71,5 +71,6 @@ by the compiled restricted Yul program with the same final storage.
 - The restricted Yul proof is about hand-written Lean Yul data, not yet about
   parsed Python emitter output or real `solc` output.
 - The compiler proof covers only the tiny Counter source shape.
-- The Yul checker can run bounded Counter-shaped traces, but this is still a
-  finite smoke test rather than a proof of Yul equivalence.
+- The Python Yul checker can compare a tiny symbolic state-transform summary
+  and can still run bounded Counter-shaped traces, but neither mode is a proof
+  of Yul equivalence.

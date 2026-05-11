@@ -76,7 +76,21 @@ The first blocker reported by `scripts/classify_yul.py` is:
 unsupported-wrapper: solc output preamble is not supported: IR:
 ```
 
-After that preamble, the real IR also contains constructs outside the subset:
+The explicit solc-inspection mode gets one trusted extraction boundary further:
+
+```bash
+python3 scripts/classify_yul.py --inspect-solc build/Counter.solc.yul
+```
+
+It identifies candidate object blocks, selects the deployed/runtime object, and
+reports the first unsupported construct inside that object. For current Counter
+IR, the next blocker is memory setup like:
+
+```text
+unsupported-statement: unsupported statement form: mstore(64, memoryguard(128))
+```
+
+After that, the real IR also contains constructs outside the subset:
 
 - a top-level creation object plus a nested deployed object
 - memory setup such as `mstore(64, memoryguard(128))`
@@ -90,19 +104,34 @@ output rather than claiming semantic equivalence.
 ## Equivalence Checker
 
 `scripts/check_equiv.py` parses this subset into typed AST nodes. By default, it
-runs a tiny bounded trace comparison over Counter-shaped inputs:
+runs a tiny symbolic state-transform comparison for supported restricted Yul.
+The summary records:
+
+- function parameters
+- ordered revert conditions
+- final storage writes
+
+This is more informative than finite traces, but it still does not simplify
+expressions or prove semantic equivalence.
+
+The legacy bounded trace checker remains available:
+
+```bash
+python3 scripts/check_equiv.py --bounded-traces left.yul right.yul
+```
+
+It runs over Counter-shaped inputs:
 
 - `amount = 0`
 - small successful additions
 - edge cases near `2^256 - 1`
 
-The interpreter models `add` with EVM-style 256-bit wraparound, then observes
-whether the emitted overflow guard reverts. This is useful for catching obvious
-Counter emitter regressions.
+The trace interpreter models `add` with EVM-style 256-bit wraparound, then
+observes whether the emitted overflow guard reverts. This is useful for catching
+obvious Counter emitter regressions.
 
-It is not semantic Yul equivalence. It is a finite smoke-test over a deliberately
-small subset. Unsupported syntax returns a distinct nonzero result instead of
-pretending to compare semantics.
+Neither checker is semantic Yul equivalence. Unsupported syntax returns a
+distinct nonzero result instead of pretending to compare semantics.
 
 Strict AST equality is available with:
 
@@ -138,7 +167,7 @@ restricted Lean Yul shape for the Counter source function. See
 `docs/compiler.md` for the current compiler proof.
 
 Python tests check that `scripts/yul_subset.py`'s Counter structure matches a
-canonical JSON-like mirror of the Lean-proved Counter Yul shape and that
+Lean-exported artifact derived from the Lean-proved Counter Yul shape and that
 `scripts/solean_to_yul.py --example counter` matches
 `tests/golden/Counter.solean.yul`. This is structural/golden alignment, not a
 verified translation theorem.

@@ -13,6 +13,7 @@ try:
         UnsupportedYulError,
         YulExecutionError,
         compare_counter_traces,
+        compare_symbolic_summaries,
         parse_object,
     )
 except ImportError:  # Allows `python scripts/check_equiv.py ...`.
@@ -21,6 +22,7 @@ except ImportError:  # Allows `python scripts/check_equiv.py ...`.
         UnsupportedYulError,
         YulExecutionError,
         compare_counter_traces,
+        compare_symbolic_summaries,
         parse_object,
     )
 
@@ -44,6 +46,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--text",
         action="store_true",
         help="Use the legacy normalized-text comparison",
+    )
+    mode.add_argument(
+        "--bounded-traces",
+        action="store_true",
+        help="Use the legacy finite Counter trace comparison",
     )
     return parser
 
@@ -122,6 +129,33 @@ def compare_bounded_traces(left_path: Path, right_path: Path, show_diff: bool) -
     return 1
 
 
+def compare_symbolic(left_path: Path, right_path: Path, show_diff: bool) -> int:
+    try:
+        left = parse_object(left_path.read_text())
+        right = parse_object(right_path.read_text())
+        diffs = compare_symbolic_summaries(left, right)
+    except (UnsupportedYulError, YulExecutionError) as exc:
+        print(
+            "unsupported Yul subset: "
+            f"{exc}. The symbolic checker is not semantic Yul equivalence."
+        )
+        return 2
+
+    if not diffs:
+        print("equivalent under the symbolic restricted-subset state-transform checker")
+        return 0
+
+    print(
+        "not equivalent under the symbolic restricted-subset state-transform "
+        "checker; semantic Yul equivalence is not implemented yet"
+    )
+    if show_diff:
+        for diff in diffs:
+            print(f"left summary: {diff.left!r}")
+            print(f"right summary: {diff.right!r}")
+    return 1
+
+
 def print_diff(left: str, right: str, left_path: Path, right_path: Path) -> None:
     print(
         "".join(
@@ -142,7 +176,9 @@ def main(argv: list[str] | None = None) -> int:
         return compare_text(args.left, args.right, args.diff)
     if args.ast:
         return compare_ast(args.left, args.right, args.diff)
-    return compare_bounded_traces(args.left, args.right, args.diff)
+    if args.bounded_traces:
+        return compare_bounded_traces(args.left, args.right, args.diff)
+    return compare_symbolic(args.left, args.right, args.diff)
 
 
 if __name__ == "__main__":

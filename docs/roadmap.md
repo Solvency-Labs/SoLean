@@ -6,7 +6,15 @@ Lean.
 
 ## Mental Model
 
-SoLean is trying to connect four worlds:
+SoLean's north star is traceable trust reduction:
+
+```text
+Build a boundary-aware verification pipeline where a tiny Solidity subset can
+be connected to a Lean model, proved, compiled to restricted Yul, and compared
+against pinned solc output, with every trusted step explicitly identified.
+```
+
+The project is trying to connect four worlds:
 
 ```text
 Solidity source
@@ -35,6 +43,8 @@ Counter source function in Lean
 This is real progress, but it does not yet start from Solidity text or real
 `solc` output.
 
+See `docs/counter-bridge-v1.md` for the crisp Counter success condition.
+
 ## Current State
 
 ### Proved In Lean
@@ -54,19 +64,25 @@ This is real progress, but it does not yet start from Solidity text or real
 ### Implemented But Not Verified End-To-End
 
 - Python emits deterministic Counter Yul-like text.
-- Python tests check the Counter Yul emitter against a golden file and a
-  JSON-like structural mirror of the Lean-proved `CounterYul.counterProgram`.
+- Lean exports deterministic Counter source and restricted-Yul shape artifacts.
+- Python tests check the Counter Yul emitter against the Lean-exported
+  `CounterYul.counterProgram` artifact and a text golden file.
 - Python parses and normalizes a restricted Yul-like subset.
-- Python performs bounded trace checks for Counter-shaped Yul programs.
+- Python performs symbolic state-transform checks for Counter-shaped restricted
+  Yul programs, with bounded trace checks still available as an explicit legacy
+  mode.
 - Python recognizes a tiny Counter-shaped Solidity subset.
-- Python emits deterministic Counter source-shape JSON that is tested against a
-  JSON-like mirror of `CounterCompiler.counterFunction`.
+- Python emits deterministic Counter source-shape JSON that is tested against
+  the Lean-exported `CounterCompiler.counterFunction` artifact.
 - `solc_to_yul.py` enforces the pinned `solc 0.8.35` target when `solc` is
   installed.
 - Local `solc 0.8.35 --ir` Counter output has been generated and classified as
   unsupported by the current restricted subset.
 - `classify_yul.py` reports whether Yul text is in the supported subset or
   names the first unsupported wrapper/statement/expression/shape blocker.
+- `classify_yul.py --inspect-solc` identifies candidate solc object blocks,
+  selects the deployed/runtime object, and reports the first unsupported
+  construct inside that trusted extraction boundary.
 
 These are useful engineering tools, but they are not part of the trusted Lean
 proof chain yet.
@@ -75,9 +91,11 @@ proof chain yet.
 
 - Verified Solidity parsing.
 - Verified translation from Solidity text to the Lean source function. The
-  current bridge is an auditable structural/golden test, not a proof.
+  current bridge is an auditable test against a Lean-exported artifact, not a
+  proof.
 - Verified connection between the Python Yul emitter and the Lean compiler. The
-  current connection is an auditable structural/golden test, not a proof.
+  current connection is an auditable test against Lean-exported artifacts, not a
+  proof.
 - Parsing emitted Yul text back into Lean Yul data.
 - Real `solc 0.8.35 --ir` Counter semantic comparison.
 - Semantic equivalence against real Yul.
@@ -93,22 +111,22 @@ Goal: make one tiny path genuinely understandable and hard to fool.
 Done:
 
 - Python emitter output is checked against `tests/golden/Counter.solean.yul`.
-- Python `counter_object()` is checked against a canonical JSON-like shape that
-  mirrors the Lean-proved `CounterYul.counterProgram`.
+- Python `counter_object()` and emitted Yul are checked against a Lean-exported
+  artifact derived from `CounterYul.counterProgram`.
+- `Counter Bridge v1` is defined as an auditable milestone with explicit
+  proof/test/classification/trust boundaries.
 
 Next tasks:
 
-- Reduce duplicate Counter Yul definitions between Lean and Python further.
-- Decide whether Python should generate from a shared JSON/golden AST, whether
-  Lean should export expected Yul data, or whether both should come from one
-  small source of truth.
+- Reduce duplicate Counter Yul definitions between Lean and Python further by
+  generating Python output from the Lean-owned artifact or a shared source.
 - Keep documenting every trusted/manual step.
 
 Definition of done:
 
 - The repository can explain exactly why the Counter Yul emitted by tooling is
   the same program as the one proved in Lean, with less hand-maintained
-  duplication than the current structural mirror.
+  duplication than the current Python-side Counter AST copy.
 
 ### 2. Connect Solidity To The Lean Source Shape
 
@@ -117,21 +135,20 @@ Goal: stop treating the Solidity input as only a human reference.
 Done:
 
 - The Counter Solidity parser can emit deterministic source-shape JSON.
-- Tests check that this JSON matches a canonical mirror of
-  `CounterCompiler.counterFunction`.
+- Tests check that this JSON matches the Lean-exported
+  `CounterCompiler.counterFunction` artifact.
 - Unsupported Solidity still fails loudly.
 
 Next tasks:
 
-- Reduce duplication between the Python source-shape mirror and Lean
-  `counterFunction`.
-- Decide whether Lean should export a source-shape artifact, or whether a shared
-  checked representation should drive both sides.
+- Reduce duplication by deriving more of the Python parser projection from a
+  shared schema, while keeping unsupported Solidity rejection explicit.
 
 Definition of done:
 
 - For Counter, the path from `examples/Counter.sol` to the Lean source function
-  has less hand-maintained duplication than the current source-shape mirror.
+  has less hand-maintained duplication than the current Python source-shape
+  projection.
 
 ### 3. Bring In Real `solc 0.8.35` Output
 
@@ -145,29 +162,41 @@ Done:
 - Reject unsupported solc output by default.
 - Record the first blocker: solc's `IR:` preamble/wrapper is outside the
   current restricted parser.
+- Inspect solc-style wrapper text, select the deployed object, and report the
+  first unsupported construct inside it. For current Counter IR this is memory
+  setup such as `mstore(64, memoryguard(128))`.
 
 Next tasks:
 
-- Add a solc-output preprocessor that can intentionally select the deployed
-  object, or decide that this selection should happen in a separate trusted
-  extraction step.
-- Decide the next minimal subset target after wrapper handling: likely nested
-  objects, multiple functions, memory setup, or ABI dispatch.
+- Decide whether to skip trusted deployment/ABI boilerplate and extract the
+  `fun_inc_*` body for classification, or model enough memory/ABI setup to
+  justify that path.
+- Name the next minimal solc IR subset target: likely helper-function calls,
+  storage read/write helpers, or checked-add panic helpers inside `fun_inc_*`.
 
 Definition of done:
 
-- The repo can classify real Counter solc IR with a blocker more semantic than
-  the outer solc wrapper, without claiming full equivalence.
+- The repo can classify the actual Counter `fun_inc_*` body with a blocker more
+  semantic than deployment/memory setup, without claiming full equivalence.
 
 ### 4. Replace Bounded Trace Checks With Small Semantics
 
 Goal: move from finite smoke tests toward real restricted equivalence.
 
+Done:
+
+- The default checker now compares a tiny symbolic state-transform summary for
+  supported restricted Yul: parameters, ordered revert conditions, and final
+  storage writes.
+- The old finite Counter trace checker remains available as
+  `--bounded-traces`.
+
 Next tasks:
 
-- Define a small semantic comparison for the Python restricted Yul AST.
-- Keep it intentionally smaller than full Yul.
-- Mirror the semantics already used in Lean where possible.
+- Add tiny simplification/normalization for equivalent symbolic expressions
+  only when needed by Counter.
+- Mirror the symbolic summary in Lean or export Lean-side summaries if this
+  becomes part of the trusted bridge.
 
 Definition of done:
 
@@ -195,22 +224,22 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Handle the solc IR wrapper boundary.
+Extract and classify the real solc Counter inc body.
 ```
 
 Why this matters:
 
-- We can now generate and classify real `solc 0.8.35 --ir` Counter output.
-- The first blocker is not yet arithmetic or storage semantics; it is the solc
-  output wrapper and deployed-object selection problem.
-- Handling that boundary will expose the next real semantic subset gap.
+- We can now get past the outer solc wrapper and deployed-object selection.
+- The next blocker is still deployment/memory setup, not the actual Counter
+  arithmetic/storage behavior.
+- A trusted, auditable `fun_inc_*` extraction would expose the first real
+  function-body subset gap.
 
 Smallest useful version:
 
-1. Add an explicit, documented extraction/classification mode for solc IR
-   wrapper text.
-2. Identify the deployed object and report the first unsupported construct
-   inside it.
+1. Add a solc IR function-body inspector that finds the `fun_inc_*` body inside
+   the deployed object.
+2. Report the first unsupported statement/expression inside that body.
 3. Keep extraction trusted and auditable; do not claim semantic equivalence.
 
 ## Updating This Roadmap

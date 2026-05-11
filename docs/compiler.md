@@ -43,12 +43,12 @@ the final `x >= amount` assertion.
 
 - A verified theorem that the Python Yul emitter renders exactly the Lean
   compiler output. Python tests currently check a golden output file and a
-  structural mirror of the Lean-proved Counter Yul shape, but this is not a
-  Lean theorem.
+  Lean-exported artifact derived from the Lean-proved Counter Yul shape, but
+  this is not a Lean theorem.
 - A verified theorem that Solidity parsing produces `counterFunction`. Python
   tests currently check deterministic Counter source-shape JSON against a
-  structural mirror of `CounterCompiler.counterFunction`, but this is not a Lean
-  theorem.
+  Lean-exported artifact derived from `CounterCompiler.counterFunction`, but
+  this is not a Lean theorem.
 - Real `solc --ir` output is equivalent to the restricted Yul program.
 - The compiler supports SimpleVault or arbitrary SoLean programs.
 
