@@ -13,6 +13,8 @@ Current checks:
 - The tests also cover Yul subset classification for supported Counter Yul and
   representative unsupported solc-style wrapper/statement forms, including
   deployed-object and generated-function-body inspection for solc-style IR.
+- The tests compare the trusted solc Counter function summary with the
+  Lean-exported Counter Yul artifact.
 
 Future tests should add small golden files for normalization and equivalence
 checking before adding broader generated examples.

@@ -15,6 +15,8 @@ from scripts.classify_yul import (
     inspect_solc_function_text,
     inspect_solc_text,
     main as classify_yul_main,
+    solc_function_summary_to_data,
+    summarize_solc_function_text,
     summarize_require_helper,
     summarize_solc_inspection_line,
     summarize_transparent_helpers,
@@ -63,6 +65,14 @@ object "Counter_26" {
         let _2 := var_amount_5
         let expr_15 := _2
         let _3 := read_from_storage_split_offset_0_t_uint256(0x00)
+        let expr_16 := checked_add_t_uint256(_3, expr_15)
+        update_storage_value_offset_0_t_uint256_to_t_uint256(0x00, expr_16)
+        let _4 := read_from_storage_split_offset_0_t_uint256(0x00)
+        let expr_19 := _4
+        let _5 := var_amount_5
+        let expr_20 := _5
+        let expr_21 := iszero(lt(cleanup_t_uint256(expr_19), cleanup_t_uint256(expr_20)))
+        assert_helper(expr_21)
       }
     }
   }
@@ -330,6 +340,28 @@ class ClassifyYulTests(unittest.TestCase):
             ),
             "if iszero(expr_11) { revert(0, 0) }",
         )
+
+    def test_solc_counter_function_summary_matches_lean_yul_shape(self) -> None:
+        summary = summarize_solc_function_text(SOLC_COUNTER_IR_SAMPLE, "inc")
+
+        self.assertEqual(
+            solc_function_summary_to_data(summary)["normalized"],
+            lean_artifact("yul-json"),
+        )
+
+    def test_solc_counter_function_summary_cli_outputs_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "Counter.solc.yul"
+            source.write_text(SOLC_COUNTER_IR_SAMPLE)
+
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = classify_yul_main(["--summarize-function", "inc", str(source)])
+
+        self.assertEqual(code, 0)
+        data = json.loads(output.getvalue())
+        self.assertEqual(data["kind"], "solcFunctionSummary")
+        self.assertEqual(data["normalized"], lean_artifact("yul-json"))
 
     def test_solc_function_inspection_can_accept_supported_body(self) -> None:
         inspection = inspect_solc_function_text(SOLC_SUPPORTED_FUNCTION_SAMPLE, "inc")

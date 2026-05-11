@@ -178,19 +178,27 @@ Done:
 - Summarize `require_helper(condition)` as a revert guard for classification.
   After this, the first current `fun_inc_*` blocker is
   `read_from_storage_split_offset_0_t_uint256`.
+- Add a Counter-specific solc function summary mode that normalizes the real
+  `fun_inc_*` body into the canonical restricted Counter Yul shape. It handles
+  the current storage read helper, checked-add helper, storage update helper,
+  and assert helper as trusted inspection patterns.
+- Test that the normalized solc Counter function summary matches the
+  Lean-exported `CounterYul.counterProgram` artifact.
 
 Next tasks:
 
-- Add an explicit summary for the solc storage read helper
-  `read_from_storage_split_offset_0_t_uint256(slot)` as `sload(slot)` for the
-  Counter slot-0 path.
-- Classify again and decide between `checked_add_t_uint256` and storage update
-  helper expansion.
+- Decide whether the solc summary schema should become a stable checked bridge
+  artifact or remain an internal audit/test format.
+- Reduce trust further by moving the Counter summary rules closer to Lean, or
+  by exporting a Lean-side expected summary for comparison.
 
 Definition of done:
 
 - The repo can classify the actual Counter `fun_inc_*` body through the first
   helper-call/storage operation blocker, without claiming full equivalence.
+- The repo can summarize the actual Counter `fun_inc_*` body into the same
+  canonical restricted Counter Yul shape exported from Lean, without claiming
+  full equivalence.
 
 ### 4. Replace Bounded Trace Checks With Small Semantics
 
@@ -237,24 +245,25 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Summarize the solc Counter storage read helper.
+Turn the solc Counter summary into a sharper bridge artifact.
 ```
 
 Why this matters:
 
-- We can now select the real `fun_inc_*` body from solc IR.
-- Hex literals and transparent value helper wrappers are now handled by the
-  inspection layer.
-- `require_helper` is now summarized as a revert guard, and the first actual
-  function-body blocker is now `read_from_storage_split_offset_0_t_uint256`.
+- We can now normalize the real `fun_inc_*` body into the same restricted
+  Counter Yul shape Lean exports.
+- The current summary is still trusted Python pattern recognition.
+- The next trust-reduction move is to make that summary boundary easier to
+  audit, compare, or eventually reproduce from Lean-owned data.
 
 Smallest useful version:
 
-1. Treat `read_from_storage_split_offset_0_t_uint256(slot)` as `sload(slot)` for
-   classification purposes.
-2. Re-run `--inspect-function inc` on real Counter solc IR and record the next
-   unsupported function-body construct.
-3. Keep this as classification only; do not claim semantic equivalence.
+1. Add a dedicated docs section for the solc Counter summary rules and their
+   trusted assumptions.
+2. Keep the JSON shape deterministic and compare it to the Lean-exported Yul
+   artifact in tests.
+3. Decide whether the next code step is Lean-side summary export/checking or a
+   narrower Python schema cleanup.
 
 ## Updating This Roadmap
 

@@ -5,15 +5,46 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+import json
 from pathlib import Path
 import re
 
 try:
     from .normalize_yul import normalize_text
-    from .yul_subset import UnsupportedYulError, parse_object
+    from .yul_subset import (
+        Call,
+        Expr,
+        Function,
+        Ident,
+        IfRevert,
+        Let,
+        Literal,
+        Stmt,
+        Store,
+        UnsupportedYulError,
+        YulObject,
+        object_to_data,
+        parse_expr,
+        parse_object,
+    )
 except ImportError:  # Allows `python scripts/classify_yul.py ...`.
     from normalize_yul import normalize_text
-    from yul_subset import UnsupportedYulError, parse_object
+    from yul_subset import (
+        Call,
+        Expr,
+        Function,
+        Ident,
+        IfRevert,
+        Let,
+        Literal,
+        Stmt,
+        Store,
+        UnsupportedYulError,
+        YulObject,
+        object_to_data,
+        parse_expr,
+        parse_object,
+    )
 
 
 @dataclass(frozen=True)
@@ -38,6 +69,7 @@ class SolcObjectBlock:
 @dataclass(frozen=True)
 class SolcFunctionBlock:
     name: str
+    params: tuple[str, ...]
     start_line: int
     end_line: int
     text: str
@@ -76,6 +108,13 @@ class SolcFunctionInspection:
         )
 
 
+@dataclass(frozen=True)
+class SolcFunctionSummary:
+    selected_object: SolcObjectBlock
+    selected_function: SolcFunctionBlock
+    normalized_object: YulObject
+
+
 UNSUPPORTED_STATEMENT_PREFIXES = (
     "case ",
     "default",
@@ -89,7 +128,7 @@ UNSUPPORTED_STATEMENT_PREFIXES = (
 )
 IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
 OBJECT_HEADER_RE = re.compile(r'object "([^"]+)" \{')
-FUNCTION_HEADER_RE = re.compile(rf"function ({IDENT})\([^)]*\)(?: -> [^{{]+)? \{{")
+FUNCTION_HEADER_RE = re.compile(rf"function ({IDENT})\(([^)]*)\)(?: -> [^{{]+)? \{{")
 TRANSPARENT_VALUE_HELPERS = {
     "cleanup_t_rational_0_by_1",
     "cleanup_t_uint256",
@@ -188,6 +227,38 @@ def inspect_solc_function_text(text: str, function_query: str) -> SolcFunctionIn
     )
 
 
+def summarize_solc_function_text(text: str, function_query: str) -> SolcFunctionSummary:
+    objects = find_object_blocks(text)
+    if not objects:
+        raise UnsupportedYulError("no Yul object blocks found in solc output")
+
+    selected_object = select_runtime_object(objects)
+    functions = find_function_blocks(
+        selected_object.text, line_offset=selected_object.start_line - 1
+    )
+    selected_function = select_function(functions, function_query)
+    if selected_function is None:
+        raise UnsupportedYulError(
+            f"no function matching {function_query!r} found in selected "
+            f"object {selected_object.name}"
+        )
+
+    return SolcFunctionSummary(
+        selected_object=selected_object,
+        selected_function=selected_function,
+        normalized_object=normalize_counter_function_body(selected_function),
+    )
+
+
+def solc_function_summary_to_data(summary: SolcFunctionSummary) -> dict:
+    return {
+        "kind": "solcFunctionSummary",
+        "sourceFunction": summary.selected_function.name,
+        "sourceObject": summary.selected_object.name,
+        "normalized": object_to_data(summary.normalized_object),
+    }
+
+
 def find_object_blocks(text: str) -> list[SolcObjectBlock]:
     lines = normalize_text(text).splitlines()
     stack: list[tuple[str, int, int]] = []
@@ -218,18 +289,25 @@ def find_object_blocks(text: str) -> list[SolcObjectBlock]:
 
 def find_function_blocks(text: str, line_offset: int = 0) -> list[SolcFunctionBlock]:
     lines = normalize_text(text).splitlines()
-    stack: list[tuple[str, int, int]] = []
+    stack: list[tuple[str, tuple[str, ...], int, int]] = []
     blocks: list[SolcFunctionBlock] = []
     depth = 0
 
     for index, line in enumerate(lines, start=1):
         function_match = FUNCTION_HEADER_RE.fullmatch(line)
         if function_match is not None:
-            stack.append((function_match.group(1), index, depth))
+            stack.append(
+                (
+                    function_match.group(1),
+                    parse_function_params(function_match.group(2)),
+                    index,
+                    depth,
+                )
+            )
 
         depth += line.count("{") - line.count("}")
-        while stack and depth <= stack[-1][2]:
-            name, start_line, _function_depth = stack.pop()
+        while stack and depth <= stack[-1][3]:
+            name, params, start_line, _function_depth = stack.pop()
             block_lines = lines[start_line - 1 : index]
             body_lines = tuple(
                 (line_offset + line_number, body_line)
@@ -240,6 +318,7 @@ def find_function_blocks(text: str, line_offset: int = 0) -> list[SolcFunctionBl
             blocks.append(
                 SolcFunctionBlock(
                     name=name,
+                    params=params,
                     start_line=line_offset + start_line,
                     end_line=line_offset + index,
                     text="\n".join(block_lines) + "\n",
@@ -248,6 +327,12 @@ def find_function_blocks(text: str, line_offset: int = 0) -> list[SolcFunctionBl
             )
 
     return sorted(blocks, key=lambda block: block.start_line)
+
+
+def parse_function_params(raw: str) -> tuple[str, ...]:
+    if not raw.strip():
+        return ()
+    return tuple(part.strip() for part in raw.split(","))
 
 
 def select_runtime_object(objects: list[SolcObjectBlock]) -> SolcObjectBlock:
@@ -308,6 +393,139 @@ def classify_function_body(function: SolcFunctionBlock) -> Classification:
     return Classification(
         "supported-subset",
         f"supported restricted subset function body: {function.name}",
+    )
+
+
+def normalize_counter_function_body(function: SolcFunctionBlock) -> YulObject:
+    """Summarize the real solc Counter `fun_inc_*` body into restricted Yul.
+
+    This is a trusted, Counter-specific inspection pass. It recognizes only the
+    narrow helper pattern emitted by solc 0.8.35 for the current Counter example.
+    """
+
+    if len(function.params) != 1:
+        raise UnsupportedYulError("Counter function summary expects one parameter")
+
+    env: dict[str, Expr] = {function.params[0]: Ident("amount")}
+    storage: dict[int, Expr] = {}
+    emitted: list[Stmt] = []
+    old_x_emitted = False
+    new_x_emitted = False
+
+    def resolve(expr: Expr) -> Expr:
+        if isinstance(expr, Ident) and expr.name in env:
+            return resolve(env[expr.name])
+        if isinstance(expr, Call):
+            return Call(expr.name, tuple(resolve(arg) for arg in expr.args))
+        return expr
+
+    def parse_supported_expr(raw: str) -> Expr:
+        return resolve(parse_expr(summarize_transparent_helpers(raw)))
+
+    def literal_value(raw: str) -> int:
+        expr = parse_supported_expr(raw)
+        if not isinstance(expr, Literal):
+            raise UnsupportedYulError(f"expected literal slot, got {raw}")
+        return expr.value
+
+    def parse_any_call(raw: str) -> tuple[str, list[str]] | None:
+        match = re.fullmatch(rf"({IDENT})\((.*)\)", raw.strip())
+        if match is None:
+            return None
+        return match.group(1), split_top_level_args(match.group(2))
+
+    def summarize_expr(raw: str) -> Expr:
+        nonlocal old_x_emitted, new_x_emitted
+
+        text = summarize_transparent_helpers(raw.strip())
+        call = parse_any_call(text)
+        if call is not None:
+            name, args = call
+            if name == "read_from_storage_split_offset_0_t_uint256":
+                if len(args) != 1:
+                    raise UnsupportedYulError(f"{name} expects one argument")
+                slot = literal_value(args[0])
+                if slot in storage:
+                    return storage[slot]
+                if slot != 0:
+                    raise UnsupportedYulError(f"unsupported storage read slot: {slot}")
+                if old_x_emitted:
+                    return Ident("old_x")
+                emitted.append(Let("old_x", Call("sload", (Literal(slot),))))
+                old_x_emitted = True
+                return Ident("old_x")
+
+            if name == "checked_add_t_uint256":
+                if len(args) != 2:
+                    raise UnsupportedYulError(f"{name} expects two arguments")
+                lhs = parse_supported_expr(args[0])
+                rhs = parse_supported_expr(args[1])
+                if new_x_emitted:
+                    raise UnsupportedYulError("multiple checked adds are unsupported")
+                emitted.append(Let("new_x", Call("add", (lhs, rhs))))
+                emitted.append(IfRevert(Call("lt", (Ident("new_x"), lhs))))
+                new_x_emitted = True
+                return Ident("new_x")
+
+        return parse_supported_expr(text)
+
+    def revert_condition_for_assert(cond: Expr) -> Expr:
+        cond = resolve(cond)
+        if isinstance(cond, Call) and cond.name == "iszero" and len(cond.args) == 1:
+            return cond.args[0]
+        return Call("iszero", (cond,))
+
+    def handle_call_statement(line: str) -> bool:
+        call = parse_any_call(summarize_transparent_helpers(line))
+        if call is None:
+            return False
+
+        name, args = call
+        if name == "require_helper":
+            if len(args) != 1:
+                raise UnsupportedYulError("require_helper expects one argument")
+            emitted.append(IfRevert(Call("iszero", (parse_supported_expr(args[0]),))))
+            return True
+
+        if name == "assert_helper":
+            if len(args) != 1:
+                raise UnsupportedYulError("assert_helper expects one argument")
+            emitted.append(
+                IfRevert(revert_condition_for_assert(parse_supported_expr(args[0])))
+            )
+            return True
+
+        if name == "update_storage_value_offset_0_t_uint256_to_t_uint256":
+            if len(args) != 2:
+                raise UnsupportedYulError(f"{name} expects two arguments")
+            slot = literal_value(args[0])
+            if slot != 0:
+                raise UnsupportedYulError(f"unsupported storage write slot: {slot}")
+            value = parse_supported_expr(args[1])
+            emitted.append(Store(Literal(slot), value))
+            storage[slot] = value
+            return True
+
+        return False
+
+    for _line_number, raw_line in function.body_lines:
+        line = raw_line.strip()
+        if not line or line in {"{", "}"}:
+            continue
+
+        let_match = re.fullmatch(rf"let ({IDENT}) := (.+)", line)
+        if let_match is not None:
+            env[let_match.group(1)] = summarize_expr(let_match.group(2))
+            continue
+
+        if handle_call_statement(line):
+            continue
+
+        raise UnsupportedYulError(f"unsupported Counter solc statement: {line}")
+
+    return YulObject(
+        name="Counter",
+        function=Function("inc", ("amount",), tuple(emitted)),
     )
 
 
@@ -456,6 +674,14 @@ def build_parser() -> argparse.ArgumentParser:
             "classify the generated function body matching NAME"
         ),
     )
+    parser.add_argument(
+        "--summarize-function",
+        metavar="NAME",
+        help=(
+            "Within solc-style IR, summarize the generated function body "
+            "matching NAME into the current canonical Counter restricted Yul shape"
+        ),
+    )
     return parser
 
 
@@ -466,6 +692,21 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     text = args.source.read_text()
+    if args.summarize_function:
+        try:
+            summary = summarize_solc_function_text(text, args.summarize_function)
+        except UnsupportedYulError as exc:
+            print(f"unsupported solc function summary: {exc}")
+            return 2
+        print(
+            json.dumps(
+                solc_function_summary_to_data(summary),
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return 0
+
     if args.inspect_function:
         inspection = inspect_solc_function_text(text, args.inspect_function)
         print(f"{inspection.kind}: {inspection.message}")

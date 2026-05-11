@@ -113,9 +113,28 @@ helpers only; they are not part of the general restricted Yul equivalence
 subset. The inspector also summarizes `require_helper(condition)` as a revert
 guard for classification.
 
-The next subset target is the storage read helper
-`read_from_storage_split_offset_0_t_uint256`, followed by checked-add and
-storage update helpers.
+The Counter-specific summary mode gets through the storage read helper,
+checked-add helper, storage update helper, and assert helper:
+
+```bash
+python3 scripts/classify_yul.py --summarize-function inc build/Counter.solc.yul
+```
+
+It emits deterministic JSON containing a normalized restricted Counter Yul
+shape. This summary is checked against the Lean-exported Counter Yul artifact in
+tests. It is still a trusted inspection summary, not semantic equivalence
+against real solc IR.
+
+Current trusted Counter summary rules:
+
+- `require_helper(condition)` becomes a revert guard.
+- `read_from_storage_split_offset_0_t_uint256(0)` becomes `sload(0)`.
+- `checked_add_t_uint256(old, amount)` becomes `add(old, amount)` plus the
+  checked-add overflow guard.
+- `update_storage_value_offset_0_t_uint256_to_t_uint256(0, value)` becomes
+  `sstore(0, value)`.
+- `assert_helper(iszero(lt(lhs, rhs)))` becomes the final `lt(lhs, rhs)` revert
+  guard.
 
 After that, the real IR also contains constructs outside the subset:
 

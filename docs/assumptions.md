@@ -68,6 +68,10 @@ results.
   one-argument value helpers and `require_helper` are summarized for
   classification only. The current first unsupported function-body expression is
   `read_from_storage_split_offset_0_t_uint256`.
+- The explicit solc function-summary mode recognizes the current Counter
+  storage read, checked-add, storage update, and assert-helper patterns and
+  emits a canonical restricted Counter Yul shape. This is trusted Python pattern
+  recognition, not verified solc parsing or semantic equivalence.
 - The Python emitter, Python parser, Solidity source, and real solc output are
   not yet connected to the Lean compiler by a verified translation. Current
   Python tests provide auditable structural alignment for Counter only.

@@ -76,6 +76,10 @@ inspector also summarizes transparent value helpers such as
 guard. The current first function-body blocker is
 `read_from_storage_split_offset_0_t_uint256`.
 
-That is progress, but it is still classification rather than verification. The
-next useful boundary is to summarize that storage read helper and classify
-again until the blocker is checked addition or storage update logic.
+The Counter-specific summary mode goes further: it recognizes the current
+storage read helper, checked-add helper, storage update helper, and assert
+helper patterns, then emits the canonical restricted Counter Yul shape. Tests
+compare that normalized shape with the Lean-exported Counter Yul artifact.
+
+That is progress, but it is still trusted Python pattern recognition rather than
+verified solc parsing or semantic equivalence.

@@ -261,6 +261,17 @@ python3 scripts/classify_yul.py --inspect-function inc build/Counter.solc.yul
 This currently selects `fun_inc_*` in the deployed object and reports the first
 unsupported function-body construct.
 
+Summarize the generated Counter function body into the current canonical
+restricted Counter Yul shape:
+
+```bash
+python3 scripts/classify_yul.py --summarize-function inc build/Counter.solc.yul
+```
+
+This is a trusted, Counter-specific inspection summary. It checks structural
+alignment with the Lean-owned Counter Yul shape in tests, but it is not a proof
+of semantic equivalence with real solc IR.
+
 Compare two Yul files using the current symbolic restricted-subset
 state-transform checker:
 
