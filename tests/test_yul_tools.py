@@ -15,6 +15,8 @@ from scripts.classify_yul import (
     inspect_solc_function_text,
     inspect_solc_text,
     main as classify_yul_main,
+    summarize_require_helper,
+    summarize_solc_inspection_line,
     summarize_transparent_helpers,
 )
 from scripts.check_equiv import main as check_equiv_main
@@ -57,7 +59,10 @@ object "Counter_26" {
         let expr_9 := var_amount_5
         let expr_10 := 0x00
         let expr_11 := gt(cleanup_t_uint256(expr_9), expr_10)
-        require_helper(expr_9)
+        require_helper(expr_11)
+        let _2 := var_amount_5
+        let expr_15 := _2
+        let _3 := read_from_storage_split_offset_0_t_uint256(0x00)
       }
     }
   }
@@ -293,10 +298,10 @@ class ClassifyYulTests(unittest.TestCase):
     def test_solc_function_inspection_selects_fun_inc_body(self) -> None:
         inspection = inspect_solc_function_text(SOLC_COUNTER_IR_SAMPLE, "inc")
 
-        self.assertEqual(inspection.kind, "unsupported-statement")
+        self.assertEqual(inspection.kind, "unsupported-expression")
         self.assertIsNotNone(inspection.selected_function)
         self.assertEqual(inspection.selected_function.name, "fun_inc_25")
-        self.assertIn("require_helper", inspection.message)
+        self.assertIn("read_from_storage_split_offset_0_t_uint256", inspection.message)
 
     def test_transparent_solc_value_helpers_are_summarized(self) -> None:
         self.assertEqual(
@@ -312,6 +317,18 @@ class ClassifyYulTests(unittest.TestCase):
                 "let x := cleanup_t_uint256(identity(cleanup_t_uint256(value)))"
             ),
             "let x := value",
+        )
+
+    def test_require_helper_is_summarized_as_revert_guard(self) -> None:
+        self.assertEqual(
+            summarize_require_helper("require_helper(expr_11)"),
+            "if iszero(expr_11) { revert(0, 0) }",
+        )
+        self.assertEqual(
+            summarize_solc_inspection_line(
+                "require_helper(cleanup_t_uint256(expr_11))"
+            ),
+            "if iszero(expr_11) { revert(0, 0) }",
         )
 
     def test_solc_function_inspection_can_accept_supported_body(self) -> None:

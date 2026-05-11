@@ -72,10 +72,10 @@ further: it identifies the deployed object and reports memory setup such as
 The function inspection mode gets past deployment/runtime setup and identifies
 the generated `fun_inc_*` body. Hexadecimal literals are now supported; the
 inspector also summarizes transparent value helpers such as
-`cleanup_t_uint256`. The current first function-body blocker is
-`require_helper(expr_11)`.
+`cleanup_t_uint256` and summarizes `require_helper(condition)` as a revert
+guard. The current first function-body blocker is
+`read_from_storage_split_offset_0_t_uint256`.
 
 That is progress, but it is still classification rather than verification. The
-next useful boundary is to summarize `require_helper(condition)` as a revert
-guard and classify again until the blocker is checked addition or storage
-update logic.
+next useful boundary is to summarize that storage read helper and classify
+again until the blocker is checked addition or storage update logic.

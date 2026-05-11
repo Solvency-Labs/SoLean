@@ -101,7 +101,7 @@ It selects `fun_inc_*` inside the deployed object. For current Counter IR, the
 first function-body blocker is:
 
 ```text
-unsupported-statement: ... line ...: unsupported statement: require_helper(expr_11)
+unsupported-expression: ... line ...: unsupported expression function: read_from_storage_split_offset_0_t_uint256
 ```
 
 Hexadecimal literals are now parsed into the same `Literal` AST node as decimal
@@ -110,10 +110,12 @@ also summarizes explicitly trusted one-argument value helpers such as
 `cleanup_t_uint256`, `identity`, and
 `convert_t_rational_0_by_1_to_t_uint256`. These summaries are classification
 helpers only; they are not part of the general restricted Yul equivalence
-subset.
+subset. The inspector also summarizes `require_helper(condition)` as a revert
+guard for classification.
 
-The next subset target is `require_helper`, followed by checked-add and storage
-update helpers.
+The next subset target is the storage read helper
+`read_from_storage_split_offset_0_t_uint256`, followed by checked-add and
+storage update helpers.
 
 After that, the real IR also contains constructs outside the subset:
 

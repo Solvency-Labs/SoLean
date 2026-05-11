@@ -175,12 +175,17 @@ Done:
   inspection, including `cleanup_t_uint256`, `identity`, and
   `convert_t_rational_0_by_1_to_t_uint256`. After this, the first current
   `fun_inc_*` blocker is `require_helper(expr_11)`.
+- Summarize `require_helper(condition)` as a revert guard for classification.
+  After this, the first current `fun_inc_*` blocker is
+  `read_from_storage_split_offset_0_t_uint256`.
 
 Next tasks:
 
-- Add an explicit summary for `require_helper(condition)` as a revert guard.
-- Classify again and decide between `checked_add_t_uint256` and storage helper
-  expansion.
+- Add an explicit summary for the solc storage read helper
+  `read_from_storage_split_offset_0_t_uint256(slot)` as `sload(slot)` for the
+  Counter slot-0 path.
+- Classify again and decide between `checked_add_t_uint256` and storage update
+  helper expansion.
 
 Definition of done:
 
@@ -232,7 +237,7 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Summarize solc require_helper as a revert guard.
+Summarize the solc Counter storage read helper.
 ```
 
 Why this matters:
@@ -240,13 +245,13 @@ Why this matters:
 - We can now select the real `fun_inc_*` body from solc IR.
 - Hex literals and transparent value helper wrappers are now handled by the
   inspection layer.
-- The first actual function-body blocker is now `require_helper(expr_11)`,
-  which corresponds to Solidity's `require(amount > 0)` path.
+- `require_helper` is now summarized as a revert guard, and the first actual
+  function-body blocker is now `read_from_storage_split_offset_0_t_uint256`.
 
 Smallest useful version:
 
-1. Treat `require_helper(condition)` as an inspected revert guard equivalent to
-   `if iszero(condition) { revert(0, 0) }` for classification purposes.
+1. Treat `read_from_storage_split_offset_0_t_uint256(slot)` as `sload(slot)` for
+   classification purposes.
 2. Re-run `--inspect-function inc` on real Counter solc IR and record the next
    unsupported function-body construct.
 3. Keep this as classification only; do not claim semantic equivalence.

@@ -296,7 +296,7 @@ def classify_function_body(function: SolcFunctionBlock) -> Classification:
     for line_number, line in function.body_lines:
         if line in {"{", "}"}:
             continue
-        summarized_line = summarize_transparent_helpers(line)
+        summarized_line = summarize_solc_inspection_line(line)
         try:
             parse_stmt(summarized_line)
         except UnsupportedYulError as exc:
@@ -309,6 +309,22 @@ def classify_function_body(function: SolcFunctionBlock) -> Classification:
         "supported-subset",
         f"supported restricted subset function body: {function.name}",
     )
+
+
+def summarize_solc_inspection_line(text: str) -> str:
+    summarized = summarize_transparent_helpers(text)
+    return summarize_require_helper(summarized)
+
+
+def summarize_require_helper(text: str) -> str:
+    match = re.fullmatch(r"require_helper\((.*)\)", text)
+    if match is None:
+        return text
+    args = split_top_level_args(match.group(1))
+    if len(args) != 1:
+        return text
+    condition = summarize_transparent_helpers(args[0])
+    return f"if iszero({condition}) {{ revert(0, 0) }}"
 
 
 def summarize_transparent_helpers(text: str) -> str:
