@@ -171,13 +171,16 @@ Done:
 - Parse hexadecimal integer literals in the restricted Python Yul subset. After
   this, the first current `fun_inc_*` blocker is the helper call
   `cleanup_t_uint256`.
+- Summarize explicitly trusted transparent value helpers in solc function-body
+  inspection, including `cleanup_t_uint256`, `identity`, and
+  `convert_t_rational_0_by_1_to_t_uint256`. After this, the first current
+  `fun_inc_*` blocker is `require_helper(expr_11)`.
 
 Next tasks:
 
-- Add explicit helper-function summaries for transparent value helpers such as
-  `cleanup_t_uint256`, `identity`, and rational-to-uint conversion.
-- Classify again and decide between `require_helper`, `checked_add_t_uint256`,
-  and storage helper expansion.
+- Add an explicit summary for `require_helper(condition)` as a revert guard.
+- Classify again and decide between `checked_add_t_uint256` and storage helper
+  expansion.
 
 Definition of done:
 
@@ -229,21 +232,21 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Summarize transparent solc Counter helper calls.
+Summarize solc require_helper as a revert guard.
 ```
 
 Why this matters:
 
 - We can now select the real `fun_inc_*` body from solc IR.
-- Hex literals are now supported, and the first actual function-body blocker is
-  `cleanup_t_uint256`.
-- The cleanup/conversion helpers are compiler boilerplate around values, so
-  summarizing them would expose the next semantic blocker in the checked
-  arithmetic/storage path.
+- Hex literals and transparent value helper wrappers are now handled by the
+  inspection layer.
+- The first actual function-body blocker is now `require_helper(expr_11)`,
+  which corresponds to Solidity's `require(amount > 0)` path.
 
 Smallest useful version:
 
-1. Add a trusted helper-summary mode for transparent one-argument value helpers.
+1. Treat `require_helper(condition)` as an inspected revert guard equivalent to
+   `if iszero(condition) { revert(0, 0) }` for classification purposes.
 2. Re-run `--inspect-function inc` on real Counter solc IR and record the next
    unsupported function-body construct.
 3. Keep this as classification only; do not claim semantic equivalence.

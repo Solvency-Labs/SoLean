@@ -101,13 +101,19 @@ It selects `fun_inc_*` inside the deployed object. For current Counter IR, the
 first function-body blocker is:
 
 ```text
-unsupported-expression: ... line ...: unsupported expression function: cleanup_t_uint256
+unsupported-statement: ... line ...: unsupported statement: require_helper(expr_11)
 ```
 
 Hexadecimal literals are now parsed into the same `Literal` AST node as decimal
-literals and render back canonically as decimal. The next subset target is
-helper calls such as `cleanup_t_uint256`, `require_helper`,
-`checked_add_t_uint256`, and storage update helpers.
+literals and render back canonically as decimal. The solc function inspector
+also summarizes explicitly trusted one-argument value helpers such as
+`cleanup_t_uint256`, `identity`, and
+`convert_t_rational_0_by_1_to_t_uint256`. These summaries are classification
+helpers only; they are not part of the general restricted Yul equivalence
+subset.
+
+The next subset target is `require_helper`, followed by checked-add and storage
+update helpers.
 
 After that, the real IR also contains constructs outside the subset:
 

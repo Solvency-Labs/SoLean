@@ -87,8 +87,15 @@ UNSUPPORTED_STATEMENT_PREFIXES = (
     "revert(",
     "switch ",
 )
+IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
 OBJECT_HEADER_RE = re.compile(r'object "([^"]+)" \{')
-FUNCTION_HEADER_RE = re.compile(r"function ([A-Za-z_][A-Za-z0-9_]*)\([^)]*\)(?: -> [^{]+)? \{")
+FUNCTION_HEADER_RE = re.compile(rf"function ({IDENT})\([^)]*\)(?: -> [^{{]+)? \{{")
+TRANSPARENT_VALUE_HELPERS = {
+    "cleanup_t_rational_0_by_1",
+    "cleanup_t_uint256",
+    "convert_t_rational_0_by_1_to_t_uint256",
+    "identity",
+}
 
 
 def classify_text(text: str) -> Classification:
@@ -289,10 +296,11 @@ def classify_function_body(function: SolcFunctionBlock) -> Classification:
     for line_number, line in function.body_lines:
         if line in {"{", "}"}:
             continue
+        summarized_line = summarize_transparent_helpers(line)
         try:
-            parse_stmt(line)
+            parse_stmt(summarized_line)
         except UnsupportedYulError as exc:
-            classification = _classify_unsupported(line, exc)
+            classification = _classify_unsupported(summarized_line, exc)
             return Classification(
                 classification.kind,
                 f"line {line_number}: {classification.message}",
@@ -301,6 +309,70 @@ def classify_function_body(function: SolcFunctionBlock) -> Classification:
         "supported-subset",
         f"supported restricted subset function body: {function.name}",
     )
+
+
+def summarize_transparent_helpers(text: str) -> str:
+    """Remove explicitly trusted one-argument solc value wrappers.
+
+    This is only used by solc function-body inspection. It is not a general Yul
+    parser and does not expand helper semantics for equivalence checking.
+    """
+
+    current = text
+    while True:
+        summarized = _summarize_one_transparent_helper(current)
+        if summarized == current:
+            return current
+        current = summarized
+
+
+def _summarize_one_transparent_helper(text: str) -> str:
+    for match in re.finditer(rf"\b({IDENT})\(", text):
+        name = match.group(1)
+        if name not in TRANSPARENT_VALUE_HELPERS:
+            continue
+        open_index = match.end() - 1
+        close_index = find_matching_paren(text, open_index)
+        if close_index is None:
+            continue
+        args = split_top_level_args(text[open_index + 1 : close_index])
+        if len(args) != 1:
+            continue
+        replacement = summarize_transparent_helpers(args[0])
+        return text[: match.start()] + replacement + text[close_index + 1 :]
+    return text
+
+
+def find_matching_paren(text: str, open_index: int) -> int | None:
+    depth = 0
+    for index in range(open_index, len(text)):
+        char = text[index]
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+            if depth == 0:
+                return index
+    return None
+
+
+def split_top_level_args(raw: str) -> list[str]:
+    args: list[str] = []
+    depth = 0
+    start = 0
+    for index, char in enumerate(raw):
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif char == "," and depth == 0:
+            args.append(raw[start:index].strip())
+            start = index + 1
+
+    tail = raw[start:].strip()
+    if tail:
+        args.append(tail)
+    return args
 
 
 def _classify_unsupported(text: str, exc: UnsupportedYulError) -> Classification:

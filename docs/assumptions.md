@@ -64,8 +64,9 @@ results.
   object and currently reports memory setup such as
   `mstore(64, memoryguard(128))` as the next unsupported blocker.
 - The explicit solc function-inspection mode selects the generated `fun_inc_*`
-  body for `inc`. Hexadecimal integer literals are parsed; the current first
-  unsupported function-body expression is the helper call `cleanup_t_uint256`.
+  body for `inc`. Hexadecimal integer literals are parsed, and transparent
+  one-argument value helpers are summarized for classification only. The
+  current first unsupported function-body statement is `require_helper(expr_11)`.
 - The Python emitter, Python parser, Solidity source, and real solc output are
   not yet connected to the Lean compiler by a verified translation. Current
   Python tests provide auditable structural alignment for Counter only.
