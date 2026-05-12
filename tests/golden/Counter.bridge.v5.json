@@ -78,6 +78,12 @@
       "trust": "trusted-summary-tested"
     },
     {
+      "message": "solc summary trace replay matches the Lean Yul artifact.",
+      "name": "solcTraceReplayToLeanYul",
+      "status": "passed",
+      "trust": "trace-replay-tested"
+    },
+    {
       "message": "solc summary trusted rules match the Lean bridge manifest.",
       "name": "solcTrustedRulesToLeanManifest",
       "status": "passed",
@@ -106,7 +112,7 @@
     "solc IR summarization is trusted Counter-specific pattern recognition.",
     "This report is not semantic equivalence against real solc Yul."
   ],
-  "reportVersion": 4,
+  "reportVersion": 5,
   "solc": {
     "sourceFunction": "fun_inc_25",
     "sourceObject": "Counter_26_deployed",
@@ -337,6 +343,101 @@
         "sourceLine": 24
       }
     ],
+    "traceReplay": {
+      "function": {
+        "body": [
+          {
+            "cond": {
+              "args": [
+                {
+                  "args": [
+                    {
+                      "ident": "amount"
+                    },
+                    {
+                      "const": 0
+                    }
+                  ],
+                  "call": "gt"
+                }
+              ],
+              "call": "iszero"
+            },
+            "stmt": "ifRevert"
+          },
+          {
+            "expr": {
+              "args": [
+                {
+                  "const": 0
+                }
+              ],
+              "call": "sload"
+            },
+            "name": "old_x",
+            "stmt": "let"
+          },
+          {
+            "expr": {
+              "args": [
+                {
+                  "ident": "old_x"
+                },
+                {
+                  "ident": "amount"
+                }
+              ],
+              "call": "add"
+            },
+            "name": "new_x",
+            "stmt": "let"
+          },
+          {
+            "cond": {
+              "args": [
+                {
+                  "ident": "new_x"
+                },
+                {
+                  "ident": "old_x"
+                }
+              ],
+              "call": "lt"
+            },
+            "stmt": "ifRevert"
+          },
+          {
+            "slot": {
+              "const": 0
+            },
+            "stmt": "sstore",
+            "value": {
+              "ident": "new_x"
+            }
+          },
+          {
+            "cond": {
+              "args": [
+                {
+                  "ident": "new_x"
+                },
+                {
+                  "ident": "amount"
+                }
+              ],
+              "call": "lt"
+            },
+            "stmt": "ifRevert"
+          }
+        ],
+        "name": "inc",
+        "params": [
+          "amount"
+        ]
+      },
+      "object": "Counter"
+    },
+    "traceReplayMatchesNormalized": true,
     "trustedRules": [
       "hexLiteralAsNat",
       "cleanupUint256AsIdentity",

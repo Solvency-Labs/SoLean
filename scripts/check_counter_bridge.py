@@ -41,7 +41,7 @@ LIMITATIONS = [
     "This report is not semantic equivalence against real solc Yul.",
 ]
 
-REPORT_VERSION = 4
+REPORT_VERSION = 5
 
 
 def stable_json(data: Any) -> str:
@@ -145,7 +145,12 @@ def format_markdown_report(report: dict[str, Any]) -> str:
 
     lines.extend(["", "## Tested Against Lean Artifacts", ""])
     for check in report.get("checks", []):
-        if check.get("trust") in {"tested", "trusted-summary-tested", "Lean-owned manifest"}:
+        if check.get("trust") in {
+            "tested",
+            "trusted-summary-tested",
+            "trace-replay-tested",
+            "Lean-owned manifest",
+        }:
             marker = "PASS" if check.get("status") == "passed" else "FAIL"
             lines.append(
                 f"- **{marker}** `{check.get('name')}`: {check.get('message')}"
@@ -164,6 +169,27 @@ def format_markdown_report(report: dict[str, Any]) -> str:
             )
     else:
         lines.append("- No solc summary trace available.")
+
+    lines.extend(["", "## Solc Trace Replay", ""])
+    replay = report.get("solc", {}).get("traceReplay")
+    replay_check = next(
+        (
+            check
+            for check in report.get("checks", [])
+            if check.get("name") == "solcTraceReplayToLeanYul"
+        ),
+        None,
+    )
+    if replay_check is not None:
+        marker = "PASS" if replay_check.get("status") == "passed" else "FAIL"
+        lines.append(f"- **{marker}** {replay_check.get('message')}")
+    if replay is not None:
+        body = replay.get("function", {}).get("body", [])
+        lines.append(
+            f"- Replayed trace emits `{len(body)}` restricted Yul statements."
+        )
+    else:
+        lines.append("- No trace replay artifact available.")
 
     lines.extend(["", "## Lean-Backed Adapter Rules", ""])
     backed = lean_backed_rules(report)
@@ -227,6 +253,7 @@ def build_counter_bridge_report(
         "sourceFunction": None,
         "trustedRules": [],
         "trace": [],
+        "traceReplay": None,
     }
     solc_summary_rules: list[str] | None = None
 
@@ -290,6 +317,10 @@ def build_counter_bridge_report(
                 "sourceFunction": summary_data["sourceFunction"],
                 "trustedRules": summary_data["trustedRules"],
                 "trace": summary_data["trace"],
+                "traceReplay": summary_data["traceReplay"],
+                "traceReplayMatchesNormalized": summary_data[
+                    "traceReplayMatchesNormalized"
+                ],
             }
             solc_summary_rules = summary_data["trustedRules"]
             checks.append(
@@ -302,12 +333,29 @@ def build_counter_bridge_report(
                     "solc Counter function summary does not match the Lean Yul artifact.",
                 )
             )
+            checks.append(
+                check_data(
+                    "solcTraceReplayToLeanYul",
+                    "trace-replay-tested",
+                    summary_data["traceReplay"],
+                    lean_yul,
+                    "solc summary trace replay matches the Lean Yul artifact.",
+                    "solc summary trace replay does not match the Lean Yul artifact.",
+                )
+            )
         except UnsupportedYulError as exc:
             checks.append(
                 failed_check(
                     "solcFunctionSummaryToLeanYul",
                     "trusted-summary-tested",
                     f"unsupported solc Counter function summary: {exc}",
+                )
+            )
+            checks.append(
+                failed_check(
+                    "solcTraceReplayToLeanYul",
+                    "trace-replay-tested",
+                    "solc summary did not produce a trace replay to compare",
                 )
             )
         except Exception as exc:
@@ -318,12 +366,26 @@ def build_counter_bridge_report(
                     f"solc Counter function summary failed: {exc}",
                 )
             )
+            checks.append(
+                failed_check(
+                    "solcTraceReplayToLeanYul",
+                    "trace-replay-tested",
+                    "solc summary did not produce a trace replay to compare",
+                )
+            )
     else:
         checks.append(
             failed_check(
                 "solcFunctionSummaryToLeanYul",
                 "trusted-summary-tested",
                 f"solc Yul file not found: {solc_yul_path}",
+            )
+        )
+        checks.append(
+            failed_check(
+                "solcTraceReplayToLeanYul",
+                "trace-replay-tested",
+                "solc summary did not produce a trace replay to compare",
             )
         )
 
@@ -422,6 +484,7 @@ def main(argv: list[str] | None = None) -> int:
                 "sourceFunction": None,
                 "trustedRules": [],
                 "trace": [],
+                "traceReplay": None,
             },
             "limitations": LIMITATIONS,
         }
@@ -443,6 +506,7 @@ def main(argv: list[str] | None = None) -> int:
                 "sourceFunction": None,
                 "trustedRules": [],
                 "trace": [],
+                "traceReplay": None,
             },
             "limitations": LIMITATIONS,
         }

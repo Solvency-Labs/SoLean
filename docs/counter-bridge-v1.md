@@ -91,7 +91,7 @@ python3 scripts/check_counter_bridge.py \
   --solc-yul build/Counter.solc.yul
 ```
 
-See `docs/counter-bridge-v4.md` for the current bridge report boundary.
+See `docs/counter-bridge-v5.md` for the current bridge report boundary.
 
 That is progress, but it is still trusted Python pattern recognition rather than
 verified solc parsing or semantic equivalence.

@@ -15,6 +15,7 @@ from scripts.classify_yul import (
     inspect_solc_function_text,
     inspect_solc_text,
     main as classify_yul_main,
+    replay_solc_summary_trace,
     solc_function_summary_to_data,
     summarize_solc_function_text,
     summarize_require_helper,
@@ -546,10 +547,37 @@ class ClassifyYulTests(unittest.TestCase):
             lean_artifact("yul-json"),
         )
         self.assertEqual(
+            summary_data["traceReplay"],
+            lean_artifact("yul-json"),
+        )
+        self.assertTrue(summary_data["traceReplayMatchesNormalized"])
+        self.assertEqual(
             summary_data["trustedRules"],
             expected_counter_summary_rules(),
         )
         self.assertNotIn("transparentValueHelper", summary_data["trustedRules"])
+
+    def test_solc_counter_function_trace_replays_to_normalized_yul(self) -> None:
+        summary = summarize_solc_function_text(SOLC_COUNTER_IR_SAMPLE, "inc")
+
+        self.assertEqual(
+            object_to_data(replay_solc_summary_trace(summary.trace)),
+            solc_function_summary_to_data(summary)["normalized"],
+        )
+
+    def test_solc_trace_replay_rejects_unknown_effect_kind(self) -> None:
+        summary = summarize_solc_function_text(SOLC_COUNTER_IR_SAMPLE, "inc")
+        entry_type = type(summary.trace[0])
+        bad_entry = entry_type(
+            source_line=1,
+            source="mystery()",
+            rule="mysteryRule",
+            effect={"kind": "mystery"},
+            lean_proof="",
+        )
+
+        with self.assertRaises(UnsupportedYulError):
+            replay_solc_summary_trace((bad_entry,))
 
     def test_solc_counter_function_summary_trace_is_deterministic_and_proof_linked(self) -> None:
         first = solc_function_summary_to_data(
@@ -598,6 +626,8 @@ class ClassifyYulTests(unittest.TestCase):
         data = json.loads(output.getvalue())
         self.assertEqual(data["kind"], "solcFunctionSummary")
         self.assertEqual(data["normalized"], lean_artifact("yul-json"))
+        self.assertEqual(data["traceReplay"], lean_artifact("yul-json"))
+        self.assertTrue(data["traceReplayMatchesNormalized"])
         self.assertEqual(data["trustedRules"], expected_counter_summary_rules())
         self.assertGreater(len(data["trace"]), 0)
 
@@ -655,15 +685,17 @@ class CounterBridgeTests(unittest.TestCase):
             )
 
         self.assertEqual(report["kind"], "counterBridgeReport")
-        self.assertEqual(report["reportVersion"], 4)
+        self.assertEqual(report["reportVersion"], 5)
         self.assertEqual(report["status"], "passed")
         self.assertEqual(
             [check["status"] for check in report["checks"]],
-            ["passed", "passed", "passed", "passed"],
+            ["passed", "passed", "passed", "passed", "passed"],
         )
         self.assertEqual(report["solc"]["sourceFunction"], "fun_inc_25")
         self.assertEqual(report["solc"]["trustedRules"], expected_counter_summary_rules())
         self.assertGreater(len(report["solc"]["trace"]), 0)
+        self.assertEqual(report["solc"]["traceReplay"], lean_artifact("yul-json"))
+        self.assertTrue(report["solc"]["traceReplayMatchesNormalized"])
         self.assertEqual(
             report["bridgeManifest"]["expectedTrustedRules"],
             expected_counter_summary_rules(),
@@ -693,7 +725,7 @@ class CounterBridgeTests(unittest.TestCase):
         self.assertEqual(second_code, 0)
         self.assertEqual(first.getvalue(), second.getvalue())
         self.assertEqual(json.loads(first.getvalue())["status"], "passed")
-        self.assertEqual(json.loads(first.getvalue())["reportVersion"], 4)
+        self.assertEqual(json.loads(first.getvalue())["reportVersion"], 5)
 
     def test_counter_bridge_report_matches_golden_fixture(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -708,7 +740,7 @@ class CounterBridgeTests(unittest.TestCase):
 
         self.assertEqual(
             stable_json(report),
-            Path("tests/golden/Counter.bridge.v4.json").read_text(),
+            Path("tests/golden/Counter.bridge.v5.json").read_text(),
         )
 
     def test_counter_bridge_cli_outputs_markdown_report(self) -> None:
@@ -728,10 +760,12 @@ class CounterBridgeTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         report = output.getvalue()
-        self.assertIn("Report version: `4`", report)
+        self.assertIn("Report version: `5`", report)
         self.assertIn("## Proved In Lean", report)
         self.assertIn("## Tested Against Lean Artifacts", report)
         self.assertIn("## Solc Summary Trace", report)
+        self.assertIn("## Solc Trace Replay", report)
+        self.assertIn("Replayed trace emits `6` restricted Yul statements.", report)
         self.assertIn("## Lean-Backed Adapter Rules", report)
         self.assertIn("## Still Trusted Boundaries", report)
         self.assertIn("## Explicit Non-Claims", report)

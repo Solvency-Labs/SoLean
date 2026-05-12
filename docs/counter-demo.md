@@ -75,8 +75,10 @@ The solc function summary also emits a line-by-line trace that maps normalized
 solc lines to bridge rules, restricted-Yul effects, and Lean proof references
 when available.
 
-The bridge report JSON is versioned as `reportVersion: 4` and checked against
-`tests/golden/Counter.bridge.v4.json`. That fixture is a presentation/audit
+Bridge v5 replays those trace effects back into restricted Yul and checks the
+replayed program against the Lean-owned Counter Yul artifact. The bridge report
+JSON is versioned as `reportVersion: 5` and checked against
+`tests/golden/Counter.bridge.v5.json`. That fixture is a presentation/audit
 regression artifact: it makes the current Counter boundary stable enough to
 review, but it does not turn the trusted Python recognizers into verified code.
 

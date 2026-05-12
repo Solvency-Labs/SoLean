@@ -44,8 +44,9 @@ This is real progress, but it does not yet start from Solidity text or real
 `solc` output.
 
 See `docs/counter-bridge-v1.md` for the crisp Counter success condition,
-`docs/counter-bridge-v2.md` for the first auditable bridge report, and
-`docs/counter-bridge-v4.md` for the current line-auditable bridge boundary.
+`docs/counter-bridge-v2.md` for the first auditable bridge report,
+`docs/counter-bridge-v4.md` for the line-auditable bridge boundary, and
+`docs/counter-bridge-v5.md` for the current trace-replay bridge boundary.
 
 ## Current State
 
@@ -224,8 +225,12 @@ Done:
 - Add a deterministic solc summary trace that maps normalized `fun_inc_*` lines
   to bridge rules, restricted-Yul effects, and Lean proof references when
   available.
-- Stabilize the Counter bridge JSON report as `reportVersion: 4` and check it
-  against `tests/golden/Counter.bridge.v4.json`.
+- Stabilize the Counter bridge JSON report as a checked golden artifact,
+  initially at `reportVersion: 4`.
+- Replay the solc summary trace effects into restricted Yul, compare that
+  replayed program with the Lean-exported Counter Yul artifact, and stabilize
+  the resulting `reportVersion: 5` report against
+  `tests/golden/Counter.bridge.v5.json`.
 - Keep `hexLiteralAsNat` as explicit parser-level trust and cover the narrow
   hex-literal parser behavior with focused tests.
 - Add Markdown bridge-report output and a one-command Counter demo runner.
@@ -262,6 +267,9 @@ Definition of done:
   one exists.
 - The bridge report is a checked audit artifact, with a committed golden
   fixture generated from test fixtures rather than local `build/` outputs.
+- The solc summary trace is replayable: the restricted-Yul effects shown in the
+  trace reconstruct the same Counter Yul artifact that the bridge compares
+  against Lean.
 
 ### 4. Replace Bounded Trace Checks With Small Semantics
 
@@ -308,23 +316,24 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Reduce the remaining trusted recognizer boundary for the Counter bridge.
+Move one recognizer assumption into a Lean-owned expected trace shape.
 ```
 
 Why this matters:
 
-- The current bridge report is versioned and checked by a golden artifact, but
-  it still depends on trusted Python recognition of Counter Solidity and solc
-  `fun_inc_*` structure.
-- The strongest next move is to shrink or cross-check that recognizer trust
-  without adding a broad Solidity or Yul parser.
+- The current bridge report is versioned, golden-checked, and replay-checks its
+  own solc trace effects.
+- It still depends on trusted Python recognition of which solc lines matter and
+  which bridge rules they instantiate.
+- A Lean-owned expected trace skeleton would make rule order and emitted
+  statement shape less dependent on Python-only tests.
 
 Smallest useful version:
 
-1. Add a second independently rendered view of the solc summary, preferably a
-   compact source-to-effect table checked against the JSON trace.
-2. Move one more recognizer assumption into a Lean-exported expected shape or
-   a tiny independent parser check.
+1. Export a small Lean artifact describing the expected Counter bridge rule
+   skeleton, excluding volatile solc line numbers.
+2. Check the Python solc trace against that Lean-owned skeleton in the bridge
+   report.
 3. Keep the result documented as trust reduction, not verified solc parsing or
    real Yul equivalence.
 

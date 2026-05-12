@@ -17,19 +17,20 @@ try:
         Expr,
         Function,
         Ident,
-    IfRevert,
-    Let,
-    Literal,
-    Stmt,
-    Store,
-    UnsupportedYulError,
-    YulObject,
-    expr_to_data,
-    object_to_data,
-    parse_expr,
-    parse_object,
-    stmt_to_data,
-)
+        IfRevert,
+        Let,
+        Literal,
+        Stmt,
+        Store,
+        UnsupportedYulError,
+        YulObject,
+        expr_to_data,
+        object_to_data,
+        parse_expr,
+        parse_object,
+        stmt_from_data,
+        stmt_to_data,
+    )
 except ImportError:  # Allows `python scripts/classify_yul.py ...`.
     from normalize_yul import normalize_text
     from yul_subset import (
@@ -37,19 +38,20 @@ except ImportError:  # Allows `python scripts/classify_yul.py ...`.
         Expr,
         Function,
         Ident,
-    IfRevert,
-    Let,
-    Literal,
-    Stmt,
-    Store,
-    UnsupportedYulError,
-    YulObject,
-    expr_to_data,
-    object_to_data,
-    parse_expr,
-    parse_object,
-    stmt_to_data,
-)
+        IfRevert,
+        Let,
+        Literal,
+        Stmt,
+        Store,
+        UnsupportedYulError,
+        YulObject,
+        expr_to_data,
+        object_to_data,
+        parse_expr,
+        parse_object,
+        stmt_from_data,
+        stmt_to_data,
+    )
 
 
 @dataclass(frozen=True)
@@ -118,6 +120,7 @@ class SolcFunctionSummary:
     selected_object: SolcObjectBlock
     selected_function: SolcFunctionBlock
     normalized_object: YulObject
+    trace_replay_object: YulObject
     trusted_rules: tuple[str, ...]
     trace: tuple[SolcSummaryTraceEntry, ...]
 
@@ -284,10 +287,16 @@ def summarize_solc_function_text(text: str, function_query: str) -> SolcFunction
     normalized_object, trusted_rules, trace = normalize_counter_function_body(
         selected_function
     )
+    trace_replay_object = replay_solc_summary_trace(trace)
+    if trace_replay_object != normalized_object:
+        raise UnsupportedYulError(
+            "solc summary trace replay did not match normalized restricted Yul"
+        )
     return SolcFunctionSummary(
         selected_object=selected_object,
         selected_function=selected_function,
         normalized_object=normalized_object,
+        trace_replay_object=trace_replay_object,
         trusted_rules=trusted_rules,
         trace=trace,
     )
@@ -300,6 +309,10 @@ def solc_function_summary_to_data(summary: SolcFunctionSummary) -> dict:
         "sourceObject": summary.selected_object.name,
         "trustedRules": list(summary.trusted_rules),
         "trace": [solc_summary_trace_entry_to_data(entry) for entry in summary.trace],
+        "traceReplay": object_to_data(summary.trace_replay_object),
+        "traceReplayMatchesNormalized": (
+            summary.trace_replay_object == summary.normalized_object
+        ),
         "normalized": object_to_data(summary.normalized_object),
     }
 
@@ -312,6 +325,37 @@ def solc_summary_trace_entry_to_data(entry: SolcSummaryTraceEntry) -> dict:
         "source": entry.source,
         "sourceLine": entry.source_line,
     }
+
+
+def replay_solc_summary_trace(
+    trace: tuple[SolcSummaryTraceEntry, ...],
+) -> YulObject:
+    """Reconstruct restricted Counter Yul from declared trace effects.
+
+    This is a small consistency check for the trusted solc summarizer. The
+    recognizer may still be trusted, but its public line-by-line effects must
+    replay to the same restricted Yul program that the summary reports.
+    """
+
+    body: list[Stmt] = []
+    for entry in trace:
+        effect = entry.effect
+        kind = effect.get("kind")
+        if kind == "emitStmt":
+            body.append(stmt_from_data(effect["stmt"]))
+        elif kind == "emitStmts":
+            body.extend(stmt_from_data(stmt) for stmt in effect["stmts"])
+        elif kind in {"hexLiteral", "transparentHelper", "readCachedSlot"}:
+            continue
+        else:
+            raise UnsupportedYulError(
+                f"unsupported solc summary trace effect kind: {kind}"
+            )
+
+    return YulObject(
+        name="Counter",
+        function=Function("inc", ("amount",), tuple(body)),
+    )
 
 
 def find_object_blocks(text: str) -> list[SolcObjectBlock]:

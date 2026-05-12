@@ -9,10 +9,9 @@ one exists.
 This is still not verified Solidity parsing, verified solc parsing, or semantic
 equivalence with real solc Yul.
 
-Bridge v4.1 stabilizes this report as a checked audit artifact. The JSON report
-now carries `reportVersion: 4`, and tests compare the fixture-backed report with
-`tests/golden/Counter.bridge.v4.json`. That golden file is a regression target
-for the audit boundary; it is not a proof about real solc semantics.
+Bridge v4.1 stabilized this report as a checked audit artifact. Bridge v5 adds
+trace replay on top of that line-auditable trace; see
+`docs/counter-bridge-v5.md`.
 
 ## Success Condition
 
@@ -41,7 +40,8 @@ value and does not verify Python string parsing.
 
 ## Checked Report Artifact
 
-`scripts/check_counter_bridge.py` emits a deterministic JSON shape with:
+At the v4.1 boundary, `scripts/check_counter_bridge.py` emitted a deterministic
+JSON shape with:
 
 - `reportVersion: 4`
 - Lean artifact names and hashes
@@ -50,11 +50,9 @@ value and does not verify Python string parsing.
 - the solc summary trace
 - explicit limitations
 
-The committed golden report is generated from the checked Counter Solidity file
-and the solc IR fixture embedded in the Python tests, not from local
-`build/` artifacts. If the report shape, Lean artifact hashes, bridge manifest,
-or solc summary trace changes, the golden test fails and forces a reviewer to
-look at the boundary change.
+Bridge v5 supersedes that checked artifact with `reportVersion: 5` and adds
+trace replay. See `docs/counter-bridge-v5.md` for the currently checked golden
+report.
 
 ## Trust Boundary
 
