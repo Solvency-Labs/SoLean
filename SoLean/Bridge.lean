@@ -234,5 +234,88 @@ theorem counterTarget_refines_source
                 hAdd, hWrap, hNotOverflow]
 
 end CheckedAdd
+
+namespace StorageRead
+
+/--
+Source-side semantics of the current solc storage-read helper when its result
+is bound to a local.
+
+This is intentionally tiny: it models only the storage value returned by the
+helper. It does not model packed storage, byte offsets, or arbitrary Solidity
+storage layouts. The current Counter bridge instantiates this at slot `0`.
+-/
+def step (target : String) (slot : Slot) (storage : Storage)
+    (locals : Yul.Locals) : Yul.StepResult :=
+  .ok storage (Yul.Locals.write locals target (storage.read slot))
+
+/--
+The restricted Yul target shape for the storage-read helper:
+`let target := sload(slot)`.
+-/
+def target (targetName : String) (slot : Slot) : Yul.Stmt :=
+  .let_ targetName (.sload slot)
+
+/--
+The storage-read helper rewrite is sound under the restricted Lean Yul
+semantics. This backs the current `storageReadSlot0AsSload` rule when
+instantiated with slot `0`.
+
+This does not prove that the Python solc-IR recognizer correctly identifies
+the helper inside real solc output; that parser-level boundary remains trusted.
+-/
+theorem target_refines_source
+    (targetName : String) (slot : Slot) (storage : Storage)
+    (locals : Yul.Locals) :
+    Yul.execStmt (target targetName slot) storage locals =
+      step targetName slot storage locals := by
+  simp [target, step, Yul.execStmt, Yul.evalExpr]
+
+end StorageRead
+
+namespace StorageWrite
+
+/--
+Source-side semantics of the current solc storage-write helper.
+
+This is intentionally tiny: it evaluates the restricted Yul expression and
+writes the resulting value to the requested slot. It does not model packed
+storage, byte offsets, or arbitrary Solidity storage layouts. The current
+Counter bridge instantiates this at slot `0`.
+-/
+def step (slot : Slot) (value : Yul.Expr) (storage : Storage)
+    (locals : Yul.Locals) : Yul.StepResult :=
+  match Yul.evalExpr storage locals value with
+  | some evaluated => .ok (Storage.write storage slot evaluated) locals
+  | none => .revert
+
+/--
+The restricted Yul target shape for the storage-write helper:
+`sstore(slot, value)`.
+-/
+def target (slot : Slot) (value : Yul.Expr) : Yul.Stmt :=
+  .sstore slot value
+
+/--
+The storage-write helper rewrite is sound under the restricted Lean Yul
+semantics. This backs the current `storageUpdateSlot0AsSstore` rule when
+instantiated with slot `0`.
+
+This does not prove that the Python solc-IR recognizer correctly identifies
+the helper inside real solc output; that parser-level boundary remains trusted.
+-/
+theorem target_refines_source
+    (slot : Slot) (value : Yul.Expr) (storage : Storage)
+    (locals : Yul.Locals) :
+    Yul.execStmt (target slot value) storage locals =
+      step slot value storage locals := by
+  unfold target step Yul.execStmt
+  cases hValue : Yul.evalExpr storage locals value with
+  | none =>
+      simp [hValue]
+  | some evaluated =>
+      simp [hValue]
+
+end StorageWrite
 end Bridge
 end SoLean

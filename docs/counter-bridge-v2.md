@@ -86,6 +86,16 @@ correctly inside real solc output; the parser-level boundary is still trusted.
 What it does establish is that, once recognized, the textual rewrite is sound
 with respect to the existing Lean Yul model.
 
+`storageReadSlot0AsSload` is Lean-backed by
+`SoLean.Bridge.StorageRead.target_refines_source`. The theorem is generic over
+a storage slot, and the Counter bridge uses it at slot `0` to justify:
+
+```text
+read_from_storage_split_offset_0_t_uint256(0)  ~>  sload(0)
+```
+
+under the restricted Lean Yul semantics.
+
 `assertHelperAsRevertGuard` is also Lean-backed. The theorem
 `SoLean.Bridge.AssertHelper.targetForIszero_refines_source` proves the current
 Counter-specific rewrite:
@@ -110,6 +120,18 @@ The proof also contains the arithmetic fact that if checked `UInt256` addition
 fails, the wrapping Yul sum is below the left-hand input. This is still
 Counter-specific and still assumes the Python recognizer has identified the
 right helper call.
+
+`storageUpdateSlot0AsSstore` is Lean-backed by
+`SoLean.Bridge.StorageWrite.target_refines_source`. The theorem is generic over
+a storage slot and value expression, and the Counter bridge uses it at slot `0`
+to justify:
+
+```text
+update_storage_value_offset_0_t_uint256_to_t_uint256(0, value)
+  ~>  sstore(0, value)
+```
+
+under the restricted Lean Yul semantics.
 
 The remaining rules currently have an empty `leanProof` field. Each is a
 candidate for future trust-reduction work in the same shape: add a tiny Lean

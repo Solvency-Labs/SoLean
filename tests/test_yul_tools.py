@@ -244,6 +244,13 @@ class YulSubsetTests(unittest.TestCase):
             require_entry["leanProof"],
             "SoLean.Bridge.RequireHelper.target_refines_source",
         )
+        storage_read_entry = next(
+            entry for entry in rule_proofs if entry["rule"] == "storageReadSlot0AsSload"
+        )
+        self.assertEqual(
+            storage_read_entry["leanProof"],
+            "SoLean.Bridge.StorageRead.target_refines_source",
+        )
         checked_add_entry = next(
             entry
             for entry in rule_proofs
@@ -252,6 +259,15 @@ class YulSubsetTests(unittest.TestCase):
         self.assertEqual(
             checked_add_entry["leanProof"],
             "SoLean.Bridge.CheckedAdd.counterTarget_refines_source",
+        )
+        storage_write_entry = next(
+            entry
+            for entry in rule_proofs
+            if entry["rule"] == "storageUpdateSlot0AsSstore"
+        )
+        self.assertEqual(
+            storage_write_entry["leanProof"],
+            "SoLean.Bridge.StorageWrite.target_refines_source",
         )
         assert_entry = next(
             entry for entry in rule_proofs if entry["rule"] == "assertHelperAsRevertGuard"
@@ -590,7 +606,9 @@ class CounterBridgeTests(unittest.TestCase):
         self.assertIn("## Lean-Backed Adapter Rules", report)
         self.assertIn("## Still Trusted Boundaries", report)
         self.assertIn("## Explicit Non-Claims", report)
+        self.assertIn("SoLean.Bridge.StorageRead.target_refines_source", report)
         self.assertIn("SoLean.Bridge.CheckedAdd.counterTarget_refines_source", report)
+        self.assertIn("SoLean.Bridge.StorageWrite.target_refines_source", report)
         self.assertIn("SoLean.Bridge.AssertHelper.targetForIszero_refines_source", report)
 
     def test_counter_bridge_reports_source_shape_mismatch(self) -> None:

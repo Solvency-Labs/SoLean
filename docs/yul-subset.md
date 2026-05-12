@@ -151,10 +151,11 @@ lake env lean --run SoLean/CounterArtifactsMain.lean bridge-json
 ```
 
 The manifest also records which rule translations have Lean-backed semantics.
-At the moment, `requireHelperAsRevertGuard`,
-`checkedAddUInt256AsAddWithOverflowGuard`, and `assertHelperAsRevertGuard`
-have non-empty Lean proof references. The recognizer that finds those patterns
-inside real solc text is still trusted Python code.
+At the moment, `requireHelperAsRevertGuard`, `storageReadSlot0AsSload`,
+`checkedAddUInt256AsAddWithOverflowGuard`, `storageUpdateSlot0AsSstore`, and
+`assertHelperAsRevertGuard` have non-empty Lean proof references. The
+recognizer that finds those patterns inside real solc text is still trusted
+Python code.
 
 The Python bridge report checks the observed rule list against that manifest.
 This makes the boundary easier to audit, but the recognizers are still trusted

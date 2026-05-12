@@ -175,10 +175,12 @@ def counterBridgeRuleProofs : List BridgeRuleProof :=
     { rule := "transparentValueHelper",                   leanProof := "" },
     { rule := "requireHelperAsRevertGuard",
       leanProof := "SoLean.Bridge.RequireHelper.target_refines_source" },
-    { rule := "storageReadSlot0AsSload",                  leanProof := "" },
+    { rule := "storageReadSlot0AsSload",
+      leanProof := "SoLean.Bridge.StorageRead.target_refines_source" },
     { rule := "checkedAddUInt256AsAddWithOverflowGuard",
       leanProof := "SoLean.Bridge.CheckedAdd.counterTarget_refines_source" },
-    { rule := "storageUpdateSlot0AsSstore",               leanProof := "" },
+    { rule := "storageUpdateSlot0AsSstore",
+      leanProof := "SoLean.Bridge.StorageWrite.target_refines_source" },
     { rule := "assertHelperAsRevertGuard",
       leanProof := "SoLean.Bridge.AssertHelper.targetForIszero_refines_source" }
   ]
@@ -210,6 +212,8 @@ def counterBridgeManifest : Json :=
       "SoLean.Bridge.AssertHelper.targetForIszero_refines_source",
       "SoLean.Bridge.CheckedAdd.counterTarget_refines_source",
       "SoLean.Bridge.RequireHelper.target_refines_source",
+      "SoLean.Bridge.StorageRead.target_refines_source",
+      "SoLean.Bridge.StorageWrite.target_refines_source",
       "SoLean.Examples.Counter.inc_assertion_safe",
       "SoLean.Examples.CounterCompiler.compile_counter_eq_counter_yul",
       "SoLean.Examples.CounterCompiler.compiled_counter_refines_solean_success",
