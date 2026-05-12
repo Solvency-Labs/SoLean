@@ -25,6 +25,7 @@ from scripts.check_equiv import main as check_equiv_main
 from scripts.check_counter_bridge import (
     build_counter_bridge_report,
     main as check_counter_bridge_main,
+    stable_json,
 )
 from scripts.demo_counter_bridge import main as demo_counter_bridge_main
 from scripts.normalize_yul import normalize_text
@@ -654,6 +655,7 @@ class CounterBridgeTests(unittest.TestCase):
             )
 
         self.assertEqual(report["kind"], "counterBridgeReport")
+        self.assertEqual(report["reportVersion"], 4)
         self.assertEqual(report["status"], "passed")
         self.assertEqual(
             [check["status"] for check in report["checks"]],
@@ -691,6 +693,23 @@ class CounterBridgeTests(unittest.TestCase):
         self.assertEqual(second_code, 0)
         self.assertEqual(first.getvalue(), second.getvalue())
         self.assertEqual(json.loads(first.getvalue())["status"], "passed")
+        self.assertEqual(json.loads(first.getvalue())["reportVersion"], 4)
+
+    def test_counter_bridge_report_matches_golden_fixture(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            solidity, solc_yul = self.write_bridge_inputs(tmp)
+            report = build_counter_bridge_report(
+                solidity,
+                solc_yul,
+                lean_source=lean_artifact("source-json"),
+                lean_yul=lean_artifact("yul-json"),
+                lean_manifest=lean_artifact("bridge-json"),
+            )
+
+        self.assertEqual(
+            stable_json(report),
+            Path("tests/golden/Counter.bridge.v4.json").read_text(),
+        )
 
     def test_counter_bridge_cli_outputs_markdown_report(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -709,6 +728,7 @@ class CounterBridgeTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         report = output.getvalue()
+        self.assertIn("Report version: `4`", report)
         self.assertIn("## Proved In Lean", report)
         self.assertIn("## Tested Against Lean Artifacts", report)
         self.assertIn("## Solc Summary Trace", report)

@@ -41,6 +41,8 @@ LIMITATIONS = [
     "This report is not semantic equivalence against real solc Yul.",
 ]
 
+REPORT_VERSION = 4
+
 
 def stable_json(data: Any) -> str:
     return json.dumps(data, indent=2, sort_keys=True) + "\n"
@@ -129,6 +131,7 @@ def format_markdown_report(report: dict[str, Any]) -> str:
         "# Counter Bridge Report",
         "",
         f"Status: **{report.get('status', 'failed')}**",
+        f"Report version: `{report.get('reportVersion', REPORT_VERSION)}`",
         "",
         "## Proved In Lean",
         "",
@@ -347,6 +350,7 @@ def build_counter_bridge_report(
     status = "passed" if all(check["status"] == "passed" for check in checks) else "failed"
     return {
         "kind": "counterBridgeReport",
+        "reportVersion": REPORT_VERSION,
         "status": status,
         "leanArtifacts": {
             "source": {
@@ -403,6 +407,7 @@ def main(argv: list[str] | None = None) -> int:
     except subprocess.CalledProcessError as exc:
         report = {
             "kind": "counterBridgeReport",
+            "reportVersion": REPORT_VERSION,
             "status": "failed",
             "checks": [
                 failed_check(
@@ -423,6 +428,7 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:
         report = {
             "kind": "counterBridgeReport",
+            "reportVersion": REPORT_VERSION,
             "status": "failed",
             "checks": [
                 failed_check(

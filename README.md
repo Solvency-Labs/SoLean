@@ -125,6 +125,10 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── assumptions.md
 │   ├── compiler.md
 │   ├── counter-bridge-v1.md
+│   ├── counter-bridge-v2.md
+│   ├── counter-bridge-v3.md
+│   ├── counter-bridge-v4.md
+│   ├── counter-demo.md
 │   ├── counter-yul.md
 │   ├── counter.md
 │   ├── roadmap.md
@@ -155,10 +159,13 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── normalize_yul.py
 │   ├── classify_yul.py
 │   ├── check_equiv.py
+│   ├── check_counter_bridge.py
+│   ├── demo_counter_bridge.py
 │   ├── solidity_to_solean.py
 │   └── yul_subset.py
 └── tests/
     ├── golden/
+    │   ├── Counter.bridge.v4.json
     │   └── Counter.solean.yul
     ├── README.md
     └── test_yul_tools.py
@@ -294,7 +301,9 @@ Python Counter Yul emitter, and trusted solc `fun_inc_*` summary back to
 Lean-owned artifacts. It also checks the observed solc summary rules against a
 Lean-owned bridge manifest. A passing report is an audit/regression signal, not
 a proof of Solidity parsing or semantic equivalence with solc output. See
-`docs/counter-bridge-v4.md` for the current line-auditable bridge boundary.
+`docs/counter-bridge-v4.md` for the current line-auditable bridge boundary. The
+JSON report is versioned as `reportVersion: 4` and checked against
+`tests/golden/Counter.bridge.v4.json` in the Python test suite.
 
 Run the full Counter research demo:
 

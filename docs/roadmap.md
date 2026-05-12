@@ -224,6 +224,8 @@ Done:
 - Add a deterministic solc summary trace that maps normalized `fun_inc_*` lines
   to bridge rules, restricted-Yul effects, and Lean proof references when
   available.
+- Stabilize the Counter bridge JSON report as `reportVersion: 4` and check it
+  against `tests/golden/Counter.bridge.v4.json`.
 - Keep `hexLiteralAsNat` as explicit parser-level trust and cover the narrow
   hex-literal parser behavior with focused tests.
 - Add Markdown bridge-report output and a one-command Counter demo runner.
@@ -258,6 +260,8 @@ Definition of done:
 - The solc function summary is line-auditable: each trace entry names the solc
   source line, bridge rule, restricted-Yul effect, and Lean proof reference when
   one exists.
+- The bridge report is a checked audit artifact, with a committed golden
+  fixture generated from test fixtures rather than local `build/` outputs.
 
 ### 4. Replace Bounded Trace Checks With Small Semantics
 
@@ -304,25 +308,25 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Stabilize the Counter bridge report as a checked artifact.
+Reduce the remaining trusted recognizer boundary for the Counter bridge.
 ```
 
 Why this matters:
 
-- The expected solc summary rule list is Lean-owned and checked by the
-  bridge report.
-- The Counter bridge report now carries source, Yul, manifest, rules, and solc
-  trace data in one deterministic JSON shape.
-- If this shape is intended to be cited in demos or papers, it should become a
-  deliberately versioned artifact rather than just script output.
+- The current bridge report is versioned and checked by a golden artifact, but
+  it still depends on trusted Python recognition of Counter Solidity and solc
+  `fun_inc_*` structure.
+- The strongest next move is to shrink or cross-check that recognizer trust
+  without adding a broad Solidity or Yul parser.
 
 Smallest useful version:
 
-1. Decide whether to add a `reportVersion` field and golden report fixture.
-2. If yes, add a deterministic fixture generated from the current Counter solc
-   sample, excluding local `build/` artifacts.
-3. Keep the fixture documented as an audit/regression artifact, not a proof of
-   real solc equivalence.
+1. Add a second independently rendered view of the solc summary, preferably a
+   compact source-to-effect table checked against the JSON trace.
+2. Move one more recognizer assumption into a Lean-exported expected shape or
+   a tiny independent parser check.
+3. Keep the result documented as trust reduction, not verified solc parsing or
+   real Yul equivalence.
 
 ## Updating This Roadmap
 

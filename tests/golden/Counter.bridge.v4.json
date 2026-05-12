@@ -1,0 +1,352 @@
+{
+  "bridgeManifest": {
+    "bridgeRuleProofs": [
+      {
+        "leanProof": "",
+        "rule": "hexLiteralAsNat"
+      },
+      {
+        "leanProof": "SoLean.Bridge.TransparentHelper.cleanupUint256_refines_source",
+        "rule": "cleanupUint256AsIdentity"
+      },
+      {
+        "leanProof": "SoLean.Bridge.TransparentHelper.convertRationalZeroByOneToUint256_refines_source",
+        "rule": "convertRationalZeroByOneToUint256AsIdentity"
+      },
+      {
+        "leanProof": "SoLean.Bridge.RequireHelper.target_refines_source",
+        "rule": "requireHelperAsRevertGuard"
+      },
+      {
+        "leanProof": "SoLean.Bridge.StorageRead.target_refines_source",
+        "rule": "storageReadSlot0AsSload"
+      },
+      {
+        "leanProof": "SoLean.Bridge.CheckedAdd.counterTarget_refines_source",
+        "rule": "checkedAddUInt256AsAddWithOverflowGuard"
+      },
+      {
+        "leanProof": "SoLean.Bridge.StorageWrite.target_refines_source",
+        "rule": "storageUpdateSlot0AsSstore"
+      },
+      {
+        "leanProof": "SoLean.Bridge.AssertHelper.targetForIszero_refines_source",
+        "rule": "assertHelperAsRevertGuard"
+      }
+    ],
+    "expectedTrustedRules": [
+      "hexLiteralAsNat",
+      "cleanupUint256AsIdentity",
+      "convertRationalZeroByOneToUint256AsIdentity",
+      "requireHelperAsRevertGuard",
+      "storageReadSlot0AsSload",
+      "checkedAddUInt256AsAddWithOverflowGuard",
+      "storageUpdateSlot0AsSstore",
+      "assertHelperAsRevertGuard"
+    ],
+    "proofReferences": [
+      "SoLean.Bridge.AssertHelper.targetForIszero_refines_source",
+      "SoLean.Bridge.CheckedAdd.counterTarget_refines_source",
+      "SoLean.Bridge.RequireHelper.target_refines_source",
+      "SoLean.Bridge.StorageRead.target_refines_source",
+      "SoLean.Bridge.StorageWrite.target_refines_source",
+      "SoLean.Bridge.TransparentHelper.cleanupUint256_refines_source",
+      "SoLean.Bridge.TransparentHelper.convertRationalZeroByOneToUint256_refines_source",
+      "SoLean.Examples.Counter.inc_assertion_safe",
+      "SoLean.Examples.CounterCompiler.compile_counter_eq_counter_yul",
+      "SoLean.Examples.CounterCompiler.compiled_counter_refines_solean_success",
+      "SoLean.Examples.CounterCompiler.compiled_counter_success_assertion"
+    ]
+  },
+  "checks": [
+    {
+      "message": "Counter Solidity source shape matches the Lean source artifact.",
+      "name": "soliditySourceToLeanSource",
+      "status": "passed",
+      "trust": "tested"
+    },
+    {
+      "message": "Python-emitted restricted Yul matches the Lean Yul artifact.",
+      "name": "pythonYulEmitterToLeanYul",
+      "status": "passed",
+      "trust": "tested"
+    },
+    {
+      "message": "solc Counter function summary matches the Lean Yul artifact.",
+      "name": "solcFunctionSummaryToLeanYul",
+      "status": "passed",
+      "trust": "trusted-summary-tested"
+    },
+    {
+      "message": "solc summary trusted rules match the Lean bridge manifest.",
+      "name": "solcTrustedRulesToLeanManifest",
+      "status": "passed",
+      "trust": "Lean-owned manifest"
+    }
+  ],
+  "kind": "counterBridgeReport",
+  "leanArtifacts": {
+    "bridgeManifest": {
+      "name": "SoLean.Artifacts.counterBridgeManifestJson",
+      "sha256": "45bcbd3d3fdb7dd78f16cb62c3e4d1d3853eefe1db7766537f16221772f13a48"
+    },
+    "source": {
+      "name": "SoLean.Examples.CounterCompiler.counterFunction",
+      "sha256": "dada079e8734de88aeaa3b96fa1d0818c080a0f4a431c9d0569da166f74165f2"
+    },
+    "yul": {
+      "name": "SoLean.Examples.CounterYul.counterProgram",
+      "sha256": "8f7b8cae23c675a7761720953e46a3af7fe61f994407dea25fd5b7b149a6e7f2"
+    }
+  },
+  "limitations": [
+    "Counter-only bridge audit.",
+    "Solidity parsing is trusted deterministic Python parsing for one tiny subset.",
+    "Python Yul rendering is tested against Lean-owned artifacts, not verified.",
+    "solc IR summarization is trusted Counter-specific pattern recognition.",
+    "This report is not semantic equivalence against real solc Yul."
+  ],
+  "reportVersion": 4,
+  "solc": {
+    "sourceFunction": "fun_inc_25",
+    "sourceObject": "Counter_26_deployed",
+    "trace": [
+      {
+        "effect": {
+          "kind": "hexLiteral",
+          "literal": "0x00",
+          "value": {
+            "const": 0
+          }
+        },
+        "leanProof": "",
+        "rule": "hexLiteralAsNat",
+        "source": "let expr_10 := 0x00",
+        "sourceLine": 11
+      },
+      {
+        "effect": {
+          "helper": "cleanup_t_uint256",
+          "kind": "transparentHelper"
+        },
+        "leanProof": "SoLean.Bridge.TransparentHelper.cleanupUint256_refines_source",
+        "rule": "cleanupUint256AsIdentity",
+        "source": "let expr_11 := gt(cleanup_t_uint256(expr_9), convert_t_rational_0_by_1_to_t_uint256(expr_10))",
+        "sourceLine": 12
+      },
+      {
+        "effect": {
+          "helper": "convert_t_rational_0_by_1_to_t_uint256",
+          "kind": "transparentHelper"
+        },
+        "leanProof": "SoLean.Bridge.TransparentHelper.convertRationalZeroByOneToUint256_refines_source",
+        "rule": "convertRationalZeroByOneToUint256AsIdentity",
+        "source": "let expr_11 := gt(cleanup_t_uint256(expr_9), convert_t_rational_0_by_1_to_t_uint256(expr_10))",
+        "sourceLine": 12
+      },
+      {
+        "effect": {
+          "kind": "emitStmt",
+          "stmt": {
+            "cond": {
+              "args": [
+                {
+                  "args": [
+                    {
+                      "ident": "amount"
+                    },
+                    {
+                      "const": 0
+                    }
+                  ],
+                  "call": "gt"
+                }
+              ],
+              "call": "iszero"
+            },
+            "stmt": "ifRevert"
+          }
+        },
+        "leanProof": "SoLean.Bridge.RequireHelper.target_refines_source",
+        "rule": "requireHelperAsRevertGuard",
+        "source": "require_helper(expr_11)",
+        "sourceLine": 13
+      },
+      {
+        "effect": {
+          "kind": "hexLiteral",
+          "literal": "0x00",
+          "value": {
+            "const": 0
+          }
+        },
+        "leanProof": "",
+        "rule": "hexLiteralAsNat",
+        "source": "let _3 := read_from_storage_split_offset_0_t_uint256(0x00)",
+        "sourceLine": 16
+      },
+      {
+        "effect": {
+          "kind": "emitStmt",
+          "stmt": {
+            "expr": {
+              "args": [
+                {
+                  "const": 0
+                }
+              ],
+              "call": "sload"
+            },
+            "name": "old_x",
+            "stmt": "let"
+          }
+        },
+        "leanProof": "SoLean.Bridge.StorageRead.target_refines_source",
+        "rule": "storageReadSlot0AsSload",
+        "source": "let _3 := read_from_storage_split_offset_0_t_uint256(0x00)",
+        "sourceLine": 16
+      },
+      {
+        "effect": {
+          "kind": "emitStmts",
+          "stmts": [
+            {
+              "expr": {
+                "args": [
+                  {
+                    "ident": "old_x"
+                  },
+                  {
+                    "ident": "amount"
+                  }
+                ],
+                "call": "add"
+              },
+              "name": "new_x",
+              "stmt": "let"
+            },
+            {
+              "cond": {
+                "args": [
+                  {
+                    "ident": "new_x"
+                  },
+                  {
+                    "ident": "old_x"
+                  }
+                ],
+                "call": "lt"
+              },
+              "stmt": "ifRevert"
+            }
+          ]
+        },
+        "leanProof": "SoLean.Bridge.CheckedAdd.counterTarget_refines_source",
+        "rule": "checkedAddUInt256AsAddWithOverflowGuard",
+        "source": "let expr_16 := checked_add_t_uint256(_3, expr_15)",
+        "sourceLine": 17
+      },
+      {
+        "effect": {
+          "kind": "hexLiteral",
+          "literal": "0x00",
+          "value": {
+            "const": 0
+          }
+        },
+        "leanProof": "",
+        "rule": "hexLiteralAsNat",
+        "source": "update_storage_value_offset_0_t_uint256_to_t_uint256(0x00, expr_16)",
+        "sourceLine": 18
+      },
+      {
+        "effect": {
+          "kind": "emitStmt",
+          "stmt": {
+            "slot": {
+              "const": 0
+            },
+            "stmt": "sstore",
+            "value": {
+              "ident": "new_x"
+            }
+          }
+        },
+        "leanProof": "SoLean.Bridge.StorageWrite.target_refines_source",
+        "rule": "storageUpdateSlot0AsSstore",
+        "source": "update_storage_value_offset_0_t_uint256_to_t_uint256(0x00, expr_16)",
+        "sourceLine": 18
+      },
+      {
+        "effect": {
+          "kind": "hexLiteral",
+          "literal": "0x00",
+          "value": {
+            "const": 0
+          }
+        },
+        "leanProof": "",
+        "rule": "hexLiteralAsNat",
+        "source": "let _4 := read_from_storage_split_offset_0_t_uint256(0x00)",
+        "sourceLine": 19
+      },
+      {
+        "effect": {
+          "expr": {
+            "ident": "new_x"
+          },
+          "kind": "readCachedSlot",
+          "slot": 0
+        },
+        "leanProof": "SoLean.Bridge.StorageRead.target_refines_source",
+        "rule": "storageReadSlot0AsSload",
+        "source": "let _4 := read_from_storage_split_offset_0_t_uint256(0x00)",
+        "sourceLine": 19
+      },
+      {
+        "effect": {
+          "helper": "cleanup_t_uint256",
+          "kind": "transparentHelper"
+        },
+        "leanProof": "SoLean.Bridge.TransparentHelper.cleanupUint256_refines_source",
+        "rule": "cleanupUint256AsIdentity",
+        "source": "let expr_21 := iszero(lt(cleanup_t_uint256(expr_19), cleanup_t_uint256(expr_20)))",
+        "sourceLine": 23
+      },
+      {
+        "effect": {
+          "kind": "emitStmt",
+          "stmt": {
+            "cond": {
+              "args": [
+                {
+                  "ident": "new_x"
+                },
+                {
+                  "ident": "amount"
+                }
+              ],
+              "call": "lt"
+            },
+            "stmt": "ifRevert"
+          }
+        },
+        "leanProof": "SoLean.Bridge.AssertHelper.targetForIszero_refines_source",
+        "rule": "assertHelperAsRevertGuard",
+        "source": "assert_helper(expr_21)",
+        "sourceLine": 24
+      }
+    ],
+    "trustedRules": [
+      "hexLiteralAsNat",
+      "cleanupUint256AsIdentity",
+      "convertRationalZeroByOneToUint256AsIdentity",
+      "requireHelperAsRevertGuard",
+      "storageReadSlot0AsSload",
+      "checkedAddUInt256AsAddWithOverflowGuard",
+      "storageUpdateSlot0AsSstore",
+      "assertHelperAsRevertGuard"
+    ]
+  },
+  "status": "passed"
+}

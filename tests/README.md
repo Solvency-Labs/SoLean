@@ -15,6 +15,9 @@ Current checks:
   deployed-object and generated-function-body inspection for solc-style IR.
 - The tests compare the trusted solc Counter function summary with the
   Lean-exported Counter Yul artifact.
+- The tests compare the full fixture-backed Counter bridge report with
+  `tests/golden/Counter.bridge.v4.json`, which stabilizes the report as an
+  audit/regression artifact.
 
 Future tests should add small golden files for normalization and equivalence
 checking before adding broader generated examples.
