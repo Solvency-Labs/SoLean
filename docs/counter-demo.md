@@ -71,6 +71,9 @@ semantic helper rewrite except hex-literal parsing:
 - `assertHelperAsRevertGuard`
 
 The exact proof names are exported in the Lean-owned `bridge-json` manifest.
+The solc function summary also emits a line-by-line trace that maps normalized
+solc lines to bridge rules, restricted-Yul effects, and Lean proof references
+when available.
 
 ## Non-Claims
 
@@ -101,8 +104,8 @@ These Counter solc summary rules are still trusted Python pattern recognition:
 - `hexLiteralAsNat`
 
 The transparent helper bundle from Bridge v2 has been split into concrete rule
-names. The next question is whether `hexLiteralAsNat` should remain explicit
-parser-level trust or become a tiny checked literal-parser path.
+names. Bridge v4 keeps `hexLiteralAsNat` as explicit parser-level trust and
+hard-tests the narrow hex literal parser behavior.
 
 ## Useful Commands
 

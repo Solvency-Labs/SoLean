@@ -148,6 +148,20 @@ def format_markdown_report(report: dict[str, Any]) -> str:
                 f"- **{marker}** `{check.get('name')}`: {check.get('message')}"
             )
 
+    lines.extend(["", "## Solc Summary Trace", ""])
+    trace = report.get("solc", {}).get("trace", [])
+    if trace:
+        for entry in trace:
+            effect = json.dumps(entry.get("effect", {}), sort_keys=True)
+            proof = entry.get("leanProof")
+            proof_text = f"; proof `{proof}`" if proof else "; parser-level trust"
+            lines.append(
+                f"- line {entry.get('sourceLine')}: `{entry.get('source')}` "
+                f"=> `{entry.get('rule')}`; effect `{effect}`{proof_text}"
+            )
+    else:
+        lines.append("- No solc summary trace available.")
+
     lines.extend(["", "## Lean-Backed Adapter Rules", ""])
     backed = lean_backed_rules(report)
     if backed:
@@ -160,7 +174,10 @@ def format_markdown_report(report: dict[str, Any]) -> str:
 
     lines.extend(["", "## Still Trusted Boundaries", ""])
     for rule in pending_rules(report):
-        lines.append(f"- `{rule}` remains trusted Python pattern recognition.")
+        if rule == "hexLiteralAsNat":
+            lines.append(f"- `{rule}` remains trusted parser-level literal parsing.")
+        else:
+            lines.append(f"- `{rule}` remains trusted Python pattern recognition.")
     lines.extend(
         [
             "- The Solidity parser is Counter-only and trusted.",
@@ -206,6 +223,7 @@ def build_counter_bridge_report(
         "sourceObject": None,
         "sourceFunction": None,
         "trustedRules": [],
+        "trace": [],
     }
     solc_summary_rules: list[str] | None = None
 
@@ -268,6 +286,7 @@ def build_counter_bridge_report(
                 "sourceObject": summary_data["sourceObject"],
                 "sourceFunction": summary_data["sourceFunction"],
                 "trustedRules": summary_data["trustedRules"],
+                "trace": summary_data["trace"],
             }
             solc_summary_rules = summary_data["trustedRules"]
             checks.append(
@@ -397,6 +416,7 @@ def main(argv: list[str] | None = None) -> int:
                 "sourceObject": None,
                 "sourceFunction": None,
                 "trustedRules": [],
+                "trace": [],
             },
             "limitations": LIMITATIONS,
         }
@@ -416,6 +436,7 @@ def main(argv: list[str] | None = None) -> int:
                 "sourceObject": None,
                 "sourceFunction": None,
                 "trustedRules": [],
+                "trace": [],
             },
             "limitations": LIMITATIONS,
         }

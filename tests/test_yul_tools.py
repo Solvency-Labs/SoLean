@@ -36,10 +36,12 @@ from scripts.solidity_to_solean import (
 )
 from scripts.solean_to_yul import main as solean_to_yul_main
 from scripts.yul_subset import (
+    Literal,
     SymCall,
     SymConst,
     UINT256_MAX,
     TraceCase,
+    UnsupportedYulError,
     compare_counter_traces,
     compare_symbolic_summaries,
     counter_object,
@@ -47,6 +49,7 @@ from scripts.yul_subset import (
     object_to_data,
     object_from_data,
     parse_object,
+    parse_expr,
     render_object,
     run_counter_trace,
     summarize_symbolic,
@@ -315,6 +318,17 @@ class YulSubsetTests(unittest.TestCase):
         self.assertIn("function inc(amount)", rendered)
         self.assertIn("if lt(new_x, old_x) { revert(0, 0) }", rendered)
 
+    def test_hex_integer_literals_are_parsed_narrowly(self) -> None:
+        self.assertEqual(parse_expr("0x00"), Literal(0))
+        self.assertEqual(parse_expr("0x01"), Literal(1))
+        self.assertEqual(parse_expr("0X0A"), Literal(10))
+        self.assertEqual(parse_expr("0x0c55699c"), Literal(int("0c55699c", 16)))
+
+        with self.assertRaises(UnsupportedYulError):
+            parse_expr("0xzz")
+        with self.assertRaises(UnsupportedYulError):
+            parse_expr("-0x01")
+
     def test_solean_to_yul_emits_parseable_counter_subset(self) -> None:
         output = io.StringIO()
         with contextlib.redirect_stdout(output):
@@ -536,6 +550,40 @@ class ClassifyYulTests(unittest.TestCase):
         )
         self.assertNotIn("transparentValueHelper", summary_data["trustedRules"])
 
+    def test_solc_counter_function_summary_trace_is_deterministic_and_proof_linked(self) -> None:
+        first = solc_function_summary_to_data(
+            summarize_solc_function_text(SOLC_COUNTER_IR_SAMPLE, "inc")
+        )
+        second = solc_function_summary_to_data(
+            summarize_solc_function_text(SOLC_COUNTER_IR_SAMPLE, "inc")
+        )
+        manifest = lean_artifact("bridge-json")
+        expected_rules = set(manifest["expectedTrustedRules"])
+
+        self.assertEqual(first["trace"], second["trace"])
+        self.assertGreater(len(first["trace"]), 0)
+        self.assertNotIn("transparentValueHelper", [entry["rule"] for entry in first["trace"]])
+
+        for entry in first["trace"]:
+            self.assertIn(entry["rule"], expected_rules)
+            self.assertIn("sourceLine", entry)
+            self.assertIn("source", entry)
+            self.assertIn("effect", entry)
+            if entry["rule"] == "hexLiteralAsNat":
+                self.assertEqual(entry["leanProof"], "")
+            else:
+                self.assertTrue(entry["leanProof"])
+
+    def test_unknown_transparent_helper_in_summary_fails_loudly(self) -> None:
+        source = SOLC_COUNTER_IR_SAMPLE.replace(
+            "cleanup_t_uint256(expr_9)",
+            "mystery_helper(expr_9)",
+            1,
+        )
+
+        with self.assertRaises(UnsupportedYulError):
+            summarize_solc_function_text(source, "inc")
+
     def test_solc_counter_function_summary_cli_outputs_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "Counter.solc.yul"
@@ -550,6 +598,7 @@ class ClassifyYulTests(unittest.TestCase):
         self.assertEqual(data["kind"], "solcFunctionSummary")
         self.assertEqual(data["normalized"], lean_artifact("yul-json"))
         self.assertEqual(data["trustedRules"], expected_counter_summary_rules())
+        self.assertGreater(len(data["trace"]), 0)
 
     def test_solc_function_inspection_can_accept_supported_body(self) -> None:
         inspection = inspect_solc_function_text(SOLC_SUPPORTED_FUNCTION_SAMPLE, "inc")
@@ -612,6 +661,7 @@ class CounterBridgeTests(unittest.TestCase):
         )
         self.assertEqual(report["solc"]["sourceFunction"], "fun_inc_25")
         self.assertEqual(report["solc"]["trustedRules"], expected_counter_summary_rules())
+        self.assertGreater(len(report["solc"]["trace"]), 0)
         self.assertEqual(
             report["bridgeManifest"]["expectedTrustedRules"],
             expected_counter_summary_rules(),
@@ -661,6 +711,7 @@ class CounterBridgeTests(unittest.TestCase):
         report = output.getvalue()
         self.assertIn("## Proved In Lean", report)
         self.assertIn("## Tested Against Lean Artifacts", report)
+        self.assertIn("## Solc Summary Trace", report)
         self.assertIn("## Lean-Backed Adapter Rules", report)
         self.assertIn("## Still Trusted Boundaries", report)
         self.assertIn("## Explicit Non-Claims", report)
@@ -675,7 +726,8 @@ class CounterBridgeTests(unittest.TestCase):
         self.assertIn("SoLean.Bridge.CheckedAdd.counterTarget_refines_source", report)
         self.assertIn("SoLean.Bridge.StorageWrite.target_refines_source", report)
         self.assertIn("SoLean.Bridge.AssertHelper.targetForIszero_refines_source", report)
-        self.assertIn("`hexLiteralAsNat` remains trusted Python pattern recognition.", report)
+        self.assertIn("`hexLiteralAsNat` remains trusted parser-level literal parsing.", report)
+        self.assertIn("parser-level trust", report)
         self.assertNotIn("transparentValueHelper", report)
 
     def test_counter_bridge_reports_source_shape_mismatch(self) -> None:

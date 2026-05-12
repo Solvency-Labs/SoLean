@@ -8,6 +8,9 @@ except hex-literal parsing has a Lean proof reference.
 This is still not verified Solidity parsing, verified solc parsing, or semantic
 equivalence with real solc Yul.
 
+This page records the v3 milestone. The current line-auditable bridge boundary
+is `Counter Bridge v4`; see `docs/counter-bridge-v4.md`.
+
 ## Success Condition
 
 ```text

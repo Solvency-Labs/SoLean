@@ -45,7 +45,7 @@ This is real progress, but it does not yet start from Solidity text or real
 
 See `docs/counter-bridge-v1.md` for the crisp Counter success condition,
 `docs/counter-bridge-v2.md` for the first auditable bridge report, and
-`docs/counter-bridge-v3.md` for the current named rule boundary.
+`docs/counter-bridge-v4.md` for the current line-auditable bridge boundary.
 
 ## Current State
 
@@ -221,6 +221,11 @@ Done:
   current Counter storage-helper rewrites to `sload(0)` and `sstore(0, value)`.
 - Split the bundled `transparentValueHelper` rule into concrete observed helper
   rules and add Lean identity proofs for the current Counter helper rewrites.
+- Add a deterministic solc summary trace that maps normalized `fun_inc_*` lines
+  to bridge rules, restricted-Yul effects, and Lean proof references when
+  available.
+- Keep `hexLiteralAsNat` as explicit parser-level trust and cover the narrow
+  hex-literal parser behavior with focused tests.
 - Add Markdown bridge-report output and a one-command Counter demo runner.
 - Add a rendering path from the Lean-exported Counter Yul artifact, so the demo
   can display restricted Yul from Lean-owned data rather than only from the
@@ -228,10 +233,10 @@ Done:
 
 Next tasks:
 
-- Decide whether `hexLiteralAsNat` should stay as explicit parser-level trust
-  or move into a tiny checked literal parser path.
-- Decide whether the `counterBridgeReport` JSON should remain an internal audit
-  format or become a stable checked artifact.
+- Decide whether the `counterBridgeReport` JSON and trace shape should remain
+  internal audit output or become a stable checked artifact.
+- Consider exporting a Lean-side symbolic summary if the trace or equivalence
+  story starts to depend on Python summary internals too much.
 
 Definition of done:
 
@@ -250,6 +255,9 @@ Definition of done:
   parser-level trust.
 - The repo can run a single Counter demo command that reports proved, tested,
   trusted, and skipped-real-solc boundaries.
+- The solc function summary is line-auditable: each trace entry names the solc
+  source line, bridge rule, restricted-Yul effect, and Lean proof reference when
+  one exists.
 
 ### 4. Replace Bounded Trace Checks With Small Semantics
 
@@ -296,25 +304,25 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Decide the fate of hex-literal parsing trust.
+Stabilize the Counter bridge report as a checked artifact.
 ```
 
 Why this matters:
 
 - The expected solc summary rule list is Lean-owned and checked by the
   bridge report.
-- The current Counter semantic adapter rules now have Lean-backed translations
-  exposed via the manifest's `bridgeRuleProofs` field.
-- `hexLiteralAsNat` is the only remaining rule-level item with an empty
-  `leanProof` field. It is parser-level trust, not semantic helper trust.
+- The Counter bridge report now carries source, Yul, manifest, rules, and solc
+  trace data in one deterministic JSON shape.
+- If this shape is intended to be cited in demos or papers, it should become a
+  deliberately versioned artifact rather than just script output.
 
 Smallest useful version:
 
-1. Keep `hexLiteralAsNat` explicitly trusted, or introduce a tiny checked
-   literal-parser artifact with focused tests.
-2. If keeping it trusted, document why Bridge v3 stops at parser-level trust.
-3. If reducing it, make the parser support narrow and fail loudly outside
-   decimal and `0x...` natural literals.
+1. Decide whether to add a `reportVersion` field and golden report fixture.
+2. If yes, add a deterministic fixture generated from the current Counter solc
+   sample, excluding local `build/` artifacts.
+3. Keep the fixture documented as an audit/regression artifact, not a proof of
+   real solc equivalence.
 
 ## Updating This Roadmap
 

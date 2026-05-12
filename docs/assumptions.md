@@ -70,12 +70,14 @@ results.
   is `read_from_storage_split_offset_0_t_uint256`.
 - The explicit solc function-summary mode recognizes the current Counter
   storage read, checked-add, storage update, and assert-helper patterns and
-  emits a canonical restricted Counter Yul shape. This is trusted Python pattern
-  recognition, not verified solc parsing or semantic equivalence.
+  emits a canonical restricted Counter Yul shape plus a line-by-line summary
+  trace. This is trusted Python pattern recognition, not verified solc parsing
+  or semantic equivalence.
 - The semantic translations for the current Counter helper and adapter summary
   rules now have Lean-backed bridge theorems, except for `hexLiteralAsNat`,
-  which remains parser-level trust. The recognizer that finds those patterns
-  inside real solc text is still trusted Python code.
+  which remains parser-level trust and is covered by focused Python tests. The
+  recognizer that finds those patterns inside real solc text is still trusted
+  Python code.
 - The Python emitter, Python parser, Solidity source, and real solc output are
   not yet connected to the Lean compiler by a verified translation. Current
   Python tests provide auditable structural alignment for Counter only.

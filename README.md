@@ -294,7 +294,7 @@ Python Counter Yul emitter, and trusted solc `fun_inc_*` summary back to
 Lean-owned artifacts. It also checks the observed solc summary rules against a
 Lean-owned bridge manifest. A passing report is an audit/regression signal, not
 a proof of Solidity parsing or semantic equivalence with solc output. See
-`docs/counter-bridge-v3.md` for the current named trust rules.
+`docs/counter-bridge-v4.md` for the current line-auditable bridge boundary.
 
 Run the full Counter research demo:
 

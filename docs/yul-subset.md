@@ -121,9 +121,9 @@ python3 scripts/classify_yul.py --summarize-function inc build/Counter.solc.yul
 ```
 
 It emits deterministic JSON containing a normalized restricted Counter Yul
-shape. This summary is checked against the Lean-exported Counter Yul artifact in
-tests. It is still a trusted inspection summary, not semantic equivalence
-against real solc IR.
+shape and a line-by-line `trace`. The summary is checked against the
+Lean-exported Counter Yul artifact in tests. It is still a trusted inspection
+summary, not semantic equivalence against real solc IR.
 
 Current Counter summary rules:
 
@@ -155,6 +155,11 @@ The manifest also records which rule translations have Lean-backed semantics.
 At the moment, every current Counter summary rule except `hexLiteralAsNat` has
 a non-empty Lean proof reference. The recognizer that finds those patterns
 inside real solc text is still trusted Python code.
+
+`hexLiteralAsNat` is intentionally parser-level trust. The Python parser accepts
+narrow natural-number literals such as `0x00`, `0X0A`, and selector-sized hex
+literals, rejects invalid or negative hex syntax, and passes Lean an already
+parsed natural-number literal.
 
 The Python bridge report checks the observed rule list against that manifest.
 This makes the boundary easier to audit, but the recognizers are still trusted

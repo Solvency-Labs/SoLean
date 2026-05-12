@@ -17,17 +17,19 @@ try:
         Expr,
         Function,
         Ident,
-        IfRevert,
-        Let,
-        Literal,
-        Stmt,
-        Store,
-        UnsupportedYulError,
-        YulObject,
-        object_to_data,
-        parse_expr,
-        parse_object,
-    )
+    IfRevert,
+    Let,
+    Literal,
+    Stmt,
+    Store,
+    UnsupportedYulError,
+    YulObject,
+    expr_to_data,
+    object_to_data,
+    parse_expr,
+    parse_object,
+    stmt_to_data,
+)
 except ImportError:  # Allows `python scripts/classify_yul.py ...`.
     from normalize_yul import normalize_text
     from yul_subset import (
@@ -35,17 +37,19 @@ except ImportError:  # Allows `python scripts/classify_yul.py ...`.
         Expr,
         Function,
         Ident,
-        IfRevert,
-        Let,
-        Literal,
-        Stmt,
-        Store,
-        UnsupportedYulError,
-        YulObject,
-        object_to_data,
-        parse_expr,
-        parse_object,
-    )
+    IfRevert,
+    Let,
+    Literal,
+    Stmt,
+    Store,
+    UnsupportedYulError,
+    YulObject,
+    expr_to_data,
+    object_to_data,
+    parse_expr,
+    parse_object,
+    stmt_to_data,
+)
 
 
 @dataclass(frozen=True)
@@ -115,6 +119,16 @@ class SolcFunctionSummary:
     selected_function: SolcFunctionBlock
     normalized_object: YulObject
     trusted_rules: tuple[str, ...]
+    trace: tuple[SolcSummaryTraceEntry, ...]
+
+
+@dataclass(frozen=True)
+class SolcSummaryTraceEntry:
+    source_line: int
+    source: str
+    rule: str
+    effect: dict
+    lean_proof: str
 
 
 UNSUPPORTED_STATEMENT_PREFIXES = (
@@ -137,6 +151,27 @@ TRANSPARENT_VALUE_HELPER_RULES = {
         "convertRationalZeroByOneToUint256AsIdentity",
     "identity": "identityHelperAsIdentity",
     "cleanup_t_rational_0_by_1": "cleanupRationalZeroByOneAsIdentity",
+}
+BRIDGE_RULE_PROOFS = {
+    "hexLiteralAsNat": "",
+    "cleanupUint256AsIdentity":
+        "SoLean.Bridge.TransparentHelper.cleanupUint256_refines_source",
+    "convertRationalZeroByOneToUint256AsIdentity":
+        "SoLean.Bridge.TransparentHelper.convertRationalZeroByOneToUint256_refines_source",
+    "identityHelperAsIdentity":
+        "SoLean.Bridge.TransparentHelper.identity_refines_source",
+    "cleanupRationalZeroByOneAsIdentity":
+        "SoLean.Bridge.TransparentHelper.cleanupRationalZeroByOne_refines_source",
+    "requireHelperAsRevertGuard":
+        "SoLean.Bridge.RequireHelper.target_refines_source",
+    "storageReadSlot0AsSload":
+        "SoLean.Bridge.StorageRead.target_refines_source",
+    "checkedAddUInt256AsAddWithOverflowGuard":
+        "SoLean.Bridge.CheckedAdd.counterTarget_refines_source",
+    "storageUpdateSlot0AsSstore":
+        "SoLean.Bridge.StorageWrite.target_refines_source",
+    "assertHelperAsRevertGuard":
+        "SoLean.Bridge.AssertHelper.targetForIszero_refines_source",
 }
 
 
@@ -246,12 +281,15 @@ def summarize_solc_function_text(text: str, function_query: str) -> SolcFunction
             f"object {selected_object.name}"
         )
 
-    normalized_object, trusted_rules = normalize_counter_function_body(selected_function)
+    normalized_object, trusted_rules, trace = normalize_counter_function_body(
+        selected_function
+    )
     return SolcFunctionSummary(
         selected_object=selected_object,
         selected_function=selected_function,
         normalized_object=normalized_object,
         trusted_rules=trusted_rules,
+        trace=trace,
     )
 
 
@@ -261,7 +299,18 @@ def solc_function_summary_to_data(summary: SolcFunctionSummary) -> dict:
         "sourceFunction": summary.selected_function.name,
         "sourceObject": summary.selected_object.name,
         "trustedRules": list(summary.trusted_rules),
+        "trace": [solc_summary_trace_entry_to_data(entry) for entry in summary.trace],
         "normalized": object_to_data(summary.normalized_object),
+    }
+
+
+def solc_summary_trace_entry_to_data(entry: SolcSummaryTraceEntry) -> dict:
+    return {
+        "effect": entry.effect,
+        "leanProof": entry.lean_proof,
+        "rule": entry.rule,
+        "source": entry.source,
+        "sourceLine": entry.source_line,
     }
 
 
@@ -404,7 +453,7 @@ def classify_function_body(function: SolcFunctionBlock) -> Classification:
 
 def normalize_counter_function_body(
     function: SolcFunctionBlock,
-) -> tuple[YulObject, tuple[str, ...]]:
+) -> tuple[YulObject, tuple[str, ...], tuple[SolcSummaryTraceEntry, ...]]:
     """Summarize the real solc Counter `fun_inc_*` body into restricted Yul.
 
     This is a trusted, Counter-specific inspection pass. It recognizes only the
@@ -418,19 +467,61 @@ def normalize_counter_function_body(
     storage: dict[int, Expr] = {}
     emitted: list[Stmt] = []
     trusted_rules: list[str] = []
+    trace: list[SolcSummaryTraceEntry] = []
+    trace_keys: set[str] = set()
     old_x_emitted = False
     new_x_emitted = False
+    current_line_number = 0
+    current_source = ""
 
     def add_rule(name: str) -> None:
         if name not in trusted_rules:
             trusted_rules.append(name)
 
+    def add_trace(rule: str, effect: dict) -> None:
+        add_rule(rule)
+        key = json.dumps(
+            {
+                "effect": effect,
+                "rule": rule,
+                "source": current_source,
+                "sourceLine": current_line_number,
+            },
+            sort_keys=True,
+        )
+        if key in trace_keys:
+            return
+        trace_keys.add(key)
+        trace.append(
+            SolcSummaryTraceEntry(
+                source_line=current_line_number,
+                source=current_source,
+                rule=rule,
+                effect=effect,
+                lean_proof=BRIDGE_RULE_PROOFS.get(rule, ""),
+            )
+        )
+
     def record_text_rules(text: str) -> None:
-        if re.search(r"\b0[xX][0-9a-fA-F]+\b", text):
-            add_rule("hexLiteralAsNat")
+        for match in re.finditer(r"\b0[xX][0-9a-fA-F]+\b", text):
+            literal = match.group(0)
+            add_trace(
+                "hexLiteralAsNat",
+                {
+                    "kind": "hexLiteral",
+                    "literal": literal,
+                    "value": {"const": int(literal, 16)},
+                },
+            )
 
     def record_transparent_helper(name: str) -> None:
-        add_rule(TRANSPARENT_VALUE_HELPER_RULES[name])
+        add_trace(
+            TRANSPARENT_VALUE_HELPER_RULES[name],
+            {
+                "helper": name,
+                "kind": "transparentHelper",
+            },
+        )
 
     def resolve(expr: Expr) -> Expr:
         if isinstance(expr, Ident) and expr.name in env:
@@ -466,30 +557,65 @@ def normalize_counter_function_body(
         if call is not None:
             name, args = call
             if name == "read_from_storage_split_offset_0_t_uint256":
-                add_rule("storageReadSlot0AsSload")
                 if len(args) != 1:
                     raise UnsupportedYulError(f"{name} expects one argument")
                 slot = literal_value(args[0])
                 if slot in storage:
-                    return storage[slot]
+                    cached = storage[slot]
+                    add_trace(
+                        "storageReadSlot0AsSload",
+                        {
+                            "expr": expr_to_data(cached),
+                            "kind": "readCachedSlot",
+                            "slot": slot,
+                        },
+                    )
+                    return cached
                 if slot != 0:
                     raise UnsupportedYulError(f"unsupported storage read slot: {slot}")
                 if old_x_emitted:
+                    add_trace(
+                        "storageReadSlot0AsSload",
+                        {
+                            "expr": expr_to_data(Ident("old_x")),
+                            "kind": "readCachedSlot",
+                            "slot": slot,
+                        },
+                    )
                     return Ident("old_x")
-                emitted.append(Let("old_x", Call("sload", (Literal(slot),))))
+                stmt = Let("old_x", Call("sload", (Literal(slot),)))
+                emitted.append(stmt)
+                add_trace(
+                    "storageReadSlot0AsSload",
+                    {
+                        "kind": "emitStmt",
+                        "stmt": stmt_to_data(stmt),
+                    },
+                )
                 old_x_emitted = True
                 return Ident("old_x")
 
             if name == "checked_add_t_uint256":
-                add_rule("checkedAddUInt256AsAddWithOverflowGuard")
                 if len(args) != 2:
                     raise UnsupportedYulError(f"{name} expects two arguments")
                 lhs = parse_supported_expr(args[0])
                 rhs = parse_supported_expr(args[1])
                 if new_x_emitted:
                     raise UnsupportedYulError("multiple checked adds are unsupported")
-                emitted.append(Let("new_x", Call("add", (lhs, rhs))))
-                emitted.append(IfRevert(Call("lt", (Ident("new_x"), lhs))))
+                let_stmt = Let("new_x", Call("add", (lhs, rhs)))
+                guard_stmt = IfRevert(Call("lt", (Ident("new_x"), lhs)))
+                emitted.append(let_stmt)
+                emitted.append(guard_stmt)
+                add_trace(
+                    "checkedAddUInt256AsAddWithOverflowGuard",
+                    {
+                        "kind": "emitStmts",
+                        "stmts": [
+                            stmt_to_data(let_stmt),
+                            stmt_to_data(guard_stmt),
+                        ],
+                    },
+                )
                 new_x_emitted = True
                 return Ident("new_x")
 
@@ -509,37 +635,58 @@ def normalize_counter_function_body(
 
         name, args = call
         if name == "require_helper":
-            add_rule("requireHelperAsRevertGuard")
             if len(args) != 1:
                 raise UnsupportedYulError("require_helper expects one argument")
-            emitted.append(IfRevert(Call("iszero", (parse_supported_expr(args[0]),))))
+            stmt = IfRevert(Call("iszero", (parse_supported_expr(args[0]),)))
+            emitted.append(stmt)
+            add_trace(
+                "requireHelperAsRevertGuard",
+                {
+                    "kind": "emitStmt",
+                    "stmt": stmt_to_data(stmt),
+                },
+            )
             return True
 
         if name == "assert_helper":
-            add_rule("assertHelperAsRevertGuard")
             if len(args) != 1:
                 raise UnsupportedYulError("assert_helper expects one argument")
-            emitted.append(
-                IfRevert(revert_condition_for_assert(parse_supported_expr(args[0])))
+            stmt = IfRevert(revert_condition_for_assert(parse_supported_expr(args[0])))
+            emitted.append(stmt)
+            add_trace(
+                "assertHelperAsRevertGuard",
+                {
+                    "kind": "emitStmt",
+                    "stmt": stmt_to_data(stmt),
+                },
             )
             return True
 
         if name == "update_storage_value_offset_0_t_uint256_to_t_uint256":
-            add_rule("storageUpdateSlot0AsSstore")
             if len(args) != 2:
                 raise UnsupportedYulError(f"{name} expects two arguments")
             slot = literal_value(args[0])
             if slot != 0:
                 raise UnsupportedYulError(f"unsupported storage write slot: {slot}")
             value = parse_supported_expr(args[1])
-            emitted.append(Store(Literal(slot), value))
+            stmt = Store(Literal(slot), value)
+            emitted.append(stmt)
+            add_trace(
+                "storageUpdateSlot0AsSstore",
+                {
+                    "kind": "emitStmt",
+                    "stmt": stmt_to_data(stmt),
+                },
+            )
             storage[slot] = value
             return True
 
         return False
 
-    for _line_number, raw_line in function.body_lines:
+    for line_number, raw_line in function.body_lines:
+        current_line_number = line_number
         line = raw_line.strip()
+        current_source = line
         if not line or line in {"{", "}"}:
             continue
 
@@ -559,6 +706,7 @@ def normalize_counter_function_body(
             function=Function("inc", ("amount",), tuple(emitted)),
         ),
         tuple(trusted_rules),
+        tuple(trace),
     )
 
 
