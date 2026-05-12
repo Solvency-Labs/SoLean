@@ -207,14 +207,20 @@ Done:
   the modeled helper under the restricted Yul semantics. This is the first
   rule whose translation is Lean-backed rather than only trusted Python pattern
   recognition.
+- Model the second Counter bridge adapter rule semantically in Lean:
+  `SoLean.Bridge.AssertHelper` defines a tiny step semantics for
+  `assert_helper(cond)` and proves the current Counter-specific rewrite
+  `assert_helper(iszero(bad)) ~> if bad { revert(0, 0) }`.
+- Add Markdown bridge-report output and a one-command Counter demo runner.
+- Add a rendering path from the Lean-exported Counter Yul artifact, so the demo
+  can display restricted Yul from Lean-owned data rather than only from the
+  Python placeholder AST.
 
 Next tasks:
 
-- Reduce trust further by moving one more Counter solc summary rule closer to
-  Lean. The most natural next candidate is
-  `assertHelperAsRevertGuard`, which has the same shape as the require helper
-  (final revert guard from a boolean condition) and should reuse the bridge
-  module's structure.
+- Reduce trust further by moving the checked-add bridge rule closer to Lean:
+  `checkedAddUInt256AsAddWithOverflowGuard` is the most proof-relevant
+  remaining adapter rule for Counter's overflow behavior.
 - Decide whether the `counterBridgeReport` JSON should remain an internal audit
   format or become a stable checked artifact.
 
@@ -230,6 +236,10 @@ Definition of done:
   artifacts drift away from Lean-owned artifacts.
 - The expected trusted-rule list is owned by a Lean-exported bridge manifest
   rather than only by Python tests/docs.
+- Two adapter rules, `requireHelperAsRevertGuard` and
+  `assertHelperAsRevertGuard`, have Lean-backed semantic translation theorems.
+- The repo can run a single Counter demo command that reports proved, tested,
+  trusted, and skipped-real-solc boundaries.
 
 ### 4. Replace Bounded Trace Checks With Small Semantics
 
@@ -276,29 +286,26 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Lift the next Counter bridge adapter rule into Lean.
+Lift checked-add bridge semantics into Lean.
 ```
 
 Why this matters:
 
 - The expected solc summary rule list is Lean-owned and checked by the
   bridge report.
-- `requireHelperAsRevertGuard` now has a Lean-backed semantic translation
-  through `SoLean.Bridge.RequireHelper.target_refines_source`, exposed via the
-  manifest's `bridgeRuleProofs` field.
-- The remaining six rules are still trusted Python pattern recognition. The
-  next trust-reduction move is to lift one more rule the same way.
+- `requireHelperAsRevertGuard` and `assertHelperAsRevertGuard` now have
+  Lean-backed semantic translations exposed via the manifest's
+  `bridgeRuleProofs` field.
+- The remaining checked-add rule is central to Counter's arithmetic safety, so
+  lifting it would make the demo much stronger.
 
 Smallest useful version:
 
-1. Pick the next simple rule. `assertHelperAsRevertGuard` mirrors the require
-   case study: a final revert guard that succeeds when its boolean condition
-   holds. Define `SoLean.Bridge.AssertHelper` with a step semantics and a
-   `target_refines_source` theorem.
-2. Wire the theorem into `Artifacts.lean`'s `counterBridgeRuleProofs` entry
-   for `assertHelperAsRevertGuard` and into `proofReferences`.
-3. Update the Python alignment test to assert the new rule has a non-empty
-   `leanProof`.
+1. Define a tiny Lean model of `checked_add_t_uint256(old, amount)`.
+2. Prove it corresponds to `new_x := add(old, amount)` plus
+   `if lt(new_x, old) { revert(0, 0) }` under the restricted Yul semantics.
+3. Wire the theorem into `Artifacts.lean`'s `counterBridgeRuleProofs` entry
+   for `checkedAddUInt256AsAddWithOverflowGuard`.
 
 ## Updating This Roadmap
 

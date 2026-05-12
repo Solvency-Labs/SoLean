@@ -280,12 +280,30 @@ python3 scripts/check_counter_bridge.py \
   --solc-yul build/Counter.solc.yul
 ```
 
+For a presentation-friendly version:
+
+```bash
+python3 scripts/check_counter_bridge.py \
+  --format markdown \
+  --solidity examples/Counter.sol \
+  --solc-yul build/Counter.solc.yul
+```
+
 This emits deterministic JSON tying the trusted Solidity source projection,
 Python Counter Yul emitter, and trusted solc `fun_inc_*` summary back to
 Lean-owned artifacts. It also checks the observed solc summary rules against a
 Lean-owned bridge manifest. A passing report is an audit/regression signal, not
 a proof of Solidity parsing or semantic equivalence with solc output. See
 `docs/counter-bridge-v2.md` for the named trust rules.
+
+Run the full Counter research demo:
+
+```bash
+python3 scripts/demo_counter_bridge.py
+```
+
+The demo runs Lean/Python checks and, when local solc IR exists, prints the
+Markdown bridge report. See `docs/counter-demo.md`.
 
 Compare two Yul files using the current symbolic restricted-subset
 state-transform checker:
@@ -331,6 +349,12 @@ Python tests compare the Solidity source projection and Python Yul emitter
 shape against these Lean-exported artifacts. The Counter bridge report also
 compares the observed solc summary rule list against the Lean-exported bridge
 manifest.
+
+Render the Counter restricted Yul from the Lean-owned Yul artifact:
+
+```bash
+python3 scripts/solean_to_yul.py --example counter --source lean-artifact
+```
 
 Run the Python tests:
 

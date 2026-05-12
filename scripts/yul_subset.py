@@ -207,6 +207,20 @@ def object_to_data(obj: YulObject) -> dict[str, Any]:
     }
 
 
+def object_from_data(data: dict[str, Any]) -> YulObject:
+    """Build a restricted Yul object from a Lean-exported JSON-like shape."""
+
+    function_data = data["function"]
+    return YulObject(
+        name=data["object"],
+        function=Function(
+            function_data["name"],
+            tuple(function_data["params"]),
+            tuple(stmt_from_data(stmt) for stmt in function_data["body"]),
+        ),
+    )
+
+
 def stmt_to_data(stmt: Stmt) -> dict[str, Any]:
     if isinstance(stmt, Let):
         return {
@@ -228,6 +242,17 @@ def stmt_to_data(stmt: Stmt) -> dict[str, Any]:
     raise TypeError(f"unsupported statement: {stmt!r}")
 
 
+def stmt_from_data(data: dict[str, Any]) -> Stmt:
+    tag = data["stmt"]
+    if tag == "let":
+        return Let(data["name"], expr_from_data(data["expr"]))
+    if tag == "sstore":
+        return Store(expr_from_data(data["slot"]), expr_from_data(data["value"]))
+    if tag == "ifRevert":
+        return IfRevert(expr_from_data(data["cond"]))
+    raise UnsupportedYulError(f"unsupported statement data: {tag}")
+
+
 def expr_to_data(expr: Expr) -> dict[str, Any]:
     if isinstance(expr, Literal):
         return {"const": expr.value}
@@ -239,6 +264,16 @@ def expr_to_data(expr: Expr) -> dict[str, Any]:
             "args": [expr_to_data(arg) for arg in expr.args],
         }
     raise TypeError(f"unsupported expression: {expr!r}")
+
+
+def expr_from_data(data: dict[str, Any]) -> Expr:
+    if "const" in data:
+        return Literal(data["const"])
+    if "ident" in data:
+        return Ident(data["ident"])
+    if "call" in data:
+        return Call(data["call"], tuple(expr_from_data(arg) for arg in data["args"]))
+    raise UnsupportedYulError(f"unsupported expression data: {data}")
 
 
 def render_stmt(stmt: Stmt) -> str:

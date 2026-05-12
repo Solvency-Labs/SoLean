@@ -26,6 +26,7 @@ from scripts.check_counter_bridge import (
     build_counter_bridge_report,
     main as check_counter_bridge_main,
 )
+from scripts.demo_counter_bridge import main as demo_counter_bridge_main
 from scripts.normalize_yul import normalize_text
 from scripts.solidity_to_solean import (
     contract_to_source_data,
@@ -44,6 +45,7 @@ from scripts.yul_subset import (
     counter_object,
     execute_object,
     object_to_data,
+    object_from_data,
     parse_object,
     render_object,
     run_counter_trace,
@@ -242,9 +244,22 @@ class YulSubsetTests(unittest.TestCase):
             require_entry["leanProof"],
             "SoLean.Bridge.RequireHelper.target_refines_source",
         )
+        assert_entry = next(
+            entry for entry in rule_proofs if entry["rule"] == "assertHelperAsRevertGuard"
+        )
+        self.assertEqual(
+            assert_entry["leanProof"],
+            "SoLean.Bridge.AssertHelper.targetForIszero_refines_source",
+        )
 
     def test_counter_object_matches_lean_exported_counter_yul_shape(self) -> None:
         self.assertEqual(object_to_data(counter_object()), lean_artifact("yul-json"))
+
+    def test_counter_yul_can_render_from_lean_exported_artifact(self) -> None:
+        obj = object_from_data(lean_artifact("yul-json"))
+
+        self.assertEqual(obj, counter_object())
+        self.assertEqual(parse_object(render_object(obj)), counter_object())
 
     def test_counter_render_round_trips_through_subset_parser(self) -> None:
         rendered = render_object(counter_object())
@@ -271,6 +286,15 @@ class YulSubsetTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         self.assertEqual(output.getvalue(), Path("tests/golden/Counter.solean.yul").read_text())
+
+    def test_solean_to_yul_can_render_from_lean_artifact(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = solean_to_yul_main(["--example", "counter", "--source", "lean-artifact"])
+
+        self.assertEqual(code, 0)
+        self.assertIn("rendered from SoLean's Lean-owned Counter Yul artifact", output.getvalue())
+        self.assertEqual(parse_object(output.getvalue()), counter_object())
 
     def test_store_parser_handles_nested_value_expression(self) -> None:
         source = """
@@ -535,6 +559,30 @@ class CounterBridgeTests(unittest.TestCase):
         self.assertEqual(first.getvalue(), second.getvalue())
         self.assertEqual(json.loads(first.getvalue())["status"], "passed")
 
+    def test_counter_bridge_cli_outputs_markdown_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            solidity, solc_yul = self.write_bridge_inputs(tmp)
+
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = check_counter_bridge_main([
+                    "--format",
+                    "markdown",
+                    "--solidity",
+                    str(solidity),
+                    "--solc-yul",
+                    str(solc_yul),
+                ])
+
+        self.assertEqual(code, 0)
+        report = output.getvalue()
+        self.assertIn("## Proved In Lean", report)
+        self.assertIn("## Tested Against Lean Artifacts", report)
+        self.assertIn("## Lean-Backed Adapter Rules", report)
+        self.assertIn("## Still Trusted Boundaries", report)
+        self.assertIn("## Explicit Non-Claims", report)
+        self.assertIn("SoLean.Bridge.AssertHelper.targetForIszero_refines_source", report)
+
     def test_counter_bridge_reports_source_shape_mismatch(self) -> None:
         bad_source = copied_json(lean_artifact("source-json"))
         bad_source["function"]["name"] = "dec"
@@ -616,6 +664,33 @@ class CounterBridgeTests(unittest.TestCase):
             check_named(report, "solcTrustedRulesToLeanManifest")["status"],
             "failed",
         )
+
+
+class DemoCounterBridgeTests(unittest.TestCase):
+    def test_demo_command_succeeds_with_solc_fixture(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            solc_yul = Path(tmp) / "Counter.solc.yul"
+            solc_yul.write_text(SOLC_COUNTER_IR_SAMPLE)
+
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = demo_counter_bridge_main(["--solc-yul", str(solc_yul)])
+
+        self.assertEqual(code, 0)
+        self.assertIn("# SoLean Counter Bridge Demo", output.getvalue())
+        self.assertIn("Counter bridge report: PASS", output.getvalue())
+
+    def test_demo_command_succeeds_and_skips_missing_solc_yul(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            missing = Path(tmp) / "missing.solc.yul"
+
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = demo_counter_bridge_main(["--solc-yul", str(missing)])
+
+        self.assertEqual(code, 0)
+        self.assertIn("SKIPPED: local solc IR was not found.", output.getvalue())
+        self.assertIn("python3 scripts/solc_to_yul.py examples/Counter.sol", output.getvalue())
 
 
 class CheckEquivTests(unittest.TestCase):

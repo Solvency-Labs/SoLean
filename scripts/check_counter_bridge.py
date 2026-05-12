@@ -108,6 +108,75 @@ def failed_check(name: str, trust: str, message: str) -> dict[str, str]:
     }
 
 
+def lean_backed_rules(report: dict[str, Any]) -> list[dict[str, str]]:
+    return [
+        entry
+        for entry in report.get("bridgeManifest", {}).get("bridgeRuleProofs", [])
+        if entry.get("leanProof")
+    ]
+
+
+def pending_rules(report: dict[str, Any]) -> list[str]:
+    return [
+        entry["rule"]
+        for entry in report.get("bridgeManifest", {}).get("bridgeRuleProofs", [])
+        if not entry.get("leanProof")
+    ]
+
+
+def format_markdown_report(report: dict[str, Any]) -> str:
+    lines = [
+        "# Counter Bridge Report",
+        "",
+        f"Status: **{report.get('status', 'failed')}**",
+        "",
+        "## Proved In Lean",
+        "",
+    ]
+
+    proof_refs = report.get("bridgeManifest", {}).get("proofReferences", [])
+    if proof_refs:
+        lines.extend(f"- `{proof}`" for proof in proof_refs)
+    else:
+        lines.append("- No proof references available; Lean artifact export may have failed.")
+
+    lines.extend(["", "## Tested Against Lean Artifacts", ""])
+    for check in report.get("checks", []):
+        if check.get("trust") in {"tested", "trusted-summary-tested", "Lean-owned manifest"}:
+            marker = "PASS" if check.get("status") == "passed" else "FAIL"
+            lines.append(
+                f"- **{marker}** `{check.get('name')}`: {check.get('message')}"
+            )
+
+    lines.extend(["", "## Lean-Backed Adapter Rules", ""])
+    backed = lean_backed_rules(report)
+    if backed:
+        lines.extend(
+            f"- `{entry['rule']}` backed by `{entry['leanProof']}`"
+            for entry in backed
+        )
+    else:
+        lines.append("- No adapter rules currently have Lean-backed theorem references.")
+
+    lines.extend(["", "## Still Trusted Boundaries", ""])
+    for rule in pending_rules(report):
+        lines.append(f"- `{rule}` remains trusted Python pattern recognition.")
+    lines.extend(
+        [
+            "- The Solidity parser is Counter-only and trusted.",
+            "- The Python solc IR recognizer is trusted parser-level code.",
+            "- Real solc deployment wrappers, ABI dispatch, memory, and helper semantics remain outside the restricted model.",
+        ]
+    )
+
+    lines.extend(["", "## Explicit Non-Claims", ""])
+    for limitation in report.get("limitations", LIMITATIONS):
+        lines.append(f"- {limitation}")
+    lines.append("- This is not a proof that real solc Yul is semantically equivalent to SoLean-generated Yul.")
+
+    return "\n".join(lines) + "\n"
+
+
 def emitted_counter_yul_data() -> dict[str, Any]:
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
@@ -276,6 +345,7 @@ def build_counter_bridge_report(
         },
         "bridgeManifest": {
             "expectedTrustedRules": expected_rules,
+            "bridgeRuleProofs": lean_manifest["bridgeRuleProofs"],
             "proofReferences": lean_manifest["proofReferences"],
         },
         "checks": checks,
@@ -297,6 +367,12 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         type=Path,
         help="Local solc 0.8.35 --ir output for Counter",
+    )
+    parser.add_argument(
+        "--format",
+        choices=["json", "markdown"],
+        default="json",
+        help="Output deterministic JSON or a human-readable Markdown report",
     )
     return parser
 
@@ -344,7 +420,8 @@ def main(argv: list[str] | None = None) -> int:
             "limitations": LIMITATIONS,
         }
 
-    print(stable_json(report), end="")
+    output = stable_json(report) if args.format == "json" else format_markdown_report(report)
+    print(output, end="")
     return 0 if report["status"] == "passed" else 1
 
 

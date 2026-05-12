@@ -77,8 +77,7 @@ translation. The field is intentionally additive: `expectedTrustedRules` keeps
 the same shape and ordering, and the report's existing rule-list check is
 unchanged.
 
-`requireHelperAsRevertGuard` is the first rule with a Lean-backed semantic
-translation. The theorem
+`requireHelperAsRevertGuard` is Lean-backed by the theorem
 `SoLean.Bridge.RequireHelper.target_refines_source` proves that, under the
 restricted Lean Yul semantics, the modeled `require_helper(cond)` step result
 equals `execStmt (ifRevert (iszero cond))` for every storage and locals. This
@@ -87,10 +86,29 @@ correctly inside real solc output; the parser-level boundary is still trusted.
 What it does establish is that, once recognized, the textual rewrite is sound
 with respect to the existing Lean Yul model.
 
-The other rules currently have an empty `leanProof` field. Each is a candidate
-for future trust-reduction work in the same shape: add a tiny Lean model of the
-source helper, prove the target Yul form matches it under the restricted
-semantics, and link the theorem back into `bridgeRuleProofs`.
+`assertHelperAsRevertGuard` is also Lean-backed. The theorem
+`SoLean.Bridge.AssertHelper.targetForIszero_refines_source` proves the current
+Counter-specific rewrite:
+
+```text
+assert_helper(iszero(bad))  ~>  if bad { revert(0, 0) }
+```
+
+under the restricted Lean Yul semantics.
+
+The remaining rules currently have an empty `leanProof` field. Each is a
+candidate for future trust-reduction work in the same shape: add a tiny Lean
+model of the source helper, prove the target Yul form matches it under the
+restricted semantics, and link the theorem back into `bridgeRuleProofs`.
+
+For a human-readable audit report, run:
+
+```bash
+python3 scripts/check_counter_bridge.py \
+  --format markdown \
+  --solidity examples/Counter.sol \
+  --solc-yul build/Counter.solc.yul
+```
 
 ## Trust Boundary
 
