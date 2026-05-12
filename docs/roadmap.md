@@ -211,6 +211,11 @@ Done:
   `SoLean.Bridge.AssertHelper` defines a tiny step semantics for
   `assert_helper(cond)` and proves the current Counter-specific rewrite
   `assert_helper(iszero(bad)) ~> if bad { revert(0, 0) }`.
+- Model the checked-add Counter bridge adapter rule semantically in Lean:
+  `SoLean.Bridge.CheckedAdd` defines a tiny model of
+  `checked_add_t_uint256(old_x, amount)` and proves the current
+  Counter-specific rewrite
+  `let new_x := add(old_x, amount); if lt(new_x, old_x) { revert(0, 0) }`.
 - Add Markdown bridge-report output and a one-command Counter demo runner.
 - Add a rendering path from the Lean-exported Counter Yul artifact, so the demo
   can display restricted Yul from Lean-owned data rather than only from the
@@ -218,9 +223,9 @@ Done:
 
 Next tasks:
 
-- Reduce trust further by moving the checked-add bridge rule closer to Lean:
-  `checkedAddUInt256AsAddWithOverflowGuard` is the most proof-relevant
-  remaining adapter rule for Counter's overflow behavior.
+- Reduce trust further by moving the slot-0 storage bridge rules closer to
+  Lean: `storageReadSlot0AsSload` and `storageUpdateSlot0AsSstore` are the
+  next small adapter rules that still have empty `leanProof` fields.
 - Decide whether the `counterBridgeReport` JSON should remain an internal audit
   format or become a stable checked artifact.
 
@@ -236,7 +241,8 @@ Definition of done:
   artifacts drift away from Lean-owned artifacts.
 - The expected trusted-rule list is owned by a Lean-exported bridge manifest
   rather than only by Python tests/docs.
-- Two adapter rules, `requireHelperAsRevertGuard` and
+- Three adapter rules, `requireHelperAsRevertGuard`,
+  `checkedAddUInt256AsAddWithOverflowGuard`, and
   `assertHelperAsRevertGuard`, have Lean-backed semantic translation theorems.
 - The repo can run a single Counter demo command that reports proved, tested,
   trusted, and skipped-real-solc boundaries.
@@ -286,26 +292,26 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Lift checked-add bridge semantics into Lean.
+Lift slot-0 storage bridge semantics into Lean.
 ```
 
 Why this matters:
 
 - The expected solc summary rule list is Lean-owned and checked by the
   bridge report.
-- `requireHelperAsRevertGuard` and `assertHelperAsRevertGuard` now have
-  Lean-backed semantic translations exposed via the manifest's
-  `bridgeRuleProofs` field.
-- The remaining checked-add rule is central to Counter's arithmetic safety, so
-  lifting it would make the demo much stronger.
+- `requireHelperAsRevertGuard`, `checkedAddUInt256AsAddWithOverflowGuard`, and
+  `assertHelperAsRevertGuard` now have Lean-backed semantic translations
+  exposed via the manifest's `bridgeRuleProofs` field.
+- The remaining slot-0 storage rules are simple, central to Counter's state
+  update, and good candidates for removing the next trusted semantic gap.
 
 Smallest useful version:
 
-1. Define a tiny Lean model of `checked_add_t_uint256(old, amount)`.
-2. Prove it corresponds to `new_x := add(old, amount)` plus
-   `if lt(new_x, old) { revert(0, 0) }` under the restricted Yul semantics.
+1. Define tiny Lean models of the current slot-0 solc storage helpers.
+2. Prove they correspond to `sload(0)` and `sstore(0, value)` under the
+   restricted Yul semantics.
 3. Wire the theorem into `Artifacts.lean`'s `counterBridgeRuleProofs` entry
-   for `checkedAddUInt256AsAddWithOverflowGuard`.
+   for `storageReadSlot0AsSload` and `storageUpdateSlot0AsSstore`.
 
 ## Updating This Roadmap
 

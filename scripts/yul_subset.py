@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import re
-from typing import Any
+from typing import Any, Union
 
 try:
     from .normalize_yul import normalize_text
@@ -41,7 +41,7 @@ class Call:
     args: tuple[Expr, ...]
 
 
-Expr = Literal | Ident | Call
+Expr = Union[Literal, Ident, Call]
 
 
 @dataclass(frozen=True)
@@ -61,7 +61,7 @@ class IfRevert:
     cond: Expr
 
 
-Stmt = Let | Store | IfRevert
+Stmt = Union[Let, Store, IfRevert]
 
 
 @dataclass(frozen=True)
@@ -123,7 +123,7 @@ class SymCall:
     args: tuple[SymExpr, ...]
 
 
-SymExpr = SymConst | SymParam | SymSlot | SymCall
+SymExpr = Union[SymConst, SymParam, SymSlot, SymCall]
 
 
 @dataclass(frozen=True)

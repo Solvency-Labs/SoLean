@@ -13,7 +13,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Union
 
 
 COUNTER_SNIPPET = """-- Counter-only sketch generated from examples/Counter.sol.
@@ -41,7 +41,7 @@ class Number:
     value: int
 
 
-SmallExpr = Var | Number
+SmallExpr = Union[Var, Number]
 
 
 @dataclass(frozen=True)
@@ -67,7 +67,7 @@ class Assert:
     cond: Comparison
 
 
-Statement = Require | AddAssign | Assert
+Statement = Union[Require, AddAssign, Assert]
 
 
 @dataclass(frozen=True)

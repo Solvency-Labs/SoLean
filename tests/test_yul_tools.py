@@ -235,14 +235,23 @@ class YulSubsetTests(unittest.TestCase):
             if entry["leanProof"]:
                 self.assertIn(entry["leanProof"], proof_references)
 
-        # `requireHelperAsRevertGuard` is the first rule with a Lean-backed
-        # semantic translation. Make that explicit so a regression is loud.
+        # These rules have Lean-backed semantic translations. Make them
+        # explicit so a regression is loud.
         require_entry = next(
             entry for entry in rule_proofs if entry["rule"] == "requireHelperAsRevertGuard"
         )
         self.assertEqual(
             require_entry["leanProof"],
             "SoLean.Bridge.RequireHelper.target_refines_source",
+        )
+        checked_add_entry = next(
+            entry
+            for entry in rule_proofs
+            if entry["rule"] == "checkedAddUInt256AsAddWithOverflowGuard"
+        )
+        self.assertEqual(
+            checked_add_entry["leanProof"],
+            "SoLean.Bridge.CheckedAdd.counterTarget_refines_source",
         )
         assert_entry = next(
             entry for entry in rule_proofs if entry["rule"] == "assertHelperAsRevertGuard"
@@ -581,6 +590,7 @@ class CounterBridgeTests(unittest.TestCase):
         self.assertIn("## Lean-Backed Adapter Rules", report)
         self.assertIn("## Still Trusted Boundaries", report)
         self.assertIn("## Explicit Non-Claims", report)
+        self.assertIn("SoLean.Bridge.CheckedAdd.counterTarget_refines_source", report)
         self.assertIn("SoLean.Bridge.AssertHelper.targetForIszero_refines_source", report)
 
     def test_counter_bridge_reports_source_shape_mismatch(self) -> None:

@@ -66,8 +66,8 @@ manifest. The current expected rules are:
   final revert guard.
 
 These are still trusted Python inspection rules. Lean now owns the expected
-boundary list, but Lean does not yet prove that the Python recognizer implements
-these rules correctly.
+boundary list and backs some rule translations semantically, but Lean does not
+yet prove that the Python recognizer implements these rules correctly.
 
 ## Per-Rule Lean Proof References
 
@@ -95,6 +95,21 @@ assert_helper(iszero(bad))  ~>  if bad { revert(0, 0) }
 ```
 
 under the restricted Lean Yul semantics.
+
+`checkedAddUInt256AsAddWithOverflowGuard` is Lean-backed by
+`SoLean.Bridge.CheckedAdd.counterTarget_refines_source`. It models the current
+Counter use of `checked_add_t_uint256(old_x, amount)` as checked `UInt256`
+addition and proves it corresponds to the restricted Yul shape:
+
+```text
+let new_x := add(old_x, amount)
+if lt(new_x, old_x) { revert(0, 0) }
+```
+
+The proof also contains the arithmetic fact that if checked `UInt256` addition
+fails, the wrapping Yul sum is below the left-hand input. This is still
+Counter-specific and still assumes the Python recognizer has identified the
+right helper call.
 
 The remaining rules currently have an empty `leanProof` field. Each is a
 candidate for future trust-reduction work in the same shape: add a tiny Lean

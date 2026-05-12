@@ -176,7 +176,8 @@ def counterBridgeRuleProofs : List BridgeRuleProof :=
     { rule := "requireHelperAsRevertGuard",
       leanProof := "SoLean.Bridge.RequireHelper.target_refines_source" },
     { rule := "storageReadSlot0AsSload",                  leanProof := "" },
-    { rule := "checkedAddUInt256AsAddWithOverflowGuard",  leanProof := "" },
+    { rule := "checkedAddUInt256AsAddWithOverflowGuard",
+      leanProof := "SoLean.Bridge.CheckedAdd.counterTarget_refines_source" },
     { rule := "storageUpdateSlot0AsSstore",               leanProof := "" },
     { rule := "assertHelperAsRevertGuard",
       leanProof := "SoLean.Bridge.AssertHelper.targetForIszero_refines_source" }
@@ -207,6 +208,7 @@ def counterBridgeManifest : Json :=
     ("bridgeRuleProofs", .arr (counterBridgeRuleProofs.map bridgeRuleProofJson)),
     ("proofReferences", stringsJson [
       "SoLean.Bridge.AssertHelper.targetForIszero_refines_source",
+      "SoLean.Bridge.CheckedAdd.counterTarget_refines_source",
       "SoLean.Bridge.RequireHelper.target_refines_source",
       "SoLean.Examples.Counter.inc_assertion_safe",
       "SoLean.Examples.CounterCompiler.compile_counter_eq_counter_yul",

@@ -59,9 +59,10 @@ inside Lean, and the Solidity parser, Python/Lean-artifact Yul rendering, and
 trusted solc function summary all align with those Lean-owned artifacts.
 ```
 
-Two bridge adapter rules now have Lean-backed semantic models:
+Three bridge adapter rules now have Lean-backed semantic models:
 
 - `requireHelperAsRevertGuard`
+- `checkedAddUInt256AsAddWithOverflowGuard`
 - `assertHelperAsRevertGuard`
 
 The exact proof names are exported in the Lean-owned `bridge-json` manifest.
@@ -95,12 +96,12 @@ These Counter solc summary rules are still trusted Python pattern recognition:
 - `hexLiteralAsNat`
 - `transparentValueHelper`
 - `storageReadSlot0AsSload`
-- `checkedAddUInt256AsAddWithOverflowGuard`
 - `storageUpdateSlot0AsSstore`
 
-The next highest-value rule to lift is
-`checkedAddUInt256AsAddWithOverflowGuard`, because it is proof-relevant to the
-Counter overflow behavior.
+The next highest-value rules to lift are the slot-0 storage adapters,
+`storageReadSlot0AsSload` and `storageUpdateSlot0AsSstore`, because they are
+simple and connect the solc helper summary more tightly to the restricted Yul
+storage model.
 
 ## Useful Commands
 

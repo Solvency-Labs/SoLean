@@ -123,5 +123,116 @@ theorem targetForIszero_refines_source
       cases value <;> simp [Yul.evalCond, hBad]
 
 end AssertHelper
+
+namespace CheckedAdd
+
+/--
+Source-side semantics of solc's `checked_add_t_uint256(lhs, rhs)` helper when
+the result is bound to a local.
+
+This models only the Counter bridge use case: both arguments are restricted Yul
+expressions, arithmetic is Solidity-style checked `UInt256` addition, and
+arithmetic failure reverts. It is not a general model of every solc helper or
+panic payload.
+-/
+def step (target : String) (lhs rhs : Yul.Expr) (storage : Storage)
+    (locals : Yul.Locals) : Yul.StepResult :=
+  match Yul.evalExpr storage locals lhs, Yul.evalExpr storage locals rhs with
+  | some lhsValue, some rhsValue =>
+      match UInt256.checkedAdd lhsValue rhsValue with
+      | some result => .ok storage (Yul.Locals.write locals target result)
+      | none => .revert
+  | _, _ => .revert
+
+/--
+Execute the restricted target shape used by the Counter bridge summary:
+first bind the wrapping Yul `add`, then revert if the wrapped result is less
+than the original left-hand side.
+-/
+def targetStep (target : String) (lhs rhs : Yul.Expr) (storage : Storage)
+    (locals : Yul.Locals) : Yul.StepResult :=
+  match Yul.execStmt (.let_ target (.add lhs rhs)) storage locals with
+  | .ok storage' locals' =>
+      Yul.execStmt (.ifRevert (.lt (.local target) lhs)) storage' locals'
+  | .revert => .revert
+
+/--
+If checked `UInt256` addition fails, the wrapping Yul addition is below the
+left-hand input. This is the arithmetic fact behind the Counter overflow guard.
+-/
+theorem wrapAdd_lt_of_checkedAdd_none {a b : UInt256}
+    (h : UInt256.checkedAdd a b = none) :
+    Yul.UInt256.wrapAdd a b < a := by
+  by_cases hBound : a.toNat + b.toNat <= UInt256.maxValue
+  · simp [UInt256.checkedAdd, hBound] at h
+  · show (Yul.UInt256.wrapAdd a b).toNat < a.toNat
+    unfold Yul.UInt256.wrapAdd Yul.UInt256.wrap
+    simp
+    let m := UInt256.maxValue + 1
+    change (a.toNat + b.toNat) % m < a.toNat
+    have ha : a.toNat <= UInt256.maxValue := by
+      simpa [UInt256.maxValue] using a.isValid
+    have hb : b.toNat <= UInt256.maxValue := by
+      simpa [UInt256.maxValue] using b.isValid
+    have hModLe : m <= a.toNat + b.toNat := by
+      dsimp [m]
+      omega
+    have hSubLt : a.toNat + b.toNat - m < m := by
+      dsimp [m]
+      omega
+    have hMod : (a.toNat + b.toNat) % m = a.toNat + b.toNat - m := by
+      rw [Nat.mod_eq_sub_mod hModLe]
+      exact Nat.mod_eq_of_lt hSubLt
+    rw [hMod]
+    dsimp [m]
+    omega
+
+/--
+The Counter-specific checked-add bridge rule is sound under the restricted Lean
+Yul semantics:
+
+```text
+let new_x := checked_add_t_uint256(old_x, amount)
+```
+
+is modeled by:
+
+```text
+let new_x := add(old_x, amount)
+if lt(new_x, old_x) { revert(0, 0) }
+```
+
+This backs `checkedAddUInt256AsAddWithOverflowGuard`. It still does not prove
+that the Python solc-IR recognizer correctly identifies `checked_add_t_uint256`
+inside real solc output; that parser-level boundary remains trusted.
+-/
+theorem counterTarget_refines_source
+    (storage : Storage) (locals : Yul.Locals) :
+    targetStep "new_x" (.local "old_x") (.local "amount") storage locals =
+      step "new_x" (.local "old_x") (.local "amount") storage locals := by
+  unfold targetStep step
+  cases hOld : locals "old_x" with
+  | none =>
+      simp [Yul.execStmt, Yul.evalExpr, hOld]
+  | some oldX =>
+      cases hAmount : locals "amount" with
+      | none =>
+          simp [Yul.execStmt, Yul.evalExpr, hOld, hAmount]
+      | some amount =>
+          cases hAdd : UInt256.checkedAdd oldX amount with
+          | none =>
+              have hOverflow : Yul.UInt256.wrapAdd oldX amount < oldX :=
+                wrapAdd_lt_of_checkedAdd_none hAdd
+              simp [Yul.execStmt, Yul.evalExpr, Yul.evalCond, hOld, hAmount,
+                hAdd, hOverflow]
+          | some result =>
+              have hWrap : Yul.UInt256.wrapAdd oldX amount = result :=
+                Yul.UInt256.wrapAdd_eq_of_checkedAdd hAdd
+              have hOldLe : oldX <= result := UInt256.checkedAdd_ge_left hAdd
+              have hNotOverflow : Not (result < oldX) := Nat.not_lt_of_ge hOldLe
+              simp [Yul.execStmt, Yul.evalExpr, Yul.evalCond, hOld, hAmount,
+                hAdd, hWrap, hNotOverflow]
+
+end CheckedAdd
 end Bridge
 end SoLean
