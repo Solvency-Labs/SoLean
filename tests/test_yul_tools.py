@@ -27,10 +27,12 @@ from scripts.check_counter_bridge import (
     build_counter_bridge_report,
     main as check_counter_bridge_main,
     stable_json,
+    trace_to_skeleton,
 )
 from scripts.demo_counter_bridge import main as demo_counter_bridge_main
 from scripts.normalize_yul import normalize_text
 from scripts.solidity_to_solean import (
+    contract_to_source_certificate,
     contract_to_source_data,
     is_supported_counter,
     main as solidity_to_solean_main,
@@ -201,8 +203,13 @@ class YulSubsetTests(unittest.TestCase):
         manifest = lean_artifact("bridge-json")
 
         self.assertEqual(manifest["kind"], "counterBridgeManifest")
+        self.assertEqual(manifest["version"], 2)
         self.assertEqual(manifest["sourceArtifact"]["export"], "source-json")
         self.assertEqual(manifest["yulArtifact"]["export"], "yul-json")
+        self.assertEqual(
+            manifest["sourceCertificate"]["kind"],
+            "counterSourceCertificate",
+        )
         self.assertIn(
             "SoLean.Examples.CounterCompiler.compiled_counter_success_assertion",
             manifest["proofReferences"],
@@ -225,6 +232,28 @@ class YulSubsetTests(unittest.TestCase):
         self.assertNotIn(
             "cleanupRationalZeroByOneAsIdentity",
             manifest["expectedTrustedRules"],
+        )
+        self.assertEqual(
+            [entry["rule"] for entry in manifest["expectedTraceSkeleton"]],
+            [
+                "hexLiteralAsNat",
+                "cleanupUint256AsIdentity",
+                "convertRationalZeroByOneToUint256AsIdentity",
+                "requireHelperAsRevertGuard",
+                "hexLiteralAsNat",
+                "storageReadSlot0AsSload",
+                "checkedAddUInt256AsAddWithOverflowGuard",
+                "hexLiteralAsNat",
+                "storageUpdateSlot0AsSstore",
+                "hexLiteralAsNat",
+                "storageReadSlot0AsSload",
+                "cleanupUint256AsIdentity",
+                "assertHelperAsRevertGuard",
+            ],
+        )
+        self.assertEqual(
+            manifest["expectedTraceSkeleton"][3]["emits"],
+            [lean_artifact("yul-json")["function"]["body"][0]],
         )
 
     def test_bridge_rule_proofs_align_with_expected_rules(self) -> None:
@@ -564,6 +593,10 @@ class ClassifyYulTests(unittest.TestCase):
             object_to_data(replay_solc_summary_trace(summary.trace)),
             solc_function_summary_to_data(summary)["normalized"],
         )
+        self.assertEqual(
+            trace_to_skeleton(solc_function_summary_to_data(summary)["trace"]),
+            lean_artifact("bridge-json")["expectedTraceSkeleton"],
+        )
 
     def test_solc_trace_replay_rejects_unknown_effect_kind(self) -> None:
         summary = summarize_solc_function_text(SOLC_COUNTER_IR_SAMPLE, "inc")
@@ -685,15 +718,29 @@ class CounterBridgeTests(unittest.TestCase):
             )
 
         self.assertEqual(report["kind"], "counterBridgeReport")
-        self.assertEqual(report["reportVersion"], 5)
+        self.assertEqual(report["reportVersion"], 6)
         self.assertEqual(report["status"], "passed")
         self.assertEqual(
             [check["status"] for check in report["checks"]],
-            ["passed", "passed", "passed", "passed", "passed"],
+            ["passed", "passed", "passed", "passed", "passed", "passed", "passed"],
+        )
+        self.assertEqual(report["certificate"]["kind"], "counterBridgeCertificate")
+        self.assertEqual(report["certificate"]["version"], 6)
+        self.assertIn(
+            "solcTraceSkeletonToLeanManifest",
+            report["certificate"]["checkGroups"]["tested"],
+        )
+        self.assertEqual(
+            report["source"]["certificate"],
+            lean_artifact("bridge-json")["sourceCertificate"],
         )
         self.assertEqual(report["solc"]["sourceFunction"], "fun_inc_25")
         self.assertEqual(report["solc"]["trustedRules"], expected_counter_summary_rules())
         self.assertGreater(len(report["solc"]["trace"]), 0)
+        self.assertEqual(
+            report["solc"]["traceSkeleton"],
+            lean_artifact("bridge-json")["expectedTraceSkeleton"],
+        )
         self.assertEqual(report["solc"]["traceReplay"], lean_artifact("yul-json"))
         self.assertTrue(report["solc"]["traceReplayMatchesNormalized"])
         self.assertEqual(
@@ -725,7 +772,7 @@ class CounterBridgeTests(unittest.TestCase):
         self.assertEqual(second_code, 0)
         self.assertEqual(first.getvalue(), second.getvalue())
         self.assertEqual(json.loads(first.getvalue())["status"], "passed")
-        self.assertEqual(json.loads(first.getvalue())["reportVersion"], 5)
+        self.assertEqual(json.loads(first.getvalue())["reportVersion"], 6)
 
     def test_counter_bridge_report_matches_golden_fixture(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -740,7 +787,7 @@ class CounterBridgeTests(unittest.TestCase):
 
         self.assertEqual(
             stable_json(report),
-            Path("tests/golden/Counter.bridge.v5.json").read_text(),
+            Path("tests/golden/Counter.bridge.v6.json").read_text(),
         )
 
     def test_counter_bridge_cli_outputs_markdown_report(self) -> None:
@@ -760,12 +807,16 @@ class CounterBridgeTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         report = output.getvalue()
-        self.assertIn("Report version: `5`", report)
+        self.assertIn("Report version: `6`", report)
+        self.assertIn("## Bridge Certificate", report)
+        self.assertIn("Certificate kind: `counterBridgeCertificate`", report)
         self.assertIn("## Proved In Lean", report)
         self.assertIn("## Tested Against Lean Artifacts", report)
         self.assertIn("## Solc Summary Trace", report)
         self.assertIn("## Solc Trace Replay", report)
+        self.assertIn("## Lean-Owned Trace Skeleton", report)
         self.assertIn("Replayed trace emits `6` restricted Yul statements.", report)
+        self.assertIn("Trace skeleton has `13` Lean-owned rule/effect entries.", report)
         self.assertIn("## Lean-Backed Adapter Rules", report)
         self.assertIn("## Still Trusted Boundaries", report)
         self.assertIn("## Explicit Non-Claims", report)
@@ -801,6 +852,26 @@ class CounterBridgeTests(unittest.TestCase):
         self.assertEqual(report["status"], "failed")
         self.assertEqual(
             check_named(report, "soliditySourceToLeanSource")["status"],
+            "failed",
+        )
+
+    def test_counter_bridge_reports_source_certificate_mismatch(self) -> None:
+        bad_manifest = copied_json(lean_artifact("bridge-json"))
+        bad_manifest["sourceCertificate"]["function"]["bodyShape"] = ["different"]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            solidity, solc_yul = self.write_bridge_inputs(tmp)
+            report = build_counter_bridge_report(
+                solidity,
+                solc_yul,
+                lean_source=lean_artifact("source-json"),
+                lean_yul=lean_artifact("yul-json"),
+                lean_manifest=bad_manifest,
+            )
+
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(
+            check_named(report, "soliditySourceCertificateToLeanManifest")["status"],
             "failed",
         )
 
@@ -863,6 +934,26 @@ class CounterBridgeTests(unittest.TestCase):
         self.assertEqual(report["status"], "failed")
         self.assertEqual(
             check_named(report, "solcTrustedRulesToLeanManifest")["status"],
+            "failed",
+        )
+
+    def test_counter_bridge_reports_trace_skeleton_mismatch(self) -> None:
+        bad_manifest = copied_json(lean_artifact("bridge-json"))
+        bad_manifest["expectedTraceSkeleton"][0]["rule"] = "differentRule"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            solidity, solc_yul = self.write_bridge_inputs(tmp)
+            report = build_counter_bridge_report(
+                solidity,
+                solc_yul,
+                lean_source=lean_artifact("source-json"),
+                lean_yul=lean_artifact("yul-json"),
+                lean_manifest=bad_manifest,
+            )
+
+        self.assertEqual(report["status"], "failed")
+        self.assertEqual(
+            check_named(report, "solcTraceSkeletonToLeanManifest")["status"],
             "failed",
         )
 
@@ -992,6 +1083,10 @@ class SolidityToSoLeanTests(unittest.TestCase):
             contract_to_source_data(parse_counter(source)),
             lean_artifact("source-json"),
         )
+        self.assertEqual(
+            contract_to_source_certificate(parse_counter(source)),
+            lean_artifact("bridge-json")["sourceCertificate"],
+        )
 
     def test_counter_parser_allows_whitespace_and_comments(self) -> None:
         source = """
@@ -1034,6 +1129,21 @@ class SolidityToSoLeanTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(json.loads(output.getvalue()), lean_artifact("source-json"))
 
+    def test_counter_script_outputs_lean_exported_source_certificate(self) -> None:
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            code = solidity_to_solean_main([
+                "--format",
+                "source-certificate-json",
+                "examples/Counter.sol",
+            ])
+
+        self.assertEqual(code, 0)
+        self.assertEqual(
+            json.loads(output.getvalue()),
+            lean_artifact("bridge-json")["sourceCertificate"],
+        )
+
     def test_unsupported_solidity_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source = Path(tmp) / "Unsupported.sol"
@@ -1045,6 +1155,20 @@ class SolidityToSoLeanTests(unittest.TestCase):
 
         self.assertEqual(code, 2)
         self.assertIn("unsupported Solidity input", error.getvalue())
+
+    def test_missing_counter_assertion_is_rejected(self) -> None:
+        source = """
+        pragma solidity ^0.8.35;
+        contract Counter {
+            uint256 public x;
+            function inc(uint256 amount) public {
+                require(amount > 0);
+                x += amount;
+            }
+        }
+        """
+
+        self.assertFalse(is_supported_counter(source))
 
 
 if __name__ == "__main__":

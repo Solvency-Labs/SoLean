@@ -115,7 +115,13 @@ def main(argv: list[str] | None = None) -> int:
         if code != 0:
             return code
 
-    for kind in ("source-json", "yul-json", "bridge-json"):
+    for kind in (
+        "source-json",
+        "source-certificate-json",
+        "yul-json",
+        "trace-skeleton-json",
+        "bridge-json",
+    ):
         code = smoke_lean_artifact(kind)
         if code != 0:
             return code

@@ -46,7 +46,8 @@ This is real progress, but it does not yet start from Solidity text or real
 See `docs/counter-bridge-v1.md` for the crisp Counter success condition,
 `docs/counter-bridge-v2.md` for the first auditable bridge report,
 `docs/counter-bridge-v4.md` for the line-auditable bridge boundary, and
-`docs/counter-bridge-v5.md` for the current trace-replay bridge boundary.
+`docs/counter-bridge-v6.md` for the current Lean-owned bridge certificate
+boundary.
 
 ## Current State
 
@@ -67,15 +68,15 @@ See `docs/counter-bridge-v1.md` for the crisp Counter success condition,
 ### Implemented But Not Verified End-To-End
 
 - Python emits deterministic Counter Yul-like text.
-- Lean exports deterministic Counter source, restricted-Yul shape, and bridge
-  manifest artifacts.
+- Lean exports deterministic Counter source, source certificate,
+  restricted-Yul shape, trace skeleton, and bridge manifest artifacts.
 - Python tests check the Counter Yul emitter against the Lean-exported
   `CounterYul.counterProgram` artifact and a text golden file.
 - `check_counter_bridge.py` produces one deterministic Counter bridge report
   tying the trusted Solidity source projection, Python Yul emitter, and solc
   function-body summary back to Lean-owned artifacts.
-- The Counter bridge report checks observed solc summary rules against the
-  Lean-owned bridge manifest.
+- The Counter bridge report checks observed solc summary rules, source
+  certificate, and solc trace skeleton against the Lean-owned bridge manifest.
 - Python parses and normalizes a restricted Yul-like subset.
 - Python performs symbolic state-transform checks for Counter-shaped restricted
   Yul programs, with bounded trace checks still available as an explicit legacy
@@ -83,6 +84,8 @@ See `docs/counter-bridge-v1.md` for the crisp Counter success condition,
 - Python recognizes a tiny Counter-shaped Solidity subset.
 - Python emits deterministic Counter source-shape JSON that is tested against
   the Lean-exported `CounterCompiler.counterFunction` artifact.
+- Python emits a deterministic Counter source certificate that is tested against
+  the Lean-owned bridge manifest.
 - `solc_to_yul.py` enforces the pinned `solc 0.8.35` target when `solc` is
   installed.
 - Local `solc 0.8.35 --ir` Counter output has been generated and classified as
@@ -231,6 +234,9 @@ Done:
   replayed program with the Lean-exported Counter Yul artifact, and stabilize
   the resulting `reportVersion: 5` report against
   `tests/golden/Counter.bridge.v5.json`.
+- Export a Lean-owned Counter source certificate and expected solc trace
+  skeleton, then check both in the `reportVersion: 6` bridge certificate
+  against `tests/golden/Counter.bridge.v6.json`.
 - Keep `hexLiteralAsNat` as explicit parser-level trust and cover the narrow
   hex-literal parser behavior with focused tests.
 - Add Markdown bridge-report output and a one-command Counter demo runner.
@@ -240,10 +246,10 @@ Done:
 
 Next tasks:
 
-- Decide whether the `counterBridgeReport` JSON and trace shape should remain
-  internal audit output or become a stable checked artifact.
-- Consider exporting a Lean-side symbolic summary if the trace or equivalence
-  story starts to depend on Python summary internals too much.
+- Consider exporting a Lean-side symbolic behavior summary if the trace or
+  equivalence story starts to depend on Python summary internals too much.
+- Decide how much of the remaining Counter-only solc recognizer should become
+  checked by independent table-driven fixtures before adding SimpleVault Yul.
 
 Definition of done:
 
@@ -270,6 +276,8 @@ Definition of done:
 - The solc summary trace is replayable: the restricted-Yul effects shown in the
   trace reconstruct the same Counter Yul artifact that the bridge compares
   against Lean.
+- The accepted Solidity source certificate and solc trace skeleton are
+  Lean-owned artifacts checked by the bridge report.
 
 ### 4. Replace Bounded Trace Checks With Small Semantics
 
@@ -316,24 +324,25 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Move one recognizer assumption into a Lean-owned expected trace shape.
+Export a Lean-owned restricted behavior summary for Counter Yul.
 ```
 
 Why this matters:
 
-- The current bridge report is versioned, golden-checked, and replay-checks its
-  own solc trace effects.
-- It still depends on trusted Python recognition of which solc lines matter and
-  which bridge rules they instantiate.
-- A Lean-owned expected trace skeleton would make rule order and emitted
-  statement shape less dependent on Python-only tests.
+- The current bridge certificate checks source shape, Yul shape, trusted rules,
+  trace replay, and trace skeleton against Lean-owned artifacts.
+- The remaining Yul comparison story still leans on Python's symbolic summary
+  and Python's Counter-specific solc recognizer.
+- A Lean-owned behavior summary would make the report say not just "this is the
+  same Yul shape" but "this is the expected restricted state-transform shape"
+  for Counter.
 
 Smallest useful version:
 
-1. Export a small Lean artifact describing the expected Counter bridge rule
-   skeleton, excluding volatile solc line numbers.
-2. Check the Python solc trace against that Lean-owned skeleton in the bridge
-   report.
+1. Export a small Lean artifact describing the expected Counter restricted-Yul
+   behavior summary: parameter, ordered revert guards, and final slot write.
+2. Check Python's restricted symbolic summary against that Lean-owned behavior
+   summary in the bridge report.
 3. Keep the result documented as trust reduction, not verified solc parsing or
    real Yul equivalence.
 

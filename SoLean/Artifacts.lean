@@ -158,6 +158,63 @@ def counterYulJson : String :=
   renderJson (Yul.programJson Examples.CounterYul.counterProgram)
 
 /--
+Lean-owned source certificate for the tiny Counter Solidity subset accepted by
+the current trusted Python parser.
+
+This is an audit artifact, not a verified Solidity parser. It states the source
+shape and assumptions that Python must report before the bridge accepts the
+Counter input.
+-/
+def counterSourceCertificate : Json :=
+  .obj [
+    ("assumptions", stringsJson [
+      "Counter-only Solidity subset.",
+      "Storage slot assignment is explicit: x maps to slot 0.",
+      "The parser rejects unsupported Solidity instead of approximating it."
+    ]),
+    ("contract", .obj [
+      ("name", .str "Counter"),
+      ("pragma", .str "0.8.35")
+    ]),
+    ("function", .obj [
+      ("bodyShape", stringsJson [
+        "require(amount > 0)",
+        "x += amount",
+        "assert(x >= amount)"
+      ]),
+      ("name", .str "inc"),
+      ("parameter", .obj [
+        ("name", .str "amount"),
+        ("type", .str "uint256")
+      ]),
+      ("visibility", .str "public")
+    ]),
+    ("kind", .str "counterSourceCertificate"),
+    ("lean", .str "SoLean.Examples.CounterCompiler.counterFunction"),
+    ("storageSlots", .arr [
+      .obj [
+        ("name", .str "x"),
+        ("slot", .num Examples.Counter.xSlot),
+        ("type", .str "uint256"),
+        ("visibility", .str "public")
+      ]
+    ]),
+    ("unsupported", stringsJson [
+      "ABI decoding",
+      "memory",
+      "external calls",
+      "events",
+      "gas",
+      "reentrancy",
+      "full Solidity parsing"
+    ]),
+    ("version", .num 1)
+  ]
+
+def counterSourceCertificateJson : String :=
+  renderJson counterSourceCertificate
+
+/--
 Per-rule status entry for the Counter bridge manifest.
 
 `leanProof` names the Lean theorem that backs this rule's semantic translation.
@@ -192,16 +249,98 @@ def counterBridgeRuleProofs : List BridgeRuleProof :=
 def counterBridgeTrustedRules : List String :=
   counterBridgeRuleProofs.map BridgeRuleProof.rule
 
+def proofForRule (rule : String) : String :=
+  match counterBridgeRuleProofs.find? (fun entry => entry.rule == rule) with
+  | some entry => entry.leanProof
+  | none => ""
+
 def bridgeRuleProofJson (entry : BridgeRuleProof) : Json :=
   .obj [
     ("leanProof", .str entry.leanProof),
     ("rule", .str entry.rule)
   ]
 
+namespace TraceSkeleton
+
+def zero : SoLean.Yul.Expr :=
+  .const UInt256.zero
+
+def amount : SoLean.Yul.Expr :=
+  .local "amount"
+
+def oldX : SoLean.Yul.Expr :=
+  .local "old_x"
+
+def newX : SoLean.Yul.Expr :=
+  .local "new_x"
+
+def requireGuard : SoLean.Yul.Stmt :=
+  .ifRevert (.iszero (.gt amount zero))
+
+def loadOldX : SoLean.Yul.Stmt :=
+  .let_ "old_x" (.sload Examples.Counter.xSlot)
+
+def checkedAddBind : SoLean.Yul.Stmt :=
+  .let_ "new_x" (.add oldX amount)
+
+def checkedAddGuard : SoLean.Yul.Stmt :=
+  .ifRevert (.lt newX oldX)
+
+def storeNewX : SoLean.Yul.Stmt :=
+  .sstore Examples.Counter.xSlot newX
+
+def assertGuard : SoLean.Yul.Stmt :=
+  .ifRevert (.lt newX amount)
+
+def entryJson (index : Nat) (rule effectKind : String)
+    (emits : List SoLean.Yul.Stmt) : Json :=
+  .obj [
+    ("effectKind", .str effectKind),
+    ("emits", .arr (emits.map Yul.stmtJson)),
+    ("index", .num index),
+    ("leanProof", .str (proofForRule rule)),
+    ("rule", .str rule)
+  ]
+
+end TraceSkeleton
+
+/--
+Lean-owned expected skeleton for the current Counter solc summary trace.
+
+It intentionally excludes volatile solc source line numbers and source text.
+Python must match the rule/effect order and emitted restricted-Yul statements
+against this artifact.
+-/
+def counterTraceSkeleton : Json :=
+  .arr [
+    TraceSkeleton.entryJson 1 "hexLiteralAsNat" "hexLiteral" [],
+    TraceSkeleton.entryJson 2 "cleanupUint256AsIdentity" "transparentHelper" [],
+    TraceSkeleton.entryJson 3 "convertRationalZeroByOneToUint256AsIdentity"
+      "transparentHelper" [],
+    TraceSkeleton.entryJson 4 "requireHelperAsRevertGuard" "emitStmt"
+      [TraceSkeleton.requireGuard],
+    TraceSkeleton.entryJson 5 "hexLiteralAsNat" "hexLiteral" [],
+    TraceSkeleton.entryJson 6 "storageReadSlot0AsSload" "emitStmt"
+      [TraceSkeleton.loadOldX],
+    TraceSkeleton.entryJson 7 "checkedAddUInt256AsAddWithOverflowGuard" "emitStmts"
+      [TraceSkeleton.checkedAddBind, TraceSkeleton.checkedAddGuard],
+    TraceSkeleton.entryJson 8 "hexLiteralAsNat" "hexLiteral" [],
+    TraceSkeleton.entryJson 9 "storageUpdateSlot0AsSstore" "emitStmt"
+      [TraceSkeleton.storeNewX],
+    TraceSkeleton.entryJson 10 "hexLiteralAsNat" "hexLiteral" [],
+    TraceSkeleton.entryJson 11 "storageReadSlot0AsSload" "readCachedSlot" [],
+    TraceSkeleton.entryJson 12 "cleanupUint256AsIdentity" "transparentHelper" [],
+    TraceSkeleton.entryJson 13 "assertHelperAsRevertGuard" "emitStmt"
+      [TraceSkeleton.assertGuard]
+  ]
+
+def counterTraceSkeletonJson : String :=
+  renderJson counterTraceSkeleton
+
 def counterBridgeManifest : Json :=
   .obj [
     ("kind", .str "counterBridgeManifest"),
-    ("version", .num 1),
+    ("version", .num 2),
     ("sourceArtifact", .obj [
       ("name", .str "SoLean.Examples.CounterCompiler.counterFunction"),
       ("export", .str "source-json")
@@ -210,7 +349,9 @@ def counterBridgeManifest : Json :=
       ("name", .str "SoLean.Examples.CounterYul.counterProgram"),
       ("export", .str "yul-json")
     ]),
+    ("sourceCertificate", counterSourceCertificate),
     ("expectedTrustedRules", stringsJson counterBridgeTrustedRules),
+    ("expectedTraceSkeleton", counterTraceSkeleton),
     ("bridgeRuleProofs", .arr (counterBridgeRuleProofs.map bridgeRuleProofJson)),
     ("proofReferences", stringsJson [
       "SoLean.Bridge.AssertHelper.targetForIszero_refines_source",

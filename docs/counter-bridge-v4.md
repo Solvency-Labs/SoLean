@@ -9,9 +9,9 @@ one exists.
 This is still not verified Solidity parsing, verified solc parsing, or semantic
 equivalence with real solc Yul.
 
-Bridge v4.1 stabilized this report as a checked audit artifact. Bridge v5 adds
-trace replay on top of that line-auditable trace; see
-`docs/counter-bridge-v5.md`.
+Bridge v4.1 stabilized this report as a checked audit artifact. Bridge v5 added
+trace replay on top of that line-auditable trace, and Bridge v6 adds Lean-owned
+source and trace certificates; see `docs/counter-bridge-v6.md`.
 
 ## Success Condition
 
@@ -50,9 +50,9 @@ JSON shape with:
 - the solc summary trace
 - explicit limitations
 
-Bridge v5 supersedes that checked artifact with `reportVersion: 5` and adds
-trace replay. See `docs/counter-bridge-v5.md` for the currently checked golden
-report.
+Bridge v6 supersedes that checked artifact with `reportVersion: 6`, trace
+replay, and Lean-owned certificate checks. See `docs/counter-bridge-v6.md` for
+the currently checked golden report.
 
 ## Trust Boundary
 

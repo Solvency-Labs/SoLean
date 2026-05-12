@@ -129,6 +129,7 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── counter-bridge-v3.md
 │   ├── counter-bridge-v4.md
 │   ├── counter-bridge-v5.md
+│   ├── counter-bridge-v6.md
 │   ├── counter-demo.md
 │   ├── counter-yul.md
 │   ├── counter.md
@@ -166,7 +167,7 @@ still a small Solidity subset rather than an EVM semantics.
 │   └── yul_subset.py
 └── tests/
     ├── golden/
-    │   ├── Counter.bridge.v5.json
+    │   ├── Counter.bridge.v6.json
     │   └── Counter.solean.yul
     ├── README.md
     └── test_yul_tools.py
@@ -299,12 +300,13 @@ python3 scripts/check_counter_bridge.py \
 
 This emits deterministic JSON tying the trusted Solidity source projection,
 Python Counter Yul emitter, and trusted solc `fun_inc_*` summary back to
-Lean-owned artifacts. It also checks the observed solc summary rules against a
-Lean-owned bridge manifest. A passing report is an audit/regression signal, not
-a proof of Solidity parsing or semantic equivalence with solc output. See
-`docs/counter-bridge-v5.md` for the current trace-replay bridge boundary. The
-JSON report is versioned as `reportVersion: 5` and checked against
-`tests/golden/Counter.bridge.v5.json` in the Python test suite.
+Lean-owned artifacts. It also checks the observed solc summary rules, source
+certificate, and trace skeleton against a Lean-owned bridge manifest. A passing
+report is an audit/regression signal, not a proof of Solidity parsing or
+semantic equivalence with solc output. See `docs/counter-bridge-v6.md` for the
+current Lean-owned bridge certificate boundary. The JSON report is versioned as
+`reportVersion: 6` and checked against `tests/golden/Counter.bridge.v6.json` in
+the Python test suite.
 
 Run the full Counter research demo:
 
@@ -347,18 +349,29 @@ python3 scripts/solidity_to_solean.py --format source-json examples/Counter.sol
 This JSON is an audit/test artifact that is checked against the Lean-exported
 `CounterCompiler.counterFunction` shape; it is not a verified parser output.
 
+Emit the accepted source certificate:
+
+```bash
+python3 scripts/solidity_to_solean.py --format source-certificate-json examples/Counter.sol
+```
+
+This certificate is checked against the Lean-owned bridge manifest. It states
+the accepted Counter-only source shape and assumptions.
+
 Export the Lean-owned Counter audit artifacts:
 
 ```bash
 lake env lean --run SoLean/CounterArtifactsMain.lean source-json
+lake env lean --run SoLean/CounterArtifactsMain.lean source-certificate-json
 lake env lean --run SoLean/CounterArtifactsMain.lean yul-json
+lake env lean --run SoLean/CounterArtifactsMain.lean trace-skeleton-json
 lake env lean --run SoLean/CounterArtifactsMain.lean bridge-json
 ```
 
 Python tests compare the Solidity source projection and Python Yul emitter
 shape against these Lean-exported artifacts. The Counter bridge report also
-compares the observed solc summary rule list against the Lean-exported bridge
-manifest.
+compares the observed solc summary rule list, source certificate, and trace
+skeleton against the Lean-exported bridge manifest.
 
 Render the Counter restricted Yul from the Lean-owned Yul artifact:
 

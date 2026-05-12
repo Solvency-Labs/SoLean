@@ -16,7 +16,8 @@ The demo runs:
 
 - `lake build`
 - bridge-focused Python tests
-- Lean artifact export smoke checks for `source-json`, `yul-json`, and
+- Lean artifact export smoke checks for `source-json`,
+  `source-certificate-json`, `yul-json`, `trace-skeleton-json`, and
   `bridge-json`
 - the Counter bridge report in Markdown mode if `build/Counter.solc.yul`
   exists
@@ -75,10 +76,12 @@ The solc function summary also emits a line-by-line trace that maps normalized
 solc lines to bridge rules, restricted-Yul effects, and Lean proof references
 when available.
 
-Bridge v5 replays those trace effects back into restricted Yul and checks the
-replayed program against the Lean-owned Counter Yul artifact. The bridge report
-JSON is versioned as `reportVersion: 5` and checked against
-`tests/golden/Counter.bridge.v5.json`. That fixture is a presentation/audit
+Bridge v6 replays those trace effects back into restricted Yul, checks the
+replayed program against the Lean-owned Counter Yul artifact, checks the trace
+skeleton against a Lean-owned skeleton, and checks the accepted Solidity source
+certificate against a Lean-owned certificate. The bridge report JSON is
+versioned as `reportVersion: 6` and checked against
+`tests/golden/Counter.bridge.v6.json`. That fixture is a presentation/audit
 regression artifact: it makes the current Counter boundary stable enough to
 review, but it does not turn the trusted Python recognizers into verified code.
 

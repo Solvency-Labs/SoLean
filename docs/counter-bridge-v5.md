@@ -1,9 +1,12 @@
 # Counter Bridge v5
 
-`Counter Bridge v5` makes the solc summary trace replayable. Bridge v4 made the
+`Counter Bridge v5` made the solc summary trace replayable. Bridge v4 made the
 trusted `fun_inc_*` recognizer line-auditable; v5 checks that the public trace
 effects reconstruct the same restricted Counter Yul program that the summary
 claims.
+
+Bridge v6 supersedes this with a Lean-owned source certificate and trace
+skeleton; see `docs/counter-bridge-v6.md`.
 
 This is still not verified Solidity parsing, verified solc parsing, or semantic
 equivalence with real solc Yul.
@@ -55,11 +58,11 @@ Remaining trusted boundaries:
 
 ## Checked Artifact
 
-The bridge report is now `reportVersion: 5` and is checked against:
+At the v5 boundary, the bridge report was `reportVersion: 5` and was checked
+against:
 
 ```text
 tests/golden/Counter.bridge.v5.json
 ```
 
-That fixture is generated from the checked Counter Solidity file and the solc IR
-fixture embedded in the Python tests, not from local `build/` artifacts.
+Bridge v6 supersedes that fixture with `tests/golden/Counter.bridge.v6.json`.

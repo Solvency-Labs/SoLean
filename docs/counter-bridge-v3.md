@@ -8,8 +8,8 @@ except hex-literal parsing has a Lean proof reference.
 This is still not verified Solidity parsing, verified solc parsing, or semantic
 equivalence with real solc Yul.
 
-This page records the v3 milestone. The current trace-replay bridge boundary is
-`Counter Bridge v5`; see `docs/counter-bridge-v5.md`.
+This page records the v3 milestone. The current Lean-owned bridge certificate
+boundary is `Counter Bridge v6`; see `docs/counter-bridge-v6.md`.
 
 ## Success Condition
 

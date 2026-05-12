@@ -23,12 +23,20 @@ try:
         solc_function_summary_to_data,
         summarize_solc_function_text,
     )
-    from .solidity_to_solean import contract_to_source_data, parse_counter
+    from .solidity_to_solean import (
+        contract_to_source_certificate,
+        contract_to_source_data,
+        parse_counter,
+    )
     from .solean_to_yul import main as solean_to_yul_main
     from .yul_subset import UnsupportedYulError, object_to_data, parse_object
 except ImportError:  # Allows `python scripts/check_counter_bridge.py ...`.
     from classify_yul import solc_function_summary_to_data, summarize_solc_function_text
-    from solidity_to_solean import contract_to_source_data, parse_counter
+    from solidity_to_solean import (
+        contract_to_source_certificate,
+        contract_to_source_data,
+        parse_counter,
+    )
     from solean_to_yul import main as solean_to_yul_main
     from yul_subset import UnsupportedYulError, object_to_data, parse_object
 
@@ -41,7 +49,7 @@ LIMITATIONS = [
     "This report is not semantic equivalence against real solc Yul.",
 ]
 
-REPORT_VERSION = 5
+REPORT_VERSION = 6
 
 
 def stable_json(data: Any) -> str:
@@ -126,6 +134,30 @@ def pending_rules(report: dict[str, Any]) -> list[str]:
     ]
 
 
+def check_groups(checks: list[dict[str, str]]) -> dict[str, list[str]]:
+    groups: dict[str, list[str]] = {
+        "leanOwned": [],
+        "tested": [],
+        "trusted": [],
+    }
+    for check in checks:
+        name = check["name"]
+        trust = check["trust"]
+        if trust == "Lean-owned manifest":
+            groups["leanOwned"].append(name)
+        elif trust in {
+            "tested",
+            "trusted-summary-tested",
+            "trace-replay-tested",
+            "Lean-owned certificate",
+            "Lean-owned trace skeleton",
+        }:
+            groups["tested"].append(name)
+        else:
+            groups["trusted"].append(name)
+    return groups
+
+
 def format_markdown_report(report: dict[str, Any]) -> str:
     lines = [
         "# Counter Bridge Report",
@@ -133,9 +165,30 @@ def format_markdown_report(report: dict[str, Any]) -> str:
         f"Status: **{report.get('status', 'failed')}**",
         f"Report version: `{report.get('reportVersion', REPORT_VERSION)}`",
         "",
-        "## Proved In Lean",
+        "## Bridge Certificate",
         "",
     ]
+
+    certificate = report.get("certificate", {})
+    if certificate:
+        groups = certificate.get("checkGroups", {})
+        lines.extend(
+            [
+                f"- Certificate kind: `{certificate.get('kind')}`",
+                f"- Certificate version: `{certificate.get('version')}`",
+                f"- Tested checks: `{len(groups.get('tested', []))}`",
+                f"- Lean-owned manifest checks: `{len(groups.get('leanOwned', []))}`",
+                f"- Trusted-boundary checks: `{len(groups.get('trusted', []))}`",
+            ]
+        )
+    else:
+        lines.append("- No certificate section available.")
+
+    lines.extend([
+        "",
+        "## Proved In Lean",
+        "",
+    ])
 
     proof_refs = report.get("bridgeManifest", {}).get("proofReferences", [])
     if proof_refs:
@@ -149,6 +202,8 @@ def format_markdown_report(report: dict[str, Any]) -> str:
             "tested",
             "trusted-summary-tested",
             "trace-replay-tested",
+            "Lean-owned certificate",
+            "Lean-owned trace skeleton",
             "Lean-owned manifest",
         }:
             marker = "PASS" if check.get("status") == "passed" else "FAIL"
@@ -191,6 +246,26 @@ def format_markdown_report(report: dict[str, Any]) -> str:
     else:
         lines.append("- No trace replay artifact available.")
 
+    lines.extend(["", "## Lean-Owned Trace Skeleton", ""])
+    skeleton_check = next(
+        (
+            check
+            for check in report.get("checks", [])
+            if check.get("name") == "solcTraceSkeletonToLeanManifest"
+        ),
+        None,
+    )
+    if skeleton_check is not None:
+        marker = "PASS" if skeleton_check.get("status") == "passed" else "FAIL"
+        lines.append(f"- **{marker}** {skeleton_check.get('message')}")
+    skeleton = report.get("solc", {}).get("traceSkeleton")
+    if skeleton is not None:
+        lines.append(
+            f"- Trace skeleton has `{len(skeleton)}` Lean-owned rule/effect entries."
+        )
+    else:
+        lines.append("- No trace skeleton artifact available.")
+
     lines.extend(["", "## Lean-Backed Adapter Rules", ""])
     backed = lean_backed_rules(report)
     if backed:
@@ -232,6 +307,31 @@ def emitted_counter_yul_data() -> dict[str, Any]:
     return object_to_data(parse_object(output.getvalue()))
 
 
+def trace_to_skeleton(trace: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        trace_entry_to_skeleton(index, entry)
+        for index, entry in enumerate(trace, start=1)
+    ]
+
+
+def trace_entry_to_skeleton(index: int, entry: dict[str, Any]) -> dict[str, Any]:
+    effect = entry["effect"]
+    kind = effect.get("kind")
+    if kind == "emitStmt":
+        emits = [effect["stmt"]]
+    elif kind == "emitStmts":
+        emits = effect["stmts"]
+    else:
+        emits = []
+    return {
+        "effectKind": kind,
+        "emits": emits,
+        "index": index,
+        "leanProof": entry.get("leanProof", ""),
+        "rule": entry["rule"],
+    }
+
+
 def build_counter_bridge_report(
     solidity_path: Path,
     solc_yul_path: Path,
@@ -246,20 +346,30 @@ def build_counter_bridge_report(
         lean_manifest if lean_manifest is not None else lean_artifact("bridge-json")
     )
     expected_rules = lean_manifest["expectedTrustedRules"]
+    expected_source_certificate = lean_manifest["sourceCertificate"]
+    expected_trace_skeleton = lean_manifest["expectedTraceSkeleton"]
 
     checks: list[dict[str, str]] = []
+    source_info: dict[str, Any] = {
+        "certificate": None,
+    }
     solc_info: dict[str, Any] = {
         "sourceObject": None,
         "sourceFunction": None,
         "trustedRules": [],
         "trace": [],
         "traceReplay": None,
+        "traceSkeleton": None,
     }
     solc_summary_rules: list[str] | None = None
+    solc_trace_skeleton: list[dict[str, Any]] | None = None
 
     if solidity_path.exists():
         try:
-            source_data = contract_to_source_data(parse_counter(solidity_path.read_text()))
+            contract = parse_counter(solidity_path.read_text())
+            source_data = contract_to_source_data(contract)
+            source_certificate = contract_to_source_certificate(contract)
+            source_info["certificate"] = source_certificate
             checks.append(
                 check_data(
                     "soliditySourceToLeanSource",
@@ -270,6 +380,16 @@ def build_counter_bridge_report(
                     "Counter Solidity source shape does not match the Lean source artifact.",
                 )
             )
+            checks.append(
+                check_data(
+                    "soliditySourceCertificateToLeanManifest",
+                    "Lean-owned certificate",
+                    source_certificate,
+                    expected_source_certificate,
+                    "Counter Solidity source certificate matches the Lean bridge manifest.",
+                    "Counter Solidity source certificate does not match the Lean bridge manifest.",
+                )
+            )
         except Exception as exc:
             checks.append(
                 failed_check(
@@ -278,12 +398,26 @@ def build_counter_bridge_report(
                     f"unsupported or unreadable Solidity source: {exc}",
                 )
             )
+            checks.append(
+                failed_check(
+                    "soliditySourceCertificateToLeanManifest",
+                    "Lean-owned certificate",
+                    "source parser did not produce a source certificate to compare",
+                )
+            )
     else:
         checks.append(
             failed_check(
                 "soliditySourceToLeanSource",
                 "trusted-parser",
                 f"Solidity source file not found: {solidity_path}",
+            )
+        )
+        checks.append(
+            failed_check(
+                "soliditySourceCertificateToLeanManifest",
+                "Lean-owned certificate",
+                "source parser did not produce a source certificate to compare",
             )
         )
 
@@ -321,8 +455,10 @@ def build_counter_bridge_report(
                 "traceReplayMatchesNormalized": summary_data[
                     "traceReplayMatchesNormalized"
                 ],
+                "traceSkeleton": trace_to_skeleton(summary_data["trace"]),
             }
             solc_summary_rules = summary_data["trustedRules"]
+            solc_trace_skeleton = solc_info["traceSkeleton"]
             checks.append(
                 check_data(
                     "solcFunctionSummaryToLeanYul",
@@ -343,6 +479,16 @@ def build_counter_bridge_report(
                     "solc summary trace replay does not match the Lean Yul artifact.",
                 )
             )
+            checks.append(
+                check_data(
+                    "solcTraceSkeletonToLeanManifest",
+                    "Lean-owned trace skeleton",
+                    solc_trace_skeleton,
+                    expected_trace_skeleton,
+                    "solc summary trace skeleton matches the Lean bridge manifest.",
+                    "solc summary trace skeleton does not match the Lean bridge manifest.",
+                )
+            )
         except UnsupportedYulError as exc:
             checks.append(
                 failed_check(
@@ -356,6 +502,13 @@ def build_counter_bridge_report(
                     "solcTraceReplayToLeanYul",
                     "trace-replay-tested",
                     "solc summary did not produce a trace replay to compare",
+                )
+            )
+            checks.append(
+                failed_check(
+                    "solcTraceSkeletonToLeanManifest",
+                    "Lean-owned trace skeleton",
+                    "solc summary did not produce a trace skeleton to compare",
                 )
             )
         except Exception as exc:
@@ -373,6 +526,13 @@ def build_counter_bridge_report(
                     "solc summary did not produce a trace replay to compare",
                 )
             )
+            checks.append(
+                failed_check(
+                    "solcTraceSkeletonToLeanManifest",
+                    "Lean-owned trace skeleton",
+                    "solc summary did not produce a trace skeleton to compare",
+                )
+            )
     else:
         checks.append(
             failed_check(
@@ -386,6 +546,13 @@ def build_counter_bridge_report(
                 "solcTraceReplayToLeanYul",
                 "trace-replay-tested",
                 "solc summary did not produce a trace replay to compare",
+            )
+        )
+        checks.append(
+            failed_check(
+                "solcTraceSkeletonToLeanManifest",
+                "Lean-owned trace skeleton",
+                "solc summary did not produce a trace skeleton to compare",
             )
         )
 
@@ -428,12 +595,27 @@ def build_counter_bridge_report(
                 "sha256": artifact_hash(lean_manifest),
             },
         },
+        "certificate": {
+            "kind": "counterBridgeCertificate",
+            "version": REPORT_VERSION,
+            "status": status,
+            "checkGroups": check_groups(checks),
+            "trustedBoundaries": [
+                "Counter-only Solidity parser.",
+                "Counter-specific Python solc IR recognizer.",
+                "Python hex literal parsing.",
+                "Python trace replay checker.",
+            ],
+            "nonClaims": lean_manifest["limitations"],
+        },
         "bridgeManifest": {
             "expectedTrustedRules": expected_rules,
+            "expectedTraceSkeleton": expected_trace_skeleton,
             "bridgeRuleProofs": lean_manifest["bridgeRuleProofs"],
             "proofReferences": lean_manifest["proofReferences"],
         },
         "checks": checks,
+        "source": source_info,
         "solc": solc_info,
         "limitations": lean_manifest["limitations"],
     }
@@ -485,6 +667,7 @@ def main(argv: list[str] | None = None) -> int:
                 "trustedRules": [],
                 "trace": [],
                 "traceReplay": None,
+                "traceSkeleton": None,
             },
             "limitations": LIMITATIONS,
         }
@@ -507,6 +690,7 @@ def main(argv: list[str] | None = None) -> int:
                 "trustedRules": [],
                 "trace": [],
                 "traceReplay": None,
+                "traceSkeleton": None,
             },
             "limitations": LIMITATIONS,
         }

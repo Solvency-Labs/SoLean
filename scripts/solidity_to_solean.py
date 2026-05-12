@@ -304,6 +304,63 @@ def contract_to_source_data(contract: Contract) -> dict[str, Any]:
     }
 
 
+def contract_to_source_certificate(contract: Contract) -> dict[str, Any]:
+    """Return the source-side bridge certificate for supported Counter input.
+
+    This certificate is intentionally small and explicit. It is not a verified
+    Solidity parse tree; it is the trusted parser's auditable claim about the
+    accepted source shape.
+    """
+
+    validate_counter(contract)
+    function = contract.functions[0]
+    state_var = contract.state_vars[0]
+    return {
+        "assumptions": [
+            "Counter-only Solidity subset.",
+            "Storage slot assignment is explicit: x maps to slot 0.",
+            "The parser rejects unsupported Solidity instead of approximating it.",
+        ],
+        "contract": {
+            "name": contract.name,
+            "pragma": contract.pragma_version,
+        },
+        "function": {
+            "bodyShape": [
+                "require(amount > 0)",
+                "x += amount",
+                "assert(x >= amount)",
+            ],
+            "name": function.name,
+            "parameter": {
+                "name": function.param_name,
+                "type": function.param_type,
+            },
+            "visibility": function.visibility,
+        },
+        "kind": "counterSourceCertificate",
+        "lean": "SoLean.Examples.CounterCompiler.counterFunction",
+        "storageSlots": [
+            {
+                "name": state_var.name,
+                "slot": COUNTER_STORAGE_SLOTS[state_var.name],
+                "type": state_var.typ,
+                "visibility": state_var.visibility,
+            }
+        ],
+        "unsupported": [
+            "ABI decoding",
+            "memory",
+            "external calls",
+            "events",
+            "gas",
+            "reentrancy",
+            "full Solidity parsing",
+        ],
+        "version": 1,
+    }
+
+
 def statement_to_source_data(
     stmt: Statement, param_name: str, storage_slots: dict[str, dict[str, Any]]
 ) -> dict[str, Any]:
@@ -364,6 +421,13 @@ def source_data_json(contract: Contract) -> str:
     return json.dumps(contract_to_source_data(contract), indent=2, sort_keys=True) + "\n"
 
 
+def source_certificate_json(contract: Contract) -> str:
+    return (
+        json.dumps(contract_to_source_certificate(contract), indent=2, sort_keys=True)
+        + "\n"
+    )
+
+
 def validate_counter(contract: Contract) -> None:
     expected = Contract(
         pragma_version="0.8.35",
@@ -402,7 +466,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("source", type=Path, help="Solidity source file")
     parser.add_argument(
         "--format",
-        choices=["lean", "source-json"],
+        choices=["lean", "source-json", "source-certificate-json"],
         default="lean",
         help="Output Lean reference sketch or deterministic source-shape JSON",
     )
@@ -428,7 +492,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"unsupported Solidity input: {exc}", file=sys.stderr)
         return 2
 
-    output = COUNTER_SNIPPET if args.format == "lean" else source_data_json(contract)
+    if args.format == "lean":
+        output = COUNTER_SNIPPET
+    elif args.format == "source-json":
+        output = source_data_json(contract)
+    else:
+        output = source_certificate_json(contract)
     if args.output:
         args.output.write_text(output)
     else:
