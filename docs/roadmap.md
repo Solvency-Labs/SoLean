@@ -43,8 +43,9 @@ Counter source function in Lean
 This is real progress, but it does not yet start from Solidity text or real
 `solc` output.
 
-See `docs/counter-bridge-v1.md` for the crisp Counter success condition and
-`docs/counter-bridge-v2.md` for the current auditable bridge report.
+See `docs/counter-bridge-v1.md` for the crisp Counter success condition,
+`docs/counter-bridge-v2.md` for the first auditable bridge report, and
+`docs/counter-bridge-v3.md` for the current named rule boundary.
 
 ## Current State
 
@@ -179,9 +180,8 @@ Done:
   this, the first current `fun_inc_*` blocker is the helper call
   `cleanup_t_uint256`.
 - Summarize explicitly trusted transparent value helpers in solc function-body
-  inspection, including `cleanup_t_uint256`, `identity`, and
-  `convert_t_rational_0_by_1_to_t_uint256`. After this, the first current
-  `fun_inc_*` blocker is `require_helper(expr_11)`.
+  inspection, initially bundled under `transparentValueHelper`. After this, the
+  first current `fun_inc_*` blocker is `require_helper(expr_11)`.
 - Summarize `require_helper(condition)` as a revert guard for classification.
   After this, the first current `fun_inc_*` blocker is
   `read_from_storage_split_offset_0_t_uint256`.
@@ -219,6 +219,8 @@ Done:
 - Model the slot-0 storage bridge adapter rules semantically in Lean:
   `SoLean.Bridge.StorageRead` and `SoLean.Bridge.StorageWrite` prove the
   current Counter storage-helper rewrites to `sload(0)` and `sstore(0, value)`.
+- Split the bundled `transparentValueHelper` rule into concrete observed helper
+  rules and add Lean identity proofs for the current Counter helper rewrites.
 - Add Markdown bridge-report output and a one-command Counter demo runner.
 - Add a rendering path from the Lean-exported Counter Yul artifact, so the demo
   can display restricted Yul from Lean-owned data rather than only from the
@@ -226,9 +228,8 @@ Done:
 
 Next tasks:
 
-- Reduce trust further by splitting `transparentValueHelper` into concrete
-  helper rules, then decide which of those can get small Lean-backed
-  semantics.
+- Decide whether `hexLiteralAsNat` should stay as explicit parser-level trust
+  or move into a tiny checked literal parser path.
 - Decide whether the `counterBridgeReport` JSON should remain an internal audit
   format or become a stable checked artifact.
 
@@ -244,10 +245,9 @@ Definition of done:
   artifacts drift away from Lean-owned artifacts.
 - The expected trusted-rule list is owned by a Lean-exported bridge manifest
   rather than only by Python tests/docs.
-- Five adapter rules, `requireHelperAsRevertGuard`,
-  `storageReadSlot0AsSload`, `checkedAddUInt256AsAddWithOverflowGuard`,
-  `storageUpdateSlot0AsSstore`, and `assertHelperAsRevertGuard`, have
-  Lean-backed semantic translation theorems.
+- All current Counter semantic adapter rules except `hexLiteralAsNat` have
+  Lean-backed semantic translation theorems. `hexLiteralAsNat` remains
+  parser-level trust.
 - The repo can run a single Counter demo command that reports proved, tested,
   trusted, and skipped-real-solc boundaries.
 
@@ -296,28 +296,25 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Split transparent solc value helpers into named bridge rules.
+Decide the fate of hex-literal parsing trust.
 ```
 
 Why this matters:
 
 - The expected solc summary rule list is Lean-owned and checked by the
   bridge report.
-- The main Counter semantic adapter rules now have Lean-backed translations
+- The current Counter semantic adapter rules now have Lean-backed translations
   exposed via the manifest's `bridgeRuleProofs` field.
-- `transparentValueHelper` still bundles several different solc helper calls
-  into one trusted Python rule. Splitting it into named rules would make the
-  remaining trusted boundary much easier to audit.
+- `hexLiteralAsNat` is the only remaining rule-level item with an empty
+  `leanProof` field. It is parser-level trust, not semantic helper trust.
 
 Smallest useful version:
 
-1. Replace `transparentValueHelper` with concrete observed rule names such as
-   `cleanupUint256AsIdentity`, `identityHelperAsIdentity`, and
-   `zeroLiteralConversionAsZero`.
-2. Keep the function summary deterministic and fail loudly for any unlisted
-   helper.
-3. Add Lean-backed proofs for the identity-like helpers where the restricted
-   semantics makes that meaningful.
+1. Keep `hexLiteralAsNat` explicitly trusted, or introduce a tiny checked
+   literal-parser artifact with focused tests.
+2. If keeping it trusted, document why Bridge v3 stops at parser-level trust.
+3. If reducing it, make the parser support narrow and fail loudly outside
+   decimal and `0x...` natural literals.
 
 ## Updating This Roadmap
 

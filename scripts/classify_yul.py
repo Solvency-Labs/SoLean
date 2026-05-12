@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 import re
+from typing import Callable
 
 try:
     from .normalize_yul import normalize_text
@@ -130,11 +131,12 @@ UNSUPPORTED_STATEMENT_PREFIXES = (
 IDENT = r"[A-Za-z_][A-Za-z0-9_]*"
 OBJECT_HEADER_RE = re.compile(r'object "([^"]+)" \{')
 FUNCTION_HEADER_RE = re.compile(rf"function ({IDENT})\(([^)]*)\)(?: -> [^{{]+)? \{{")
-TRANSPARENT_VALUE_HELPERS = {
-    "cleanup_t_rational_0_by_1",
-    "cleanup_t_uint256",
-    "convert_t_rational_0_by_1_to_t_uint256",
-    "identity",
+TRANSPARENT_VALUE_HELPER_RULES = {
+    "cleanup_t_uint256": "cleanupUint256AsIdentity",
+    "convert_t_rational_0_by_1_to_t_uint256":
+        "convertRationalZeroByOneToUint256AsIdentity",
+    "identity": "identityHelperAsIdentity",
+    "cleanup_t_rational_0_by_1": "cleanupRationalZeroByOneAsIdentity",
 }
 
 
@@ -426,8 +428,9 @@ def normalize_counter_function_body(
     def record_text_rules(text: str) -> None:
         if re.search(r"\b0[xX][0-9a-fA-F]+\b", text):
             add_rule("hexLiteralAsNat")
-        if any(f"{helper}(" in text for helper in TRANSPARENT_VALUE_HELPERS):
-            add_rule("transparentValueHelper")
+
+    def record_transparent_helper(name: str) -> None:
+        add_rule(TRANSPARENT_VALUE_HELPER_RULES[name])
 
     def resolve(expr: Expr) -> Expr:
         if isinstance(expr, Ident) and expr.name in env:
@@ -438,7 +441,9 @@ def normalize_counter_function_body(
 
     def parse_supported_expr(raw: str) -> Expr:
         record_text_rules(raw)
-        return resolve(parse_expr(summarize_transparent_helpers(raw)))
+        return resolve(parse_expr(
+            summarize_transparent_helpers(raw, record_transparent_helper)
+        ))
 
     def literal_value(raw: str) -> int:
         expr = parse_supported_expr(raw)
@@ -456,7 +461,7 @@ def normalize_counter_function_body(
         nonlocal old_x_emitted, new_x_emitted
 
         record_text_rules(raw)
-        text = summarize_transparent_helpers(raw.strip())
+        text = summarize_transparent_helpers(raw.strip(), record_transparent_helper)
         call = parse_any_call(text)
         if call is not None:
             name, args = call
@@ -498,7 +503,7 @@ def normalize_counter_function_body(
 
     def handle_call_statement(line: str) -> bool:
         record_text_rules(line)
-        call = parse_any_call(summarize_transparent_helpers(line))
+        call = parse_any_call(summarize_transparent_helpers(line, record_transparent_helper))
         if call is None:
             return False
 
@@ -573,7 +578,9 @@ def summarize_require_helper(text: str) -> str:
     return f"if iszero({condition}) {{ revert(0, 0) }}"
 
 
-def summarize_transparent_helpers(text: str) -> str:
+def summarize_transparent_helpers(
+    text: str, record_helper: Callable[[str], None] | None = None
+) -> str:
     """Remove explicitly trusted one-argument solc value wrappers.
 
     This is only used by solc function-body inspection. It is not a general Yul
@@ -582,16 +589,18 @@ def summarize_transparent_helpers(text: str) -> str:
 
     current = text
     while True:
-        summarized = _summarize_one_transparent_helper(current)
+        summarized = _summarize_one_transparent_helper(current, record_helper)
         if summarized == current:
             return current
         current = summarized
 
 
-def _summarize_one_transparent_helper(text: str) -> str:
+def _summarize_one_transparent_helper(
+    text: str, record_helper: Callable[[str], None] | None
+) -> str:
     for match in re.finditer(rf"\b({IDENT})\(", text):
         name = match.group(1)
-        if name not in TRANSPARENT_VALUE_HELPERS:
+        if name not in TRANSPARENT_VALUE_HELPER_RULES:
             continue
         open_index = match.end() - 1
         close_index = find_matching_paren(text, open_index)
@@ -600,7 +609,9 @@ def _summarize_one_transparent_helper(text: str) -> str:
         args = split_top_level_args(text[open_index + 1 : close_index])
         if len(args) != 1:
             continue
-        replacement = summarize_transparent_helpers(args[0])
+        if record_helper is not None:
+            record_helper(name)
+        replacement = summarize_transparent_helpers(args[0], record_helper)
         return text[: match.start()] + replacement + text[close_index + 1 :]
     return text
 

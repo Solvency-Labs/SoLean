@@ -66,7 +66,7 @@ object "Counter_26" {
       function fun_inc_25(var_amount_5) {
         let expr_9 := var_amount_5
         let expr_10 := 0x00
-        let expr_11 := gt(cleanup_t_uint256(expr_9), expr_10)
+        let expr_11 := gt(cleanup_t_uint256(expr_9), convert_t_rational_0_by_1_to_t_uint256(expr_10))
         require_helper(expr_11)
         let _2 := var_amount_5
         let expr_15 := _2
@@ -206,13 +206,20 @@ class YulSubsetTests(unittest.TestCase):
             manifest["expectedTrustedRules"],
             [
                 "hexLiteralAsNat",
-                "transparentValueHelper",
+                "cleanupUint256AsIdentity",
+                "convertRationalZeroByOneToUint256AsIdentity",
                 "requireHelperAsRevertGuard",
                 "storageReadSlot0AsSload",
                 "checkedAddUInt256AsAddWithOverflowGuard",
                 "storageUpdateSlot0AsSstore",
                 "assertHelperAsRevertGuard",
             ],
+        )
+        self.assertNotIn("transparentValueHelper", manifest["expectedTrustedRules"])
+        self.assertNotIn("identityHelperAsIdentity", manifest["expectedTrustedRules"])
+        self.assertNotIn(
+            "cleanupRationalZeroByOneAsIdentity",
+            manifest["expectedTrustedRules"],
         )
 
     def test_bridge_rule_proofs_align_with_expected_rules(self) -> None:
@@ -237,6 +244,22 @@ class YulSubsetTests(unittest.TestCase):
 
         # These rules have Lean-backed semantic translations. Make them
         # explicit so a regression is loud.
+        cleanup_entry = next(
+            entry for entry in rule_proofs if entry["rule"] == "cleanupUint256AsIdentity"
+        )
+        self.assertEqual(
+            cleanup_entry["leanProof"],
+            "SoLean.Bridge.TransparentHelper.cleanupUint256_refines_source",
+        )
+        convert_entry = next(
+            entry
+            for entry in rule_proofs
+            if entry["rule"] == "convertRationalZeroByOneToUint256AsIdentity"
+        )
+        self.assertEqual(
+            convert_entry["leanProof"],
+            "SoLean.Bridge.TransparentHelper.convertRationalZeroByOneToUint256_refines_source",
+        )
         require_entry = next(
             entry for entry in rule_proofs if entry["rule"] == "requireHelperAsRevertGuard"
         )
@@ -438,20 +461,54 @@ class ClassifyYulTests(unittest.TestCase):
         self.assertIn("read_from_storage_split_offset_0_t_uint256", inspection.message)
 
     def test_transparent_solc_value_helpers_are_summarized(self) -> None:
+        rules: list[str] = []
         self.assertEqual(
             summarize_transparent_helpers(
                 "let expr_11 := "
                 "gt(cleanup_t_uint256(expr_9), "
-                "convert_t_rational_0_by_1_to_t_uint256(expr_10))"
+                "convert_t_rational_0_by_1_to_t_uint256(expr_10))",
+                lambda name: rules.append(name),
             ),
             "let expr_11 := gt(expr_9, expr_10)",
         )
         self.assertEqual(
+            rules,
+            [
+                "cleanup_t_uint256",
+                "convert_t_rational_0_by_1_to_t_uint256",
+            ],
+        )
+        nested_rules: list[str] = []
+        self.assertEqual(
             summarize_transparent_helpers(
-                "let x := cleanup_t_uint256(identity(cleanup_t_uint256(value)))"
+                "let x := cleanup_t_uint256(identity(cleanup_t_uint256(value)))",
+                lambda name: nested_rules.append(name),
             ),
             "let x := value",
         )
+        self.assertEqual(
+            nested_rules,
+            ["cleanup_t_uint256", "identity", "cleanup_t_uint256"],
+        )
+        rational_rules: list[str] = []
+        self.assertEqual(
+            summarize_transparent_helpers(
+                "let x := cleanup_t_rational_0_by_1(value)",
+                lambda name: rational_rules.append(name),
+            ),
+            "let x := value",
+        )
+        self.assertEqual(rational_rules, ["cleanup_t_rational_0_by_1"])
+
+    def test_unknown_transparent_like_helper_is_not_summarized(self) -> None:
+        rules: list[str] = []
+        source = "let x := mystery_helper(value)"
+
+        self.assertEqual(
+            summarize_transparent_helpers(source, lambda name: rules.append(name)),
+            source,
+        )
+        self.assertEqual(rules, [])
 
     def test_require_helper_is_summarized_as_revert_guard(self) -> None:
         self.assertEqual(
@@ -477,6 +534,7 @@ class ClassifyYulTests(unittest.TestCase):
             summary_data["trustedRules"],
             expected_counter_summary_rules(),
         )
+        self.assertNotIn("transparentValueHelper", summary_data["trustedRules"])
 
     def test_solc_counter_function_summary_cli_outputs_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -606,10 +664,19 @@ class CounterBridgeTests(unittest.TestCase):
         self.assertIn("## Lean-Backed Adapter Rules", report)
         self.assertIn("## Still Trusted Boundaries", report)
         self.assertIn("## Explicit Non-Claims", report)
+        self.assertIn(
+            "SoLean.Bridge.TransparentHelper.cleanupUint256_refines_source", report
+        )
+        self.assertIn(
+            "SoLean.Bridge.TransparentHelper.convertRationalZeroByOneToUint256_refines_source",
+            report,
+        )
         self.assertIn("SoLean.Bridge.StorageRead.target_refines_source", report)
         self.assertIn("SoLean.Bridge.CheckedAdd.counterTarget_refines_source", report)
         self.assertIn("SoLean.Bridge.StorageWrite.target_refines_source", report)
         self.assertIn("SoLean.Bridge.AssertHelper.targetForIszero_refines_source", report)
+        self.assertIn("`hexLiteralAsNat` remains trusted Python pattern recognition.", report)
+        self.assertNotIn("transparentValueHelper", report)
 
     def test_counter_bridge_reports_source_shape_mismatch(self) -> None:
         bad_source = copied_json(lean_artifact("source-json"))

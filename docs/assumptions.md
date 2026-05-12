@@ -64,18 +64,18 @@ results.
   object and currently reports memory setup such as
   `mstore(64, memoryguard(128))` as the next unsupported blocker.
 - The explicit solc function-inspection mode selects the generated `fun_inc_*`
-  body for `inc`. Hexadecimal integer literals are parsed, and transparent
+  body for `inc`. Hexadecimal integer literals are parsed, and the current
   one-argument value helpers and `require_helper` are summarized for
-  classification only. The current first unsupported function-body expression is
-  `read_from_storage_split_offset_0_t_uint256`.
+  classification only. The current first unsupported function-body expression
+  is `read_from_storage_split_offset_0_t_uint256`.
 - The explicit solc function-summary mode recognizes the current Counter
   storage read, checked-add, storage update, and assert-helper patterns and
   emits a canonical restricted Counter Yul shape. This is trusted Python pattern
   recognition, not verified solc parsing or semantic equivalence.
-- The semantic translations for the Counter storage read, checked-add, storage
-  update, require-helper, and assert-helper summary rules now have Lean-backed
-  bridge theorems. The recognizer that finds those patterns inside real solc
-  text is still trusted Python code.
+- The semantic translations for the current Counter helper and adapter summary
+  rules now have Lean-backed bridge theorems, except for `hexLiteralAsNat`,
+  which remains parser-level trust. The recognizer that finds those patterns
+  inside real solc text is still trusted Python code.
 - The Python emitter, Python parser, Solidity source, and real solc output are
   not yet connected to the Lean compiler by a verified translation. Current
   Python tests provide auditable structural alignment for Counter only.

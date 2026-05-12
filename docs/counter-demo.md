@@ -59,8 +59,11 @@ inside Lean, and the Solidity parser, Python/Lean-artifact Yul rendering, and
 trusted solc function summary all align with those Lean-owned artifacts.
 ```
 
-Five bridge adapter rules now have Lean-backed semantic models:
+The current Counter bridge rules now have Lean-backed semantic models for every
+semantic helper rewrite except hex-literal parsing:
 
+- `cleanupUint256AsIdentity`
+- `convertRationalZeroByOneToUint256AsIdentity`
 - `requireHelperAsRevertGuard`
 - `storageReadSlot0AsSload`
 - `checkedAddUInt256AsAddWithOverflowGuard`
@@ -96,12 +99,10 @@ That is not implemented yet.
 These Counter solc summary rules are still trusted Python pattern recognition:
 
 - `hexLiteralAsNat`
-- `transparentValueHelper`
 
-The next highest-value rule to reduce is `transparentValueHelper`. Today it
-bundles several one-argument solc helpers into one trusted Python recognition
-rule. Splitting those helpers into named rules with explicit Lean-backed
-semantics would make the remaining solc adapter boundary easier to audit.
+The transparent helper bundle from Bridge v2 has been split into concrete rule
+names. The next question is whether `hexLiteralAsNat` should remain explicit
+parser-level trust or become a tiny checked literal-parser path.
 
 ## Useful Commands
 

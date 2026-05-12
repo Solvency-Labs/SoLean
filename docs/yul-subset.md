@@ -125,11 +125,12 @@ shape. This summary is checked against the Lean-exported Counter Yul artifact in
 tests. It is still a trusted inspection summary, not semantic equivalence
 against real solc IR.
 
-Current trusted Counter summary rules:
+Current Counter summary rules:
 
 - `hexLiteralAsNat`: hexadecimal literals become natural-number literals.
-- `transparentValueHelper`: current one-argument value helpers are treated as
-  transparent wrappers.
+- `cleanupUint256AsIdentity`: `cleanup_t_uint256(x)` becomes `x`.
+- `convertRationalZeroByOneToUint256AsIdentity`:
+  `convert_t_rational_0_by_1_to_t_uint256(x)` becomes `x`.
 - `requireHelperAsRevertGuard`: `require_helper(condition)` becomes a revert
   guard.
 - `storageReadSlot0AsSload`: `read_from_storage_split_offset_0_t_uint256(0)`
@@ -151,11 +152,9 @@ lake env lean --run SoLean/CounterArtifactsMain.lean bridge-json
 ```
 
 The manifest also records which rule translations have Lean-backed semantics.
-At the moment, `requireHelperAsRevertGuard`, `storageReadSlot0AsSload`,
-`checkedAddUInt256AsAddWithOverflowGuard`, `storageUpdateSlot0AsSstore`, and
-`assertHelperAsRevertGuard` have non-empty Lean proof references. The
-recognizer that finds those patterns inside real solc text is still trusted
-Python code.
+At the moment, every current Counter summary rule except `hexLiteralAsNat` has
+a non-empty Lean proof reference. The recognizer that finds those patterns
+inside real solc text is still trusted Python code.
 
 The Python bridge report checks the observed rule list against that manifest.
 This makes the boundary easier to audit, but the recognizers are still trusted

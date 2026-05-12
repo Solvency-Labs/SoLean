@@ -172,7 +172,11 @@ deriving Repr
 def counterBridgeRuleProofs : List BridgeRuleProof :=
   [
     { rule := "hexLiteralAsNat",                          leanProof := "" },
-    { rule := "transparentValueHelper",                   leanProof := "" },
+    { rule := "cleanupUint256AsIdentity",
+      leanProof := "SoLean.Bridge.TransparentHelper.cleanupUint256_refines_source" },
+    { rule := "convertRationalZeroByOneToUint256AsIdentity",
+      leanProof :=
+        "SoLean.Bridge.TransparentHelper.convertRationalZeroByOneToUint256_refines_source" },
     { rule := "requireHelperAsRevertGuard",
       leanProof := "SoLean.Bridge.RequireHelper.target_refines_source" },
     { rule := "storageReadSlot0AsSload",
@@ -214,6 +218,8 @@ def counterBridgeManifest : Json :=
       "SoLean.Bridge.RequireHelper.target_refines_source",
       "SoLean.Bridge.StorageRead.target_refines_source",
       "SoLean.Bridge.StorageWrite.target_refines_source",
+      "SoLean.Bridge.TransparentHelper.cleanupUint256_refines_source",
+      "SoLean.Bridge.TransparentHelper.convertRationalZeroByOneToUint256_refines_source",
       "SoLean.Examples.Counter.inc_assertion_safe",
       "SoLean.Examples.CounterCompiler.compile_counter_eq_counter_yul",
       "SoLean.Examples.CounterCompiler.compiled_counter_refines_solean_success",

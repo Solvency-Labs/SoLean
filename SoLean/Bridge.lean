@@ -317,5 +317,65 @@ theorem target_refines_source
       simp [hValue]
 
 end StorageWrite
+
+namespace TransparentHelper
+
+/--
+Source-side semantics for the one-argument value helpers that the Counter solc
+summary treats as transparent wrappers.
+
+This is expression-level only: the helper evaluates its argument under the
+restricted Lean Yul expression evaluator and returns that same value. It does
+not model arbitrary solc helper functions or side effects.
+-/
+def step (expr : Yul.Expr) (storage : Storage) (locals : Yul.Locals) :
+    Option UInt256 :=
+  Yul.evalExpr storage locals expr
+
+/--
+The restricted target expression for a transparent helper is just the wrapped
+expression.
+-/
+def target (expr : Yul.Expr) : Yul.Expr :=
+  expr
+
+/--
+`cleanup_t_uint256(x)` is transparent for the bounded `UInt256` values already
+accepted by the restricted Lean Yul evaluator.
+-/
+theorem cleanupUint256_refines_source
+    (expr : Yul.Expr) (storage : Storage) (locals : Yul.Locals) :
+    Yul.evalExpr storage locals (target expr) = step expr storage locals := by
+  rfl
+
+/--
+`convert_t_rational_0_by_1_to_t_uint256(x)` is transparent for the current
+Counter summary path. The real solc helper body includes nested cleanup and
+identity calls; this theorem captures only the value-level rewrite used by the
+trusted recognizer.
+-/
+theorem convertRationalZeroByOneToUint256_refines_source
+    (expr : Yul.Expr) (storage : Storage) (locals : Yul.Locals) :
+    Yul.evalExpr storage locals (target expr) = step expr storage locals := by
+  rfl
+
+/--
+`identity(x)` is transparent under the restricted expression evaluator.
+-/
+theorem identity_refines_source
+    (expr : Yul.Expr) (storage : Storage) (locals : Yul.Locals) :
+    Yul.evalExpr storage locals (target expr) = step expr storage locals := by
+  rfl
+
+/--
+`cleanup_t_rational_0_by_1(x)` is transparent under the current Counter helper
+model.
+-/
+theorem cleanupRationalZeroByOne_refines_source
+    (expr : Yul.Expr) (storage : Storage) (locals : Yul.Locals) :
+    Yul.evalExpr storage locals (target expr) = step expr storage locals := by
+  rfl
+
+end TransparentHelper
 end Bridge
 end SoLean

@@ -4,6 +4,9 @@
 It is still not verified Solidity parsing, verified solc parsing, or semantic
 equivalence with real solc Yul.
 
+This page records the v2 milestone. The current named rule boundary is
+`Counter Bridge v3`; see `docs/counter-bridge-v3.md`.
+
 The bridge command is:
 
 ```bash
@@ -47,7 +50,7 @@ lake env lean --run SoLean/CounterArtifactsMain.lean bridge-json
 
 The Python solc summary emits its observed `trustedRules` in stable first-use
 order, and the bridge report checks that observed list against the Lean-owned
-manifest. The current expected rules are:
+manifest. At the v2 milestone, the expected rules were:
 
 - `hexLiteralAsNat`: parse solc hexadecimal integer literals as natural-number
   literals in the restricted subset.
