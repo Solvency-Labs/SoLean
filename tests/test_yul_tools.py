@@ -213,6 +213,36 @@ class YulSubsetTests(unittest.TestCase):
             ],
         )
 
+    def test_bridge_rule_proofs_align_with_expected_rules(self) -> None:
+        manifest = lean_artifact("bridge-json")
+        rule_proofs = manifest["bridgeRuleProofs"]
+        proof_references = manifest["proofReferences"]
+
+        # The rule list inside `bridgeRuleProofs` must be the same list, in the
+        # same order, as the trusted-rule boundary itself. This keeps the two
+        # views of the boundary from drifting.
+        self.assertEqual(
+            [entry["rule"] for entry in rule_proofs],
+            manifest["expectedTrustedRules"],
+        )
+
+        # Every non-empty `leanProof` reference must also appear in the manifest's
+        # `proofReferences` list, so a Lean-backed rule is always discoverable
+        # from the audit's proof index.
+        for entry in rule_proofs:
+            if entry["leanProof"]:
+                self.assertIn(entry["leanProof"], proof_references)
+
+        # `requireHelperAsRevertGuard` is the first rule with a Lean-backed
+        # semantic translation. Make that explicit so a regression is loud.
+        require_entry = next(
+            entry for entry in rule_proofs if entry["rule"] == "requireHelperAsRevertGuard"
+        )
+        self.assertEqual(
+            require_entry["leanProof"],
+            "SoLean.Bridge.RequireHelper.target_refines_source",
+        )
+
     def test_counter_object_matches_lean_exported_counter_yul_shape(self) -> None:
         self.assertEqual(object_to_data(counter_object()), lean_artifact("yul-json"))
 

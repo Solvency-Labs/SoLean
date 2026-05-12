@@ -197,10 +197,24 @@ Done:
   proof references, and limitations.
 - Check the Python-observed `trustedRules` list against that Lean-owned
   manifest in the Counter bridge report.
+- Add a Lean-owned `bridgeRuleProofs` array to the manifest that pairs each
+  trusted rule with the Lean theorem (if any) that backs its semantic
+  translation.
+- Model the first Counter bridge adapter rule semantically in Lean:
+  `SoLean.Bridge.RequireHelper` defines a tiny step semantics for
+  `require_helper(cond)` and proves `target_refines_source`, which shows the
+  emitted `if iszero(cond) { revert(0, 0) }` shape has the same step result as
+  the modeled helper under the restricted Yul semantics. This is the first
+  rule whose translation is Lean-backed rather than only trusted Python pattern
+  recognition.
 
 Next tasks:
 
-- Reduce trust further by moving one Counter solc summary rule closer to Lean.
+- Reduce trust further by moving one more Counter solc summary rule closer to
+  Lean. The most natural next candidate is
+  `assertHelperAsRevertGuard`, which has the same shape as the require helper
+  (final revert guard from a boolean condition) and should reuse the bridge
+  module's structure.
 - Decide whether the `counterBridgeReport` JSON should remain an internal audit
   format or become a stable checked artifact.
 
@@ -262,24 +276,29 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Model one Counter bridge adapter rule more seriously.
+Lift the next Counter bridge adapter rule into Lean.
 ```
 
 Why this matters:
 
-- The expected solc summary rule list is now Lean-owned and checked by the
+- The expected solc summary rule list is Lean-owned and checked by the
   bridge report.
-- The implementation of each rule is still trusted Python pattern recognition.
-- The next trust-reduction move is to choose one rule and give it a clearer
-  formal or semi-formal model.
+- `requireHelperAsRevertGuard` now has a Lean-backed semantic translation
+  through `SoLean.Bridge.RequireHelper.target_refines_source`, exposed via the
+  manifest's `bridgeRuleProofs` field.
+- The remaining six rules are still trusted Python pattern recognition. The
+  next trust-reduction move is to lift one more rule the same way.
 
 Smallest useful version:
 
-1. Pick one simple rule, probably `requireHelperAsRevertGuard`.
-2. Add a tiny Lean-side model of the source and target guard shape for that
-   rule.
-3. Prove or at least check that the target restricted-Yul guard has the same
-   revert behavior as the modeled helper under the current assumptions.
+1. Pick the next simple rule. `assertHelperAsRevertGuard` mirrors the require
+   case study: a final revert guard that succeeds when its boolean condition
+   holds. Define `SoLean.Bridge.AssertHelper` with a step semantics and a
+   `target_refines_source` theorem.
+2. Wire the theorem into `Artifacts.lean`'s `counterBridgeRuleProofs` entry
+   for `assertHelperAsRevertGuard` and into `proofReferences`.
+3. Update the Python alignment test to assert the new rule has a non-empty
+   `leanProof`.
 
 ## Updating This Roadmap
 

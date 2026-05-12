@@ -1,3 +1,4 @@
+import SoLean.Bridge
 import SoLean.Examples.CounterCompiler
 
 namespace SoLean
@@ -156,15 +157,37 @@ def counterSourceJson : String :=
 def counterYulJson : String :=
   renderJson (Yul.programJson Examples.CounterYul.counterProgram)
 
-def counterBridgeTrustedRules : List String :=
+/--
+Per-rule status entry for the Counter bridge manifest.
+
+`leanProof` names the Lean theorem that backs this rule's semantic translation.
+When `leanProof` is the empty string, the rule is still trusted Python pattern
+recognition only.
+-/
+structure BridgeRuleProof where
+  rule : String
+  leanProof : String
+deriving Repr
+
+def counterBridgeRuleProofs : List BridgeRuleProof :=
   [
-    "hexLiteralAsNat",
-    "transparentValueHelper",
-    "requireHelperAsRevertGuard",
-    "storageReadSlot0AsSload",
-    "checkedAddUInt256AsAddWithOverflowGuard",
-    "storageUpdateSlot0AsSstore",
-    "assertHelperAsRevertGuard"
+    { rule := "hexLiteralAsNat",                          leanProof := "" },
+    { rule := "transparentValueHelper",                   leanProof := "" },
+    { rule := "requireHelperAsRevertGuard",
+      leanProof := "SoLean.Bridge.RequireHelper.target_refines_source" },
+    { rule := "storageReadSlot0AsSload",                  leanProof := "" },
+    { rule := "checkedAddUInt256AsAddWithOverflowGuard",  leanProof := "" },
+    { rule := "storageUpdateSlot0AsSstore",               leanProof := "" },
+    { rule := "assertHelperAsRevertGuard",                leanProof := "" }
+  ]
+
+def counterBridgeTrustedRules : List String :=
+  counterBridgeRuleProofs.map BridgeRuleProof.rule
+
+def bridgeRuleProofJson (entry : BridgeRuleProof) : Json :=
+  .obj [
+    ("leanProof", .str entry.leanProof),
+    ("rule", .str entry.rule)
   ]
 
 def counterBridgeManifest : Json :=
@@ -180,7 +203,9 @@ def counterBridgeManifest : Json :=
       ("export", .str "yul-json")
     ]),
     ("expectedTrustedRules", stringsJson counterBridgeTrustedRules),
+    ("bridgeRuleProofs", .arr (counterBridgeRuleProofs.map bridgeRuleProofJson)),
     ("proofReferences", stringsJson [
+      "SoLean.Bridge.RequireHelper.target_refines_source",
       "SoLean.Examples.Counter.inc_assertion_safe",
       "SoLean.Examples.CounterCompiler.compile_counter_eq_counter_yul",
       "SoLean.Examples.CounterCompiler.compiled_counter_refines_solean_success",
