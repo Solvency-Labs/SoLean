@@ -45,9 +45,10 @@ This is real progress, but it does not yet start from Solidity text or real
 
 See `docs/counter-bridge-v1.md` for the crisp Counter success condition,
 `docs/counter-bridge-v2.md` for the first auditable bridge report,
-`docs/counter-bridge-v4.md` for the line-auditable bridge boundary, and
-`docs/counter-bridge-v6.md` for the current Lean-owned bridge certificate
-boundary.
+`docs/counter-bridge-v4.md` for the line-auditable bridge boundary,
+`docs/counter-bridge-v6.md` for the Lean-owned source certificate and trace
+skeleton, and `docs/counter-bridge-v7.md` for the current Lean-owned
+behavior-summary boundary.
 
 ## Current State
 
@@ -237,6 +238,10 @@ Done:
 - Export a Lean-owned Counter source certificate and expected solc trace
   skeleton, then check both in the `reportVersion: 6` bridge certificate
   against `tests/golden/Counter.bridge.v6.json`.
+- Export a Lean-owned restricted behavior summary for Counter Yul (parameter,
+  ordered revert guards, final slot-0 write), check Python's symbolic
+  state-transform summary against it, and stabilize the resulting
+  `reportVersion: 7` report against `tests/golden/Counter.bridge.v7.json`.
 - Keep `hexLiteralAsNat` as explicit parser-level trust and cover the narrow
   hex-literal parser behavior with focused tests.
 - Add Markdown bridge-report output and a one-command Counter demo runner.
@@ -324,27 +329,30 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Export a Lean-owned restricted behavior summary for Counter Yul.
+Also check the solc-summary trace replay against the Lean-owned behavior
+summary, so the behavior-summary claim covers the solc-side path too.
 ```
 
 Why this matters:
 
-- The current bridge certificate checks source shape, Yul shape, trusted rules,
-  trace replay, and trace skeleton against Lean-owned artifacts.
-- The remaining Yul comparison story still leans on Python's symbolic summary
-  and Python's Counter-specific solc recognizer.
-- A Lean-owned behavior summary would make the report say not just "this is the
-  same Yul shape" but "this is the expected restricted state-transform shape"
-  for Counter.
+- Bridge v7 checks Python's symbolic summary of the *Python-emitted* Counter
+  Yul against the Lean-owned behavior summary. The Python-emitted Yul already
+  matches the Lean Yul, so this mostly pins what `summarize_symbolic` should
+  produce.
+- The same behavior summary is the natural Lean-owned shape for the solc
+  trace replay output. Summarizing the replayed program and comparing it to
+  the Lean-owned behavior summary would tighten the solc-side claim from
+  "shape matches Lean Yul" to "restricted state-transform shape matches
+  Lean".
 
 Smallest useful version:
 
-1. Export a small Lean artifact describing the expected Counter restricted-Yul
-   behavior summary: parameter, ordered revert guards, and final slot write.
-2. Check Python's restricted symbolic summary against that Lean-owned behavior
-   summary in the bridge report.
-3. Keep the result documented as trust reduction, not verified solc parsing or
-   real Yul equivalence.
+1. Summarize the solc trace replay output with the existing symbolic
+   summarizer.
+2. Add a `solcTraceReplayBehaviorSummaryToLeanManifest` check in the bridge
+   report.
+3. Keep the result documented as trust reduction, not verified solc parsing
+   or real Yul equivalence.
 
 ## Updating This Roadmap
 

@@ -337,10 +337,78 @@ def counterTraceSkeleton : Json :=
 def counterTraceSkeletonJson : String :=
   renderJson counterTraceSkeleton
 
+namespace Behavior
+
+def constJson (n : Nat) : Json :=
+  .obj [("const", .num n)]
+
+def paramJson (name : String) : Json :=
+  .obj [("param", .str name)]
+
+def slotJson (n : Nat) : Json :=
+  .obj [("slot", .num n)]
+
+def callJson (name : String) (args : List Json) : Json :=
+  .obj [("args", .arr args), ("call", .str name)]
+
+def amount : Json := paramJson "amount"
+
+def slot0Init : Json := slotJson Examples.Counter.xSlot
+
+def zero : Json := constJson 0
+
+def amountGtZero : Json := callJson "gt" [amount, zero]
+
+def revertRequire : Json := callJson "iszero" [amountGtZero]
+
+def newX : Json := callJson "add" [slot0Init, amount]
+
+def revertOverflow : Json := callJson "lt" [newX, slot0Init]
+
+def revertAssert : Json := callJson "lt" [newX, amount]
+
+end Behavior
+
+/--
+Lean-owned restricted behavior summary for the Counter Yul artifact.
+
+This is a symbolic state-transform shape: function parameter, ordered revert
+guard conditions in source order, and final storage writes by slot. It is the
+Lean-owned counterpart to Python's `summarize_symbolic` output for the
+restricted Counter Yul subset.
+
+This is not a verified semantics for real solc Yul. It pins the expected
+Counter behavior shape so the bridge report can fail if Python's symbolic
+summary drifts away from Lean.
+-/
+def counterBehaviorSummary : Json :=
+  .obj [
+    ("finalWrites", .arr [
+      .obj [
+        ("slot", .num Examples.Counter.xSlot),
+        ("value", Behavior.newX)
+      ]
+    ]),
+    ("function", .str "inc"),
+    ("kind", .str "counterBehaviorSummary"),
+    ("lean", .str "SoLean.Examples.CounterYul.counterProgram"),
+    ("object", .str "Counter"),
+    ("params", .arr [.str "amount"]),
+    ("revertConditions", .arr [
+      Behavior.revertRequire,
+      Behavior.revertOverflow,
+      Behavior.revertAssert
+    ]),
+    ("version", .num 1)
+  ]
+
+def counterBehaviorSummaryJson : String :=
+  renderJson counterBehaviorSummary
+
 def counterBridgeManifest : Json :=
   .obj [
     ("kind", .str "counterBridgeManifest"),
-    ("version", .num 2),
+    ("version", .num 3),
     ("sourceArtifact", .obj [
       ("name", .str "SoLean.Examples.CounterCompiler.counterFunction"),
       ("export", .str "source-json")
@@ -352,6 +420,7 @@ def counterBridgeManifest : Json :=
     ("sourceCertificate", counterSourceCertificate),
     ("expectedTrustedRules", stringsJson counterBridgeTrustedRules),
     ("expectedTraceSkeleton", counterTraceSkeleton),
+    ("expectedBehaviorSummary", counterBehaviorSummary),
     ("bridgeRuleProofs", .arr (counterBridgeRuleProofs.map bridgeRuleProofJson)),
     ("proofReferences", stringsJson [
       "SoLean.Bridge.AssertHelper.targetForIszero_refines_source",

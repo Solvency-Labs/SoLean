@@ -203,7 +203,20 @@ class YulSubsetTests(unittest.TestCase):
         manifest = lean_artifact("bridge-json")
 
         self.assertEqual(manifest["kind"], "counterBridgeManifest")
-        self.assertEqual(manifest["version"], 2)
+        self.assertEqual(manifest["version"], 3)
+        self.assertEqual(
+            manifest["expectedBehaviorSummary"]["kind"],
+            "counterBehaviorSummary",
+        )
+        self.assertEqual(
+            manifest["expectedBehaviorSummary"]["params"], ["amount"]
+        )
+        self.assertEqual(
+            len(manifest["expectedBehaviorSummary"]["revertConditions"]), 3
+        )
+        self.assertEqual(
+            len(manifest["expectedBehaviorSummary"]["finalWrites"]), 1
+        )
         self.assertEqual(manifest["sourceArtifact"]["export"], "source-json")
         self.assertEqual(manifest["yulArtifact"]["export"], "yul-json")
         self.assertEqual(
@@ -718,14 +731,22 @@ class CounterBridgeTests(unittest.TestCase):
             )
 
         self.assertEqual(report["kind"], "counterBridgeReport")
-        self.assertEqual(report["reportVersion"], 6)
+        self.assertEqual(report["reportVersion"], 7)
         self.assertEqual(report["status"], "passed")
         self.assertEqual(
             [check["status"] for check in report["checks"]],
-            ["passed", "passed", "passed", "passed", "passed", "passed", "passed"],
+            ["passed"] * 8,
         )
         self.assertEqual(report["certificate"]["kind"], "counterBridgeCertificate")
-        self.assertEqual(report["certificate"]["version"], 6)
+        self.assertEqual(report["certificate"]["version"], 7)
+        self.assertIn(
+            "behaviorSummaryToLeanManifest",
+            report["certificate"]["checkGroups"]["tested"],
+        )
+        self.assertEqual(
+            report["yul"]["behaviorSummary"],
+            lean_artifact("bridge-json")["expectedBehaviorSummary"],
+        )
         self.assertIn(
             "solcTraceSkeletonToLeanManifest",
             report["certificate"]["checkGroups"]["tested"],
@@ -772,7 +793,7 @@ class CounterBridgeTests(unittest.TestCase):
         self.assertEqual(second_code, 0)
         self.assertEqual(first.getvalue(), second.getvalue())
         self.assertEqual(json.loads(first.getvalue())["status"], "passed")
-        self.assertEqual(json.loads(first.getvalue())["reportVersion"], 6)
+        self.assertEqual(json.loads(first.getvalue())["reportVersion"], 7)
 
     def test_counter_bridge_report_matches_golden_fixture(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -787,7 +808,7 @@ class CounterBridgeTests(unittest.TestCase):
 
         self.assertEqual(
             stable_json(report),
-            Path("tests/golden/Counter.bridge.v6.json").read_text(),
+            Path("tests/golden/Counter.bridge.v7.json").read_text(),
         )
 
     def test_counter_bridge_cli_outputs_markdown_report(self) -> None:
@@ -807,7 +828,9 @@ class CounterBridgeTests(unittest.TestCase):
 
         self.assertEqual(code, 0)
         report = output.getvalue()
-        self.assertIn("Report version: `6`", report)
+        self.assertIn("Report version: `7`", report)
+        self.assertIn("## Lean-Owned Behavior Summary", report)
+        self.assertIn("`3` revert guards", report)
         self.assertIn("## Bridge Certificate", report)
         self.assertIn("Certificate kind: `counterBridgeCertificate`", report)
         self.assertIn("## Proved In Lean", report)

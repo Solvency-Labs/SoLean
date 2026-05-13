@@ -18,7 +18,7 @@ The demo runs:
 - bridge-focused Python tests
 - Lean artifact export smoke checks for `source-json`,
   `source-certificate-json`, `yul-json`, `trace-skeleton-json`, and
-  `bridge-json`
+  `bridge-json`, and `behavior-summary-json`
 - the Counter bridge report in Markdown mode if `build/Counter.solc.yul`
   exists
 
@@ -79,9 +79,12 @@ when available.
 Bridge v6 replays those trace effects back into restricted Yul, checks the
 replayed program against the Lean-owned Counter Yul artifact, checks the trace
 skeleton against a Lean-owned skeleton, and checks the accepted Solidity source
-certificate against a Lean-owned certificate. The bridge report JSON is
-versioned as `reportVersion: 6` and checked against
-`tests/golden/Counter.bridge.v6.json`. That fixture is a presentation/audit
+certificate against a Lean-owned certificate. Bridge v7 adds a Lean-owned
+restricted behavior summary (function parameter, ordered revert guards, and
+final slot-0 write) and checks Python's symbolic state-transform summary of
+the emitted Counter Yul against that Lean-owned summary. The bridge report
+JSON is versioned as `reportVersion: 7` and checked against
+`tests/golden/Counter.bridge.v7.json`. That fixture is a presentation/audit
 regression artifact: it makes the current Counter boundary stable enough to
 review, but it does not turn the trusted Python recognizers into verified code.
 

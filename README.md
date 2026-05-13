@@ -130,6 +130,7 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── counter-bridge-v4.md
 │   ├── counter-bridge-v5.md
 │   ├── counter-bridge-v6.md
+│   ├── counter-bridge-v7.md
 │   ├── counter-demo.md
 │   ├── counter-yul.md
 │   ├── counter.md
@@ -167,7 +168,7 @@ still a small Solidity subset rather than an EVM semantics.
 │   └── yul_subset.py
 └── tests/
     ├── golden/
-    │   ├── Counter.bridge.v6.json
+    │   ├── Counter.bridge.v7.json
     │   └── Counter.solean.yul
     ├── README.md
     └── test_yul_tools.py
@@ -301,12 +302,12 @@ python3 scripts/check_counter_bridge.py \
 This emits deterministic JSON tying the trusted Solidity source projection,
 Python Counter Yul emitter, and trusted solc `fun_inc_*` summary back to
 Lean-owned artifacts. It also checks the observed solc summary rules, source
-certificate, and trace skeleton against a Lean-owned bridge manifest. A passing
-report is an audit/regression signal, not a proof of Solidity parsing or
-semantic equivalence with solc output. See `docs/counter-bridge-v6.md` for the
-current Lean-owned bridge certificate boundary. The JSON report is versioned as
-`reportVersion: 6` and checked against `tests/golden/Counter.bridge.v6.json` in
-the Python test suite.
+certificate, trace skeleton, and restricted behavior summary against a
+Lean-owned bridge manifest. A passing report is an audit/regression signal,
+not a proof of Solidity parsing or semantic equivalence with solc output. See
+`docs/counter-bridge-v7.md` for the current Lean-owned bridge certificate
+boundary. The JSON report is versioned as `reportVersion: 7` and checked
+against `tests/golden/Counter.bridge.v7.json` in the Python test suite.
 
 Run the full Counter research demo:
 

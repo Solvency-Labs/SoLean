@@ -553,6 +553,41 @@ def symbolic_eval_expr(
     raise YulExecutionError(f"unsupported expression function: {expr.name}")
 
 
+def sym_expr_to_data(expr: SymExpr) -> dict[str, Any]:
+    if isinstance(expr, SymConst):
+        return {"const": expr.value}
+    if isinstance(expr, SymParam):
+        return {"param": expr.name}
+    if isinstance(expr, SymSlot):
+        return {"slot": expr.slot}
+    if isinstance(expr, SymCall):
+        return {
+            "args": [sym_expr_to_data(arg) for arg in expr.args],
+            "call": expr.name,
+        }
+    raise YulExecutionError(f"unsupported symbolic expression: {expr!r}")
+
+
+def symbolic_summary_to_data(summary: SymbolicSummary) -> dict[str, Any]:
+    """Serialize a symbolic summary into the Lean-owned behavior summary shape."""
+
+    return {
+        "finalWrites": [
+            {"slot": slot, "value": sym_expr_to_data(value)}
+            for slot, value in summary.final_writes
+        ],
+        "function": summary.function_name,
+        "kind": "counterBehaviorSummary",
+        "lean": "SoLean.Examples.CounterYul.counterProgram",
+        "object": summary.object_name,
+        "params": list(summary.params),
+        "revertConditions": [
+            sym_expr_to_data(cond) for cond in summary.revert_conditions
+        ],
+        "version": 1,
+    }
+
+
 def compare_symbolic_summaries(left: YulObject, right: YulObject) -> list[SymbolicDiff]:
     left_summary = summarize_symbolic(left)
     right_summary = summarize_symbolic(right)

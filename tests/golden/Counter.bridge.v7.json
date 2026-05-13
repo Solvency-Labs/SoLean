@@ -34,6 +34,88 @@
         "rule": "assertHelperAsRevertGuard"
       }
     ],
+    "expectedBehaviorSummary": {
+      "finalWrites": [
+        {
+          "slot": 0,
+          "value": {
+            "args": [
+              {
+                "slot": 0
+              },
+              {
+                "param": "amount"
+              }
+            ],
+            "call": "add"
+          }
+        }
+      ],
+      "function": "inc",
+      "kind": "counterBehaviorSummary",
+      "lean": "SoLean.Examples.CounterYul.counterProgram",
+      "object": "Counter",
+      "params": [
+        "amount"
+      ],
+      "revertConditions": [
+        {
+          "args": [
+            {
+              "args": [
+                {
+                  "param": "amount"
+                },
+                {
+                  "const": 0
+                }
+              ],
+              "call": "gt"
+            }
+          ],
+          "call": "iszero"
+        },
+        {
+          "args": [
+            {
+              "args": [
+                {
+                  "slot": 0
+                },
+                {
+                  "param": "amount"
+                }
+              ],
+              "call": "add"
+            },
+            {
+              "slot": 0
+            }
+          ],
+          "call": "lt"
+        },
+        {
+          "args": [
+            {
+              "args": [
+                {
+                  "slot": 0
+                },
+                {
+                  "param": "amount"
+                }
+              ],
+              "call": "add"
+            },
+            {
+              "param": "amount"
+            }
+          ],
+          "call": "lt"
+        }
+      ],
+      "version": 1
+    },
     "expectedTraceSkeleton": [
       {
         "effectKind": "hexLiteral",
@@ -248,6 +330,7 @@
         "soliditySourceToLeanSource",
         "soliditySourceCertificateToLeanManifest",
         "pythonYulEmitterToLeanYul",
+        "behaviorSummaryToLeanManifest",
         "solcFunctionSummaryToLeanYul",
         "solcTraceReplayToLeanYul",
         "solcTraceSkeletonToLeanManifest"
@@ -269,7 +352,7 @@
       "Python hex literal parsing.",
       "Python trace replay checker."
     ],
-    "version": 6
+    "version": 7
   },
   "checks": [
     {
@@ -289,6 +372,12 @@
       "name": "pythonYulEmitterToLeanYul",
       "status": "passed",
       "trust": "tested"
+    },
+    {
+      "message": "Python symbolic behavior summary matches the Lean bridge manifest.",
+      "name": "behaviorSummaryToLeanManifest",
+      "status": "passed",
+      "trust": "Lean-owned behavior summary"
     },
     {
       "message": "solc Counter function summary matches the Lean Yul artifact.",
@@ -319,7 +408,7 @@
   "leanArtifacts": {
     "bridgeManifest": {
       "name": "SoLean.Artifacts.counterBridgeManifestJson",
-      "sha256": "6f4955ef14b2361bb7666a43e210e809571b9570e0b9740951967f2240bda473"
+      "sha256": "a20a1c2659102d02837fa86fd3e6c818069ab9b2ed7c52cf9d7421a651f337e1"
     },
     "source": {
       "name": "SoLean.Examples.CounterCompiler.counterFunction",
@@ -337,7 +426,7 @@
     "solc IR summarization is trusted Counter-specific pattern recognition.",
     "This report is not semantic equivalence against real solc Yul."
   ],
-  "reportVersion": 6,
+  "reportVersion": 7,
   "solc": {
     "sourceFunction": "fun_inc_25",
     "sourceObject": "Counter_26_deployed",
@@ -901,5 +990,89 @@
       "version": 1
     }
   },
-  "status": "passed"
+  "status": "passed",
+  "yul": {
+    "behaviorSummary": {
+      "finalWrites": [
+        {
+          "slot": 0,
+          "value": {
+            "args": [
+              {
+                "slot": 0
+              },
+              {
+                "param": "amount"
+              }
+            ],
+            "call": "add"
+          }
+        }
+      ],
+      "function": "inc",
+      "kind": "counterBehaviorSummary",
+      "lean": "SoLean.Examples.CounterYul.counterProgram",
+      "object": "Counter",
+      "params": [
+        "amount"
+      ],
+      "revertConditions": [
+        {
+          "args": [
+            {
+              "args": [
+                {
+                  "param": "amount"
+                },
+                {
+                  "const": 0
+                }
+              ],
+              "call": "gt"
+            }
+          ],
+          "call": "iszero"
+        },
+        {
+          "args": [
+            {
+              "args": [
+                {
+                  "slot": 0
+                },
+                {
+                  "param": "amount"
+                }
+              ],
+              "call": "add"
+            },
+            {
+              "slot": 0
+            }
+          ],
+          "call": "lt"
+        },
+        {
+          "args": [
+            {
+              "args": [
+                {
+                  "slot": 0
+                },
+                {
+                  "param": "amount"
+                }
+              ],
+              "call": "add"
+            },
+            {
+              "param": "amount"
+            }
+          ],
+          "call": "lt"
+        }
+      ],
+      "version": 1
+    }
+  }
 }

@@ -29,7 +29,13 @@ try:
         parse_counter,
     )
     from .solean_to_yul import main as solean_to_yul_main
-    from .yul_subset import UnsupportedYulError, object_to_data, parse_object
+    from .yul_subset import (
+        UnsupportedYulError,
+        object_to_data,
+        parse_object,
+        summarize_symbolic,
+        symbolic_summary_to_data,
+    )
 except ImportError:  # Allows `python scripts/check_counter_bridge.py ...`.
     from classify_yul import solc_function_summary_to_data, summarize_solc_function_text
     from solidity_to_solean import (
@@ -38,7 +44,13 @@ except ImportError:  # Allows `python scripts/check_counter_bridge.py ...`.
         parse_counter,
     )
     from solean_to_yul import main as solean_to_yul_main
-    from yul_subset import UnsupportedYulError, object_to_data, parse_object
+    from yul_subset import (
+        UnsupportedYulError,
+        object_to_data,
+        parse_object,
+        summarize_symbolic,
+        symbolic_summary_to_data,
+    )
 
 
 LIMITATIONS = [
@@ -49,7 +61,7 @@ LIMITATIONS = [
     "This report is not semantic equivalence against real solc Yul.",
 ]
 
-REPORT_VERSION = 6
+REPORT_VERSION = 7
 
 
 def stable_json(data: Any) -> str:
@@ -151,6 +163,7 @@ def check_groups(checks: list[dict[str, str]]) -> dict[str, list[str]]:
             "trace-replay-tested",
             "Lean-owned certificate",
             "Lean-owned trace skeleton",
+            "Lean-owned behavior summary",
         }:
             groups["tested"].append(name)
         else:
@@ -266,6 +279,28 @@ def format_markdown_report(report: dict[str, Any]) -> str:
     else:
         lines.append("- No trace skeleton artifact available.")
 
+    lines.extend(["", "## Lean-Owned Behavior Summary", ""])
+    behavior_check = next(
+        (
+            check
+            for check in report.get("checks", [])
+            if check.get("name") == "behaviorSummaryToLeanManifest"
+        ),
+        None,
+    )
+    if behavior_check is not None:
+        marker = "PASS" if behavior_check.get("status") == "passed" else "FAIL"
+        lines.append(f"- **{marker}** {behavior_check.get('message')}")
+    behavior_summary = report.get("yul", {}).get("behaviorSummary")
+    if behavior_summary is not None:
+        lines.append(
+            f"- Summary has `{len(behavior_summary.get('revertConditions', []))}` "
+            f"revert guards and `{len(behavior_summary.get('finalWrites', []))}` "
+            "final storage write(s)."
+        )
+    else:
+        lines.append("- No behavior summary artifact available.")
+
     lines.extend(["", "## Lean-Backed Adapter Rules", ""])
     backed = lean_backed_rules(report)
     if backed:
@@ -298,13 +333,17 @@ def format_markdown_report(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def emitted_counter_yul_data() -> dict[str, Any]:
+def emitted_counter_yul_object():
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
         code = solean_to_yul_main(["--example", "counter"])
     if code != 0:
         raise RuntimeError(f"solean_to_yul.py returned {code}")
-    return object_to_data(parse_object(output.getvalue()))
+    return parse_object(output.getvalue())
+
+
+def emitted_counter_yul_data() -> dict[str, Any]:
+    return object_to_data(emitted_counter_yul_object())
 
 
 def trace_to_skeleton(trace: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -348,10 +387,14 @@ def build_counter_bridge_report(
     expected_rules = lean_manifest["expectedTrustedRules"]
     expected_source_certificate = lean_manifest["sourceCertificate"]
     expected_trace_skeleton = lean_manifest["expectedTraceSkeleton"]
+    expected_behavior_summary = lean_manifest["expectedBehaviorSummary"]
 
     checks: list[dict[str, str]] = []
     source_info: dict[str, Any] = {
         "certificate": None,
+    }
+    yul_info: dict[str, Any] = {
+        "behaviorSummary": None,
     }
     solc_info: dict[str, Any] = {
         "sourceObject": None,
@@ -422,7 +465,8 @@ def build_counter_bridge_report(
         )
 
     try:
-        yul_data = emitted_counter_yul_data()
+        yul_object = emitted_counter_yul_object()
+        yul_data = object_to_data(yul_object)
         checks.append(
             check_data(
                 "pythonYulEmitterToLeanYul",
@@ -433,12 +477,40 @@ def build_counter_bridge_report(
                 "Python-emitted restricted Yul does not match the Lean Yul artifact.",
             )
         )
+        try:
+            behavior_summary = symbolic_summary_to_data(summarize_symbolic(yul_object))
+            yul_info["behaviorSummary"] = behavior_summary
+            checks.append(
+                check_data(
+                    "behaviorSummaryToLeanManifest",
+                    "Lean-owned behavior summary",
+                    behavior_summary,
+                    expected_behavior_summary,
+                    "Python symbolic behavior summary matches the Lean bridge manifest.",
+                    "Python symbolic behavior summary does not match the Lean bridge manifest.",
+                )
+            )
+        except Exception as exc:
+            checks.append(
+                failed_check(
+                    "behaviorSummaryToLeanManifest",
+                    "Lean-owned behavior summary",
+                    f"Python symbolic summary failed: {exc}",
+                )
+            )
     except Exception as exc:
         checks.append(
             failed_check(
                 "pythonYulEmitterToLeanYul",
                 "tested",
                 f"Python Yul emitter failed: {exc}",
+            )
+        )
+        checks.append(
+            failed_check(
+                "behaviorSummaryToLeanManifest",
+                "Lean-owned behavior summary",
+                "Python Yul emitter did not produce a program to summarize",
             )
         )
 
@@ -611,11 +683,13 @@ def build_counter_bridge_report(
         "bridgeManifest": {
             "expectedTrustedRules": expected_rules,
             "expectedTraceSkeleton": expected_trace_skeleton,
+            "expectedBehaviorSummary": expected_behavior_summary,
             "bridgeRuleProofs": lean_manifest["bridgeRuleProofs"],
             "proofReferences": lean_manifest["proofReferences"],
         },
         "checks": checks,
         "source": source_info,
+        "yul": yul_info,
         "solc": solc_info,
         "limitations": lean_manifest["limitations"],
     }
@@ -661,6 +735,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             ],
             "leanArtifacts": {},
+            "yul": {"behaviorSummary": None},
             "solc": {
                 "sourceObject": None,
                 "sourceFunction": None,
@@ -684,6 +759,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             ],
             "leanArtifacts": {},
+            "yul": {"behaviorSummary": None},
             "solc": {
                 "sourceObject": None,
                 "sourceFunction": None,
