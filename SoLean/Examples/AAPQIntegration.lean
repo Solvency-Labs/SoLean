@@ -206,6 +206,149 @@ theorem validateIntegrated_success_properties
   | revert failure =>
       simp [validateIntegrated, hWrapper] at h
 
+/--
+Successful integrated validation implies the abstract verifier accepted the
+exact modeled `(publicKey, opHash, domain, signature)` tuple — there is no
+bypass path through the integrated flow that succeeds without verifier
+acceptance.
+-/
+theorem noBypass_implies_verifier_accepted
+    (env : Env)
+    (input : IntegratedInput)
+    (wrapperStorage walletStorage finalWrapperStorage finalWalletStorage :
+      Storage)
+    (h :
+      validateIntegrated env input wrapperStorage walletStorage =
+        IntegratedResult.success finalWrapperStorage finalWalletStorage) :
+    env.verifier input.publicKey input.opHash input.domain input.signature =
+      true :=
+  (validateIntegrated_success_properties
+      env
+      wrapperStorage
+      walletStorage
+      finalWrapperStorage
+      finalWalletStorage
+      input
+      h).2.2.2.1
+
+/--
+Replay rejection: after a successful integrated validation, re-running the
+same `UserOp`-derived `IntegratedInput` against the post-validation storage
+cannot succeed.
+
+The argument is contract-level: the first call advanced the wallet nonce
+through checked arithmetic, so the second call's modeled `nonce == wallet.nonce`
+require would observe a different stored nonce and revert. The proof derives a
+contradiction from two `validateIntegrated_success_properties` instances.
+-/
+theorem replay_rejected_after_success
+    (env : Env)
+    (input : IntegratedInput)
+    (wrapperStorage walletStorage finalWrapperStorage finalWalletStorage :
+      Storage)
+    (replayWrapperStorage replayWalletStorage : Storage)
+    (h :
+      validateIntegrated env input wrapperStorage walletStorage =
+        IntegratedResult.success finalWrapperStorage finalWalletStorage) :
+    validateIntegrated env input finalWrapperStorage finalWalletStorage ≠
+      IntegratedResult.success replayWrapperStorage replayWalletStorage := by
+  intro hReplay
+  have hFirst :=
+    validateIntegrated_success_properties
+      env wrapperStorage walletStorage
+      finalWrapperStorage finalWalletStorage input h
+  have hSecond :=
+    validateIntegrated_success_properties
+      env finalWrapperStorage finalWalletStorage
+      replayWrapperStorage replayWalletStorage input hReplay
+  rcases hFirst with ⟨_, hFirstWallet, _, _, _⟩
+  rcases hSecond with ⟨_, hSecondWallet, _, _, _⟩
+  rcases hFirstWallet with
+    ⟨_, hFirstNonce, _, _, hFirstNonceAdd, _, _, _⟩
+  rcases hSecondWallet with
+    ⟨_, hSecondNonce, _, _, _, _, _, _⟩
+  have hAdvanced :
+      (finalWalletStorage.read AAWallet.nonceSlot).toNat =
+        (walletStorage.read AAWallet.nonceSlot).toNat + 1 := by
+    have hAddNat :
+        (finalWalletStorage.read AAWallet.nonceSlot).toNat =
+          (walletStorage.read AAWallet.nonceSlot).toNat + UInt256.one.toNat :=
+      UInt256.checkedAdd_toNat hFirstNonceAdd
+    simpa using hAddNat
+  have hReplayEq :
+      (toUserOp input).nonce =
+        finalWalletStorage.read AAWallet.nonceSlot := hSecondNonce
+  have hFirstEq :
+      (toUserOp input).nonce =
+        walletStorage.read AAWallet.nonceSlot := hFirstNonce
+  have hSame :
+      walletStorage.read AAWallet.nonceSlot =
+        finalWalletStorage.read AAWallet.nonceSlot := by
+    rw [← hFirstEq, hReplayEq]
+  have hSameNat :
+      (walletStorage.read AAWallet.nonceSlot).toNat =
+        (finalWalletStorage.read AAWallet.nonceSlot).toNat := by
+    rw [hSame]
+  rw [hAdvanced] at hSameNat
+  exact absurd hSameNat (Nat.ne_of_lt (Nat.lt_succ_self _))
+
+/--
+Crypto assumption: the abstract verifier oracle is domain-separated.
+
+If the same `(publicKey, message, signature)` triple is accepted under two
+domains, those domains must be equal. This is a *named, non-cryptographic*
+assumption on `Env.verifier`: it captures the property that real PQ
+signatures should have when bound to a domain tag, without committing to any
+particular scheme.
+-/
+def VerifierDomainSeparation (env : Env) : Prop :=
+  ∀ key message domain1 domain2 signature,
+    env.verifier key message domain1 signature = true ->
+    env.verifier key message domain2 signature = true ->
+    domain1 = domain2
+
+/--
+Under `VerifierDomainSeparation env`, two successful integrated validations of
+operations sharing the same `publicKey`, `opHash`, and `signature` must also
+share the same `domain` — there is no domain-confusion bypass through the
+integrated flow.
+-/
+theorem domain_separation_under_oracle_assumption
+    (env : Env)
+    (hSep : VerifierDomainSeparation env)
+    (input1 input2 : IntegratedInput)
+    (wrapperStorage1 walletStorage1 finalWrapper1 finalWallet1 : Storage)
+    (wrapperStorage2 walletStorage2 finalWrapper2 finalWallet2 : Storage)
+    (hKey : input1.publicKey = input2.publicKey)
+    (hOpHash : input1.opHash = input2.opHash)
+    (hSignature : input1.signature = input2.signature)
+    (h1 :
+      validateIntegrated env input1 wrapperStorage1 walletStorage1 =
+        IntegratedResult.success finalWrapper1 finalWallet1)
+    (h2 :
+      validateIntegrated env input2 wrapperStorage2 walletStorage2 =
+        IntegratedResult.success finalWrapper2 finalWallet2) :
+    input1.domain = input2.domain := by
+  have hVerify1 :
+      env.verifier input1.publicKey input1.opHash input1.domain
+          input1.signature = true :=
+    noBypass_implies_verifier_accepted
+      env input1 wrapperStorage1 walletStorage1
+      finalWrapper1 finalWallet1 h1
+  have hVerify2 :
+      env.verifier input2.publicKey input2.opHash input2.domain
+          input2.signature = true :=
+    noBypass_implies_verifier_accepted
+      env input2 wrapperStorage2 walletStorage2
+      finalWrapper2 finalWallet2 h2
+  have hVerify2' :
+      env.verifier input1.publicKey input1.opHash input2.domain
+          input1.signature = true := by
+    rw [hKey, hOpHash, hSignature]; exact hVerify2
+  exact
+    hSep input1.publicKey input1.opHash input1.domain input2.domain
+      input1.signature hVerify1 hVerify2'
+
 end AAPQIntegration
 end Examples
 end SoLean

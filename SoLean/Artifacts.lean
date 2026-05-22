@@ -591,7 +591,8 @@ def aapqSourceCertificate : Json :=
       "Verifier is an abstract oracle in Env; no PQ cryptographic semantics modeled.",
       "Wallet-wrapper integration is modeled as direct composition over a shared input tuple, not as a low-level call/staticcall.",
       "Wallet key commitment must equal the wrapper public key for the integrated path to be authorized.",
-      "ABI decoding, calldata, memory, gas, events, and reentrancy are not modeled."
+      "ABI decoding, calldata, memory, gas, events, and reentrancy are not modeled.",
+      "Domain-separation theorem assumes VerifierDomainSeparation on Env.verifier: the abstract oracle accepts each (publicKey, message, signature) under at most one domain. This is a named, non-cryptographic crypto assumption."
     ]),
     ("contracts", .arr [
       AAPQ.contractJson Examples.AAPQSource.walletContract,
@@ -618,7 +619,10 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQSource.BehaviorReflection.keyMatchPhase_reflects_keyMatchesWalletProgram",
       "SoLean.Examples.AAPQSource.BehaviorReflection.walletPhase_reflects_validateProgram",
       "SoLean.Examples.AAPQSource.BehaviorReflection.integratedBehaviorSummary_reflects_integratedProgram",
-      "SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateIntegrated_eq_validateIntegrated"
+      "SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateIntegrated_eq_validateIntegrated",
+      "SoLean.Examples.AAPQIntegration.noBypass_implies_verifier_accepted",
+      "SoLean.Examples.AAPQIntegration.replay_rejected_after_success",
+      "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption"
     ]),
     ("unsupported", stringsJson [
       "real PQ cryptographic security",

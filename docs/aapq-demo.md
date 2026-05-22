@@ -49,11 +49,22 @@ The demo supports this claim:
 ```text
 For the AA/PQ integrated validation flow, Lean proves contract-level safety of
 the wallet, wrapper, and composed integration under an abstract verifier
-oracle. The Solidity-shaped source description (AAPQSource) is pinned to those
-proved programs by instantiation theorems, and the structured behavior summary
-is pinned to the proved programs by a Lean reflection that reconstructs each
-phase by rfl. The Python audit cross-checks the Lean-owned source, certificate,
-and behavior summary against each other and against the Solidity sketch.
+oracle, including three integrated-flow safety theorems:
+
+  - successful integrated validation forces abstract verifier acceptance of
+    the exact (publicKey, opHash, domain, signature) tuple;
+  - the same UserOp cannot validate twice on the post-validation storage
+    because the nonce advanced;
+  - under a named VerifierDomainSeparation assumption on Env.verifier, two
+    successful validations sharing (publicKey, opHash, signature) must share
+    domain.
+
+The Solidity-shaped source description (AAPQSource) is pinned to those proved
+programs by instantiation theorems, and the structured behavior summary is
+pinned to the proved programs by a Lean reflection that reconstructs each
+phase by rfl. The Python audit cross-checks the Lean-owned source,
+certificate, and behavior summary against each other and against the Solidity
+sketch.
 ```
 
 Lean theorems backing the boundary (exact names also surface in the demo's
@@ -70,6 +81,9 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQSource.BehaviorReflection.walletPhase_reflects_validateProgram`
 - `SoLean.Examples.AAPQSource.BehaviorReflection.integratedBehaviorSummary_reflects_integratedProgram`
 - `SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateIntegrated_eq_validateIntegrated`
+- `SoLean.Examples.AAPQIntegration.noBypass_implies_verifier_accepted`
+- `SoLean.Examples.AAPQIntegration.replay_rejected_after_success`
+- `SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption`
 
 ## Non-Claims
 

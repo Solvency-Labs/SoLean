@@ -186,6 +186,28 @@ Candidate properties:
 - signatures cannot be replayed across nonce, wallet, chain, or domain when
   those fields are modeled.
 
+Current v0 safety theorems (`SoLean.Examples.AAPQIntegration`):
+
+- `noBypass_implies_verifier_accepted`: successful integrated validation
+  forces abstract verifier acceptance of the exact
+  `(publicKey, opHash, domain, signature)` tuple. Forward bypass-resistance.
+- `replay_rejected_after_success`: a successful validation cannot be
+  re-run with the same `IntegratedInput` on the resulting post-validation
+  storage. The first success advances the wallet nonce through checked
+  arithmetic, so the second call's modeled `nonce == wallet.nonce` require
+  observes a different stored nonce. Contract-level replay-resistance for
+  the modeled flow.
+- `domain_separation_under_oracle_assumption`: under a named
+  `VerifierDomainSeparation env` hypothesis on `Env.verifier`
+  (the abstract oracle accepts each `(publicKey, message, signature)` under
+  at most one domain), two successful validations sharing the
+  `publicKey`/`opHash`/`signature` must share the `domain`.
+
+The first two are contract-level claims that hold for the modeled flow
+without any new crypto assumption. The third is contract-level under one
+named, non-cryptographic assumption on the verifier oracle and is recorded
+explicitly in the source certificate.
+
 This is the first target that should feel like a serious Ethereum research demo.
 
 ## Phase 4: Bridge To Real Solidity And solc
