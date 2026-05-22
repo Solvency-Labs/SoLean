@@ -12,8 +12,10 @@ from scripts.check_aapq_source import (
     artifact_hash,
     check_behavior_summary_operand_scope,
     check_certificate_embeds_behavior_summary,
+    check_crypto_assumptions_link_to_proofs,
     check_phase_proof_references,
     check_source_contracts_match_certificate,
+    check_under_oracle_assumption_theorems_covered,
     lean_artifact,
     main as check_aapq_source_main,
     parse_solidity_shape,
@@ -32,7 +34,7 @@ from scripts.demo_aapq_source import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOLIDITY_PATH = REPO_ROOT / "examples" / "AAPQIntegration.sol"
-GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v2.json"
+GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v3.json"
 
 
 @lru_cache(maxsize=None)
@@ -374,6 +376,66 @@ class OperandScopeCheckTests(unittest.TestCase):
         result = check_behavior_summary_operand_scope(summary, source)
         self.assertEqual(result["status"], "failed")
         self.assertIn("wallet.missing", result["message"])
+
+
+class CryptoAssumptionAuditTests(unittest.TestCase):
+    def test_link_to_proofs_passes_on_real_certificate(self) -> None:
+        certificate = cached_artifact("source-certificate-json")
+        result = check_crypto_assumptions_link_to_proofs(certificate)
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_link_to_proofs_fails_when_assumption_dangles(self) -> None:
+        certificate = {
+            "cryptoAssumptions": [
+                {"name": "X", "theoremReference": "Module.theorem_x"},
+            ],
+            "proofReferences": ["Module.other_theorem"],
+        }
+        result = check_crypto_assumptions_link_to_proofs(certificate)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("Module.theorem_x", result["message"])
+
+    def test_link_to_proofs_fails_on_missing_theorem_reference(self) -> None:
+        certificate = {
+            "cryptoAssumptions": [{"name": "X"}],
+            "proofReferences": [],
+        }
+        result = check_crypto_assumptions_link_to_proofs(certificate)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("missing theoremReference", result["message"])
+
+    def test_link_to_proofs_fails_when_section_absent(self) -> None:
+        result = check_crypto_assumptions_link_to_proofs({})
+        self.assertEqual(result["status"], "failed")
+
+    def test_under_oracle_assumption_theorems_covered_real(self) -> None:
+        certificate = cached_artifact("source-certificate-json")
+        result = check_under_oracle_assumption_theorems_covered(certificate)
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_under_oracle_assumption_theorems_uncovered(self) -> None:
+        certificate = {
+            "proofReferences": [
+                "Module.foo_under_oracle_assumption",
+                "Module.bar_under_oracle_assumption",
+                "Module.unrelated_theorem",
+            ],
+            "cryptoAssumptions": [
+                {"theoremReference": "Module.foo_under_oracle_assumption"},
+            ],
+        }
+        result = check_under_oracle_assumption_theorems_covered(certificate)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("bar_under_oracle_assumption", result["message"])
+        self.assertNotIn("unrelated_theorem", result["message"])
+
+    def test_under_oracle_assumption_passes_when_no_oracle_theorems(self) -> None:
+        certificate = {
+            "proofReferences": ["Module.plain_theorem"],
+            "cryptoAssumptions": [],
+        }
+        result = check_under_oracle_assumption_theorems_covered(certificate)
+        self.assertEqual(result["status"], "passed")
 
 
 class DemoTests(unittest.TestCase):

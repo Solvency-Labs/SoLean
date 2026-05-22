@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-REPORT_VERSION = 2
+REPORT_VERSION = 3
 
 LIMITATIONS = [
     "AA/PQ source-shape audit only.",
@@ -400,6 +400,72 @@ def check_behavior_summary_operand_scope(
     )
 
 
+def check_crypto_assumptions_link_to_proofs(
+    certificate: dict[str, Any],
+) -> dict[str, str]:
+    """Every cryptoAssumption.theoremReference must appear in proofReferences."""
+    assumptions = certificate.get("cryptoAssumptions", [])
+    if not assumptions:
+        return failed(
+            "cryptoAssumptions present",
+            "Lean-owned certificate",
+            "Certificate has no cryptoAssumptions array.",
+        )
+    proofs = set(certificate.get("proofReferences", []))
+    missing: list[str] = []
+    for entry in assumptions:
+        ref = entry.get("theoremReference", "")
+        if not ref:
+            missing.append(f"{entry.get('name', '?')}: missing theoremReference")
+            continue
+        if ref not in proofs:
+            missing.append(
+                f"{entry.get('name', '?')}: theoremReference {ref} not in proofReferences"
+            )
+    if missing:
+        return failed(
+            "cryptoAssumptions link to proofReferences",
+            "Lean-owned certificate",
+            "Broken links: " + "; ".join(missing),
+        )
+    return passed(
+        "cryptoAssumptions link to proofReferences",
+        "Lean-owned certificate",
+        f"All {len(assumptions)} cryptoAssumptions reference a known proof.",
+    )
+
+
+def check_under_oracle_assumption_theorems_covered(
+    certificate: dict[str, Any],
+) -> dict[str, str]:
+    """Every "_under_oracle_assumption" theorem in proofReferences must be
+    pointed to by exactly one cryptoAssumption.theoremReference."""
+    proofs = certificate.get("proofReferences", [])
+    oracle_theorems = [name for name in proofs if name.endswith("_under_oracle_assumption")]
+    if not oracle_theorems:
+        return passed(
+            "under_oracle_assumption theorems covered",
+            "Lean-owned certificate",
+            "No *_under_oracle_assumption theorems present — nothing to cover.",
+        )
+    declared = {
+        entry.get("theoremReference", "")
+        for entry in certificate.get("cryptoAssumptions", [])
+    }
+    uncovered = [name for name in oracle_theorems if name not in declared]
+    if uncovered:
+        return failed(
+            "under_oracle_assumption theorems covered",
+            "Lean-owned certificate",
+            "Uncovered theorems: " + ", ".join(sorted(uncovered)),
+        )
+    return passed(
+        "under_oracle_assumption theorems covered",
+        "Lean-owned certificate",
+        f"All {len(oracle_theorems)} *_under_oracle_assumption theorems have a matching cryptoAssumption.",
+    )
+
+
 def check_phase_proof_references(behavior_summary: dict[str, Any]) -> dict[str, str]:
     phases = behavior_summary.get("phases", [])
     if not phases:
@@ -437,6 +503,8 @@ def run_audit(
     checks.append(check_source_contracts_match_certificate(source, certificate))
     checks.append(check_phase_proof_references(behavior_summary))
     checks.append(check_behavior_summary_operand_scope(behavior_summary, source))
+    checks.append(check_crypto_assumptions_link_to_proofs(certificate))
+    checks.append(check_under_oracle_assumption_theorems_covered(certificate))
     for contract, storage, functions in REQUIRED_CONTRACTS:
         checks.append(check_solidity_contract_present(shape, contract))
         if storage:

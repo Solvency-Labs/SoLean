@@ -231,6 +231,7 @@ structure CryptoAssumption where
   name : String
   leanReference : String
   statement : String
+  theoremReference : String
 deriving Repr, DecidableEq
 
 def integratedCryptoAssumptions : List CryptoAssumption :=
@@ -239,17 +240,23 @@ def integratedCryptoAssumptions : List CryptoAssumption :=
       leanReference :=
         "SoLean.Examples.AAPQIntegration.VerifierDomainSeparation",
       statement :=
-        "Env.verifier accepts each (publicKey, message, signature) under at most one domain." },
+        "Env.verifier accepts each (publicKey, message, signature) under at most one domain.",
+      theoremReference :=
+        "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption" },
     { name := "VerifierSignatureBinding",
       leanReference :=
         "SoLean.Examples.AAPQIntegration.VerifierSignatureBinding",
       statement :=
-        "Env.verifier accepts each (publicKey, message, domain) under at most one signature." },
+        "Env.verifier accepts each (publicKey, message, domain) under at most one signature.",
+      theoremReference :=
+        "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption" },
     { name := "VerifierKeySeparation",
       leanReference :=
         "SoLean.Examples.AAPQIntegration.VerifierKeySeparation",
       statement :=
-        "Env.verifier accepts each (message, domain, signature) under at most one publicKey." }
+        "Env.verifier accepts each (message, domain, signature) under at most one publicKey.",
+      theoremReference :=
+        "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption" }
   ]
 
 /--

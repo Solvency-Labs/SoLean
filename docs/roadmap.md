@@ -134,10 +134,12 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   documentation/audit fixture only; it is not parsed or compared to Lean.
 - `scripts/check_aapq_source.py` cross-checks the three Lean-owned AA/PQ
   artifacts against the Solidity sketch and against each other (certificate's
-  `expectedBehaviorSummary` vs. the standalone behavior summary), and walks
+  `expectedBehaviorSummary` vs. the standalone behavior summary), walks
   the behavior summary's structured operands to verify each one references a
-  declared parameter or a real storage slot in source-json. The report is
-  committed as `tests/golden/AAPQ.source.v2.json`.
+  declared parameter or a real storage slot in source-json, and audits the
+  bidirectional link between `cryptoAssumptions` and the
+  `*_under_oracle_assumption` theorems in `proofReferences`. The report is
+  committed as `tests/golden/AAPQ.source.v3.json` (reportVersion 3).
 - `scripts/demo_aapq_source.py` is a one-command research demo that runs
   `lake build`, the AA/PQ-focused Python tests, the three artifact smokes,
   the markdown source-shape report, and a Trust Boundaries summary sourced
@@ -485,20 +487,16 @@ shared modeling vocabulary across Counter and AA/PQ.
 
 Useful candidate moves, in rough priority order:
 
-1. Teach `scripts/check_aapq_source.py` to verify the structured
-   `cryptoAssumptions` certificate field: every entry's `leanReference`
-   should be a known predicate name, every entry's safety theorem should
-   appear in `proofReferences`, and the number of `cryptoAssumptions`
-   should match the number of `*_under_oracle_assumption` theorems. This
-   is the Python audit step that closes the loop on the structured
-   assumptions.
-2. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
+1. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
    of `AAPQSource` into a shared `SoLean.Source.Shape` module and use it from
    the Counter source artifact too, reducing per-case-study duplication.
-3. Apply the AAPQSource pattern to a non-claim: an external-call shim
+2. Apply the AAPQSource pattern to a non-claim: an external-call shim
    (verified low-level call between wallet and wrapper), or replacing the
    abstract verifier oracle with a more concrete (still non-cryptographic)
    modeled scheme.
+3. Add a Lean-side check that `integratedCryptoAssumptions` covers every
+   `*_under_oracle_assumption` theorem in the file, mirroring the Python
+   audit at the proof layer.
 4. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 

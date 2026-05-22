@@ -122,9 +122,11 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   loads the three Lean-owned AA/PQ artifacts, parses the restricted Solidity
   sketch, and emits a deterministic JSON or Markdown report cross-checking
   contract/storage/function names, the certificate's embedded behavior
-  summary, and structural scope of every operand in the behavior summary's
-  structured guard/value expressions. The report has a committed golden
-  fixture at `tests/golden/AAPQ.source.v2.json`.
+  summary, structural scope of every operand in the behavior summary's
+  structured guard/value expressions, and the bidirectional link between
+  `cryptoAssumptions` entries and their `*_under_oracle_assumption` theorems
+  in `proofReferences`. The report has a committed golden fixture at
+  `tests/golden/AAPQ.source.v3.json`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.
   - Yul subset classification for supported/unsupported compiler output.
@@ -252,7 +254,7 @@ still a restricted Solidity subset rather than an EVM semantics.
 │   └── yul_subset.py
 └── tests/
     ├── golden/
-    │   ├── AAPQ.source.v2.json
+    │   ├── AAPQ.source.v3.json
     │   ├── Counter.bridge.v7.json
     │   └── Counter.solean.yul
     ├── README.md

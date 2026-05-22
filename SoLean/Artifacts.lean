@@ -577,7 +577,8 @@ def cryptoAssumptionJson
   .obj [
     ("leanReference", .str entry.leanReference),
     ("name", .str entry.name),
-    ("statement", .str entry.statement)
+    ("statement", .str entry.statement),
+    ("theoremReference", .str entry.theoremReference)
   ]
 
 end AAPQBehavior

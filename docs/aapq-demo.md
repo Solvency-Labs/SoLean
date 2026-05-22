@@ -39,6 +39,7 @@ SoLean.Examples.AAPQSource    -> Lean source/certificate/behavior artifacts
 SoLean.Examples.AAPQSource
   .BehaviorReflection         -> structural reflection theorems (rfl)
 scripts/check_aapq_source.py  -> deterministic cross-check report
+                                 (incl. cryptoAssumptions <-> proofs audit)
 scripts/demo_aapq_source.py   -> one-command runner + trust boundary summary
 ```
 

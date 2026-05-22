@@ -1,7 +1,7 @@
 {
   "artifacts": {
     "behaviorSummaryHash": "b5cfd9fe5970806706c94c3988806899ffa5e85baa67379d472fff24e27304d4",
-    "sourceCertificateHash": "723efe2b7c275d70d24cb42ff60961236cfbd0f2f4cc0d8356f911da16b5f1e4",
+    "sourceCertificateHash": "84d1caeba5d815a126461a9f63f48e5fe97af3d834354919ef5719422f32dd7b",
     "sourceHash": "9ef06ae57aae9f38b47d9edcf3bbd32861ec8077f21297acda01c746e19f4f81"
   },
   "checks": [
@@ -28,6 +28,18 @@
       "name": "behavior-summary operands in scope",
       "status": "passed",
       "trust": "Lean-owned behavior summary"
+    },
+    {
+      "message": "All 3 cryptoAssumptions reference a known proof.",
+      "name": "cryptoAssumptions link to proofReferences",
+      "status": "passed",
+      "trust": "Lean-owned certificate"
+    },
+    {
+      "message": "All 3 *_under_oracle_assumption theorems have a matching cryptoAssumption.",
+      "name": "under_oracle_assumption theorems covered",
+      "status": "passed",
+      "trust": "Lean-owned certificate"
     },
     {
       "message": "Found contract 'PQVerifierWrapper' in the Solidity sketch.",
@@ -85,7 +97,7 @@
     "Does not verify external-call, ABI, calldata, memory, gas, or reentrancy semantics.",
     "Verifier is an abstract oracle in the Lean models."
   ],
-  "reportVersion": 2,
+  "reportVersion": 3,
   "solidityContracts": [
     "AAPQIntegration",
     "AAWallet",
