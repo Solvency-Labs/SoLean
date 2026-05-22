@@ -219,6 +219,40 @@ structure BehaviorSummary where
 deriving Repr, DecidableEq
 
 /--
+Named crypto assumption on `SoLean.Env.verifier`, surfaced in the source
+certificate so the trust boundary is enumerable per assumption rather than
+buried in prose.
+
+`leanReference` names the Lean predicate (e.g.
+`SoLean.Examples.AAPQIntegration.VerifierDomainSeparation`). `statement` is
+the informal description shown in audit reports.
+-/
+structure CryptoAssumption where
+  name : String
+  leanReference : String
+  statement : String
+deriving Repr, DecidableEq
+
+def integratedCryptoAssumptions : List CryptoAssumption :=
+  [
+    { name := "VerifierDomainSeparation",
+      leanReference :=
+        "SoLean.Examples.AAPQIntegration.VerifierDomainSeparation",
+      statement :=
+        "Env.verifier accepts each (publicKey, message, signature) under at most one domain." },
+    { name := "VerifierSignatureBinding",
+      leanReference :=
+        "SoLean.Examples.AAPQIntegration.VerifierSignatureBinding",
+      statement :=
+        "Env.verifier accepts each (publicKey, message, domain) under at most one signature." },
+    { name := "VerifierKeySeparation",
+      leanReference :=
+        "SoLean.Examples.AAPQIntegration.VerifierKeySeparation",
+      statement :=
+        "Env.verifier accepts each (message, domain, signature) under at most one publicKey." }
+  ]
+
+/--
 Lean-owned ordered behavior summary of the integrated AA/PQ flow.
 
 Each phase corresponds to a Solidity-shaped boundary in the integrated

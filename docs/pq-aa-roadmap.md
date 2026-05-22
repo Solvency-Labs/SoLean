@@ -197,16 +197,21 @@ Current v0 safety theorems (`SoLean.Examples.AAPQIntegration`):
   arithmetic, so the second call's modeled `nonce == wallet.nonce` require
   observes a different stored nonce. Contract-level replay-resistance for
   the modeled flow.
-- `domain_separation_under_oracle_assumption`: under a named
-  `VerifierDomainSeparation env` hypothesis on `Env.verifier`
-  (the abstract oracle accepts each `(publicKey, message, signature)` under
-  at most one domain), two successful validations sharing the
-  `publicKey`/`opHash`/`signature` must share the `domain`.
+- `domain_separation_under_oracle_assumption`: under
+  `VerifierDomainSeparation env`, two successful validations sharing
+  `(publicKey, opHash, signature)` must share `domain`.
+- `signature_non_malleability_under_oracle_assumption`: under
+  `VerifierSignatureBinding env`, two successful validations sharing
+  `(publicKey, opHash, domain)` must share `signature`.
+- `key_separation_under_oracle_assumption`: under
+  `VerifierKeySeparation env`, two successful validations sharing
+  `(opHash, domain, signature)` must share `publicKey`.
 
 The first two are contract-level claims that hold for the modeled flow
-without any new crypto assumption. The third is contract-level under one
-named, non-cryptographic assumption on the verifier oracle and is recorded
-explicitly in the source certificate.
+without any new crypto assumption. The last three are contract-level under
+named, non-cryptographic assumptions on the verifier oracle and are
+recorded explicitly in the source certificate's `cryptoAssumptions` field
+(name, Lean reference, informal statement).
 
 This is the first target that should feel like a serious Ethereum research demo.
 

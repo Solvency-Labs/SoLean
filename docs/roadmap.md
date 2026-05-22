@@ -83,14 +83,16 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
 - `AAPQIntegration.validateIntegrated(...)` proves that successful integrated
   validation connects the wrapper and wallet checks over the same modeled
   verifier tuple.
-- `AAPQIntegration.noBypass_implies_verifier_accepted`,
-  `replay_rejected_after_success`, and
-  `domain_separation_under_oracle_assumption` are integrated-flow safety
-  theorems. The replay theorem is contract-level: the first success
-  advances the nonce, so the same `UserOp` cannot validate again. The
-  domain-separation theorem assumes a named `VerifierDomainSeparation`
-  property on `Env.verifier`, surfaced as an explicit assumption in the
-  source certificate.
+- `AAPQIntegration` carries five integrated-flow safety theorems:
+  `noBypass_implies_verifier_accepted`, `replay_rejected_after_success`,
+  `domain_separation_under_oracle_assumption`,
+  `signature_non_malleability_under_oracle_assumption`, and
+  `key_separation_under_oracle_assumption`. The last three are under
+  named non-cryptographic crypto assumptions on `Env.verifier`
+  (`VerifierDomainSeparation`, `VerifierSignatureBinding`,
+  `VerifierKeySeparation`) and are surfaced in
+  `aapqSourceCertificate.cryptoAssumptions` as structured entries
+  carrying name, Lean reference, and informal statement.
 - `SoLean.Examples.AAPQSource.integratedContract` defines a Solidity-shaped
   source description of the AA/PQ two-contract layout and proves that the
   wallet, wrapper, and integrated bodies instantiate to the existing proved
@@ -483,25 +485,21 @@ shared modeling vocabulary across Counter and AA/PQ.
 
 Useful candidate moves, in rough priority order:
 
-1. Strengthen `domain_separation_under_oracle_assumption` by also proving the
-   sibling claims it suggests: signature-non-malleability (under a named
-   `VerifierSignatureBinding` assumption, the same `(publicKey, opHash,
-   domain, signature)` cannot be re-bound to a different `signature`),
-   and `key_separation_under_oracle_assumption` (two successful validations
-   sharing `(opHash, domain, signature)` must share `publicKey`).
-2. Surface the named crypto assumptions
-   (`VerifierDomainSeparation`, plus any future sibling) in the source
-   certificate as a structured `cryptoAssumptions` field with name + Lean
-   reference + informal statement, so the trust boundary is enumerable
-   rather than only described in prose.
-3. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
+1. Teach `scripts/check_aapq_source.py` to verify the structured
+   `cryptoAssumptions` certificate field: every entry's `leanReference`
+   should be a known predicate name, every entry's safety theorem should
+   appear in `proofReferences`, and the number of `cryptoAssumptions`
+   should match the number of `*_under_oracle_assumption` theorems. This
+   is the Python audit step that closes the loop on the structured
+   assumptions.
+2. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
    of `AAPQSource` into a shared `SoLean.Source.Shape` module and use it from
    the Counter source artifact too, reducing per-case-study duplication.
-4. Apply the AAPQSource pattern to a non-claim: an external-call shim
+3. Apply the AAPQSource pattern to a non-claim: an external-call shim
    (verified low-level call between wallet and wrapper), or replacing the
    abstract verifier oracle with a more concrete (still non-cryptographic)
    modeled scheme.
-5. Keep real Solidity parsing, Yul emission, external calls, and real PQ
+4. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 
 ## Updating This Roadmap

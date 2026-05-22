@@ -83,13 +83,15 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   verifier checks passed.
 - An `AAPQIntegration` model proving that successful integrated validation
   connects wrapper checks and wallet checks over the same modeled verifier
-  tuple, plus three safety theorems for the integrated flow:
+  tuple, plus five safety theorems for the integrated flow:
   `noBypass_implies_verifier_accepted` (success implies abstract verifier
   acceptance), `replay_rejected_after_success` (the same `UserOp` cannot
   validate again on the post-validation storage, because the nonce
-  advanced), and `domain_separation_under_oracle_assumption` (under a named
-  `VerifierDomainSeparation` assumption on `Env.verifier`, two successful
-  validations sharing `publicKey`/`opHash`/`signature` must share `domain`).
+  advanced), and three under named non-cryptographic crypto assumptions on
+  `Env.verifier`: `domain_separation_under_oracle_assumption`
+  (`VerifierDomainSeparation`), `signature_non_malleability_under_oracle_
+  assumption` (`VerifierSignatureBinding`), and
+  `key_separation_under_oracle_assumption` (`VerifierKeySeparation`).
 - An `AAPQSource` Solidity-shaped source description of the two-contract
   layout with instantiation theorems back to the proved wallet, wrapper, and
   integrated programs, plus Lean-owned `source-json`,

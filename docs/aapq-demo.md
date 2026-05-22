@@ -55,9 +55,11 @@ oracle, including three integrated-flow safety theorems:
     the exact (publicKey, opHash, domain, signature) tuple;
   - the same UserOp cannot validate twice on the post-validation storage
     because the nonce advanced;
-  - under a named VerifierDomainSeparation assumption on Env.verifier, two
-    successful validations sharing (publicKey, opHash, signature) must share
-    domain.
+  - under named, non-cryptographic crypto assumptions on Env.verifier
+    (VerifierDomainSeparation, VerifierSignatureBinding,
+    VerifierKeySeparation, surfaced in the certificate's cryptoAssumptions
+    field), two successful validations sharing all-but-one of
+    (publicKey, opHash, domain, signature) must share the remaining field.
 
 The Solidity-shaped source description (AAPQSource) is pinned to those proved
 programs by instantiation theorems, and the structured behavior summary is
@@ -84,6 +86,8 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQIntegration.noBypass_implies_verifier_accepted`
 - `SoLean.Examples.AAPQIntegration.replay_rejected_after_success`
 - `SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption`
+- `SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption`
+- `SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption`
 
 ## Non-Claims
 

@@ -572,6 +572,14 @@ def summaryJson (summary : SoLean.Examples.AAPQSource.BehaviorSummary) : Json :=
     ("version", .num 2)
   ]
 
+def cryptoAssumptionJson
+    (entry : SoLean.Examples.AAPQSource.CryptoAssumption) : Json :=
+  .obj [
+    ("leanReference", .str entry.leanReference),
+    ("name", .str entry.name),
+    ("statement", .str entry.statement)
+  ]
+
 end AAPQBehavior
 
 def aapqSourceJson : String :=
@@ -592,12 +600,15 @@ def aapqSourceCertificate : Json :=
       "Wallet-wrapper integration is modeled as direct composition over a shared input tuple, not as a low-level call/staticcall.",
       "Wallet key commitment must equal the wrapper public key for the integrated path to be authorized.",
       "ABI decoding, calldata, memory, gas, events, and reentrancy are not modeled.",
-      "Domain-separation theorem assumes VerifierDomainSeparation on Env.verifier: the abstract oracle accepts each (publicKey, message, signature) under at most one domain. This is a named, non-cryptographic crypto assumption."
+      "Named, non-cryptographic crypto assumptions on Env.verifier are listed under cryptoAssumptions."
     ]),
     ("contracts", .arr [
       AAPQ.contractJson Examples.AAPQSource.walletContract,
       AAPQ.contractJson Examples.AAPQSource.wrapperContract
     ]),
+    ("cryptoAssumptions", .arr
+      (Examples.AAPQSource.integratedCryptoAssumptions.map
+        AAPQBehavior.cryptoAssumptionJson)),
     ("expectedBehaviorSummary",
       AAPQBehavior.summaryJson Examples.AAPQSource.integratedBehaviorSummary),
     ("integration", .obj [
@@ -622,7 +633,9 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateIntegrated_eq_validateIntegrated",
       "SoLean.Examples.AAPQIntegration.noBypass_implies_verifier_accepted",
       "SoLean.Examples.AAPQIntegration.replay_rejected_after_success",
-      "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption"
+      "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption",
+      "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption",
+      "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption"
     ]),
     ("unsupported", stringsJson [
       "real PQ cryptographic security",
