@@ -26,6 +26,9 @@ def inBounds (value : UInt256) : Prop :=
 def zero : UInt256 :=
   { toNat := 0, isValid := Nat.zero_le maxValue }
 
+def one : UInt256 :=
+  { toNat := 1, isValid := by decide }
+
 instance : OfNat UInt256 0 where
   ofNat := zero
 
@@ -87,6 +90,10 @@ def ge (a b : UInt256) : Bool :=
 
 @[simp]
 theorem zero_toNat : zero.toNat = 0 :=
+  rfl
+
+@[simp]
+theorem one_toNat : one.toNat = 1 :=
   rfl
 
 theorem checkedAdd_toNat {a b result : UInt256}

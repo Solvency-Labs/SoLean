@@ -66,6 +66,15 @@ allowances.
 Goal: model the first useful account validation flow with an abstract
 signature verifier predicate.
 
+Current v0:
+
+- `SoLean.Examples.AAWallet` models entry point authorization, nonce matching,
+  domain matching, abstract verifier acceptance, and checked nonce increment.
+- Lean proves that successful validation implies all modeled guards passed and
+  that key commitment, domain, and entry point storage slots are unchanged.
+- The verifier is still an oracle; this is contract-logic verification under a
+  crypto assumption, not PQ cryptographic security.
+
 Candidate state:
 
 - owner or verification key commitment
@@ -98,6 +107,15 @@ No claim is made about the cryptographic soundness of the verifier.
 ## Phase 2: PQ Verifier Wrapper Contract
 
 Goal: verify the Solidity wrapper around a PQ verifier interface or library.
+
+Current v0:
+
+- `SoLean.Examples.PQVerifierWrapper` models public-key length, signature
+  length, domain, and abstract verifier acceptance checks.
+- Lean proves that successful wrapper validation implies all modeled wrapper
+  checks passed and storage is unchanged.
+- The verifier is still an oracle; byte-level parsing, external calls, and PQ
+  cryptographic security remain out of scope.
 
 Candidate properties:
 
@@ -163,10 +181,10 @@ SoLean does not currently claim:
 - verified equivalence between real solc Yul and SoLean-generated Yul.
 - production readiness for account-abstraction wallets.
 
-The near-term claim should be more precise:
+The current near-term claim is:
 
 ```text
-For a focused modeled AA/PQ authentication flow, Lean proves that successful
-validation/execution implies the operation satisfied the modeled authentication,
-nonce, and domain checks.
+For the hand-written AAWallet v0 and PQVerifierWrapper v0 models, Lean proves
+that successful validation implies the modeled account/wrapper guards passed
+and the abstract verifier oracle accepted the intended tuple.
 ```

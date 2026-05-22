@@ -29,11 +29,39 @@ results.
 ## Execution
 
 - Storage is modeled as a total mapping from slots to `UInt256` values.
-- The environment currently contains only `msg.sender`.
+- The environment contains `msg.sender` and an abstract verifier oracle of type
+  `UInt256 -> UInt256 -> UInt256 -> UInt256 -> Bool`.
 - `require false` reverts with `Failure.requireFailed`.
 - `assert false` reverts with `Failure.assertFailed`.
 - Arithmetic failure during expression evaluation reverts with
   `Failure.arithmeticFailed`.
+
+## Account Abstraction
+
+- `SoLean.Examples.AAWallet` is the first abstract AA/PQ-facing model.
+- The model verifies wallet validation logic under an abstract verifier oracle.
+- The verifier oracle is trusted as an assumption about the intended PQ
+  verification result; SoLean does not currently verify PQ cryptographic
+  security.
+- Operation hashes, domains, signatures, addresses, and key commitments are
+  represented as bounded `UInt256` placeholders.
+- The model includes a configured entry point check, nonce check, domain check,
+  verifier acceptance check, and checked nonce increment.
+- This is not full EIP-4337 semantics and does not model calldata, memory, ABI,
+  gas, bundlers, paymasters, aggregators, or external calls.
+
+## PQ Verifier Wrapper
+
+- `SoLean.Examples.PQVerifierWrapper` is the first standalone verifier-wrapper
+  model.
+- The wrapper checks modeled public-key length, signature length, domain, and
+  abstract verifier acceptance.
+- Successful wrapper validation proves there is no modeled bypass around those
+  checks, and that wrapper storage is unchanged.
+- Public keys, signatures, messages, domains, and lengths are represented as
+  bounded `UInt256` placeholders.
+- This does not verify PQ cryptographic security, byte-level parsing, ABI,
+  calldata, memory, external calls, gas, or EVM behavior.
 
 ## Solidity And Yul
 

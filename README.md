@@ -53,7 +53,7 @@ For the current intuition and next steps, see `docs/roadmap.md` and
 - A focused SoLean DSL:
   - `UInt256` modeled as a bounded natural-number structure.
   - Storage modeled as `Slot -> UInt256`.
-  - An environment with `msg.sender`.
+  - An environment with `msg.sender` and an abstract verifier oracle.
   - Statements for `require`, `assert`, assignment, sequencing, and skip.
   - Execution results as success with storage or revert with a failure kind,
     including arithmetic failure.
@@ -75,6 +75,12 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   the proved Counter shapes.
 - A `SimpleVault` model with successful-execution preservation proofs for
   `totalAssets >= totalShares`.
+- An `AAWallet` validation model proving that successful validation implies the
+  modeled entry point, nonce, domain, and abstract verifier checks passed, and
+  that the nonce advanced through checked arithmetic.
+- A `PQVerifierWrapper` model proving that successful wrapper validation
+  implies the modeled key-length, signature-length, domain, and abstract
+  verifier checks passed.
 - A strategic PQ/account-abstraction roadmap for the next serious case study.
 - Solidity examples in `examples/`.
 - Python placeholder tools for:
@@ -124,8 +130,10 @@ Python emitter output, and solc Yul all have the same semantics.
 - Verified Solidity-to-source-language translation.
   Python tests currently check Counter source-shape alignment against a
   Lean-exported artifact, not a proof.
-- Account-abstraction wallet semantics.
-- PQ verifier-wrapper contracts.
+- Full EIP-4337/account-abstraction wallet semantics beyond the abstract
+  `AAWallet` validation model.
+- Full PQ verifier-wrapper contract semantics beyond the abstract
+  `PQVerifierWrapper` model.
 - PQ cryptographic security proofs.
 - Broad Solidity or DeFi verification claims.
 

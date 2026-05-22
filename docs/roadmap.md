@@ -74,6 +74,12 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   succeeds.
 - `SimpleVault` preserves `totalAssets >= totalShares` for successful modeled
   `deposit` and `withdraw` executions.
+- `AAWallet.validateProgram(op)` proves that successful modeled validation
+  implies the configured entry point, nonce, domain, and abstract verifier
+  checks passed, and that the nonce advanced with checked arithmetic.
+- `PQVerifierWrapper.verifyProgram(input)` proves that successful modeled
+  wrapper validation implies the configured key-length, signature-length,
+  domain, and abstract verifier checks passed, with storage unchanged.
 - A restricted Yul semantics exists in Lean for the Counter-shaped subset.
 - A hand-written restricted Yul Counter program refines successful SoLean
   Counter executions.
@@ -126,8 +132,10 @@ proof chain yet.
 - Parsing emitted Yul text back into Lean Yul data.
 - Real `solc 0.8.35 --ir` Counter semantic comparison.
 - Semantic equivalence against real Yul.
-- Account-abstraction wallet semantics.
-- PQ verifier-wrapper contract models.
+- Full EIP-4337/account-abstraction wallet semantics beyond the abstract
+  `AAWallet` validation model.
+- Full PQ verifier-wrapper contract semantics beyond the abstract
+  `PQVerifierWrapper` model.
 - PQ cryptographic security proofs. Future PQ work should verify contract
   logic under explicit verifier assumptions unless a separate verified crypto
   model is introduced.
@@ -156,12 +164,20 @@ verifier predicate. Prove properties such as:
 - the signature is bound to the operation hash and wallet/domain.
 - execution is gated by successful validation.
 
+Status: started with `SoLean.Examples.AAWallet`, a hand-written Lean model that
+checks entry point, nonce, domain, abstract verifier acceptance, and checked
+nonce increment.
+
 ### Phase 2: PQ Verifier Wrapper
 
 Model the Solidity wrapper around a PQ verifier under explicit crypto
 assumptions. Prove that inputs are bound correctly, length/domain checks happen
 before verifier use, verifier return values are interpreted safely, and there
 is no bypass path that accepts without verifier success.
+
+Status: started with `SoLean.Examples.PQVerifierWrapper`, a hand-written Lean
+model that checks public-key length, signature length, domain, and abstract
+verifier acceptance.
 
 ### Phase 3: AA + PQ Integration
 
@@ -393,7 +409,7 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Define the first abstract AA wallet validation model.
+Integrate AAWallet v0 with PQVerifierWrapper v0.
 ```
 
 Why this matters:
@@ -401,19 +417,21 @@ Why this matters:
 - Counter Bridge v7 is strong enough as a calibration path for now.
 - Antonio's feedback points toward Solidity/AA contracts around PQ transaction
   signatures, not PQ precompiles.
-- An abstract AA model lets SoLean start proving the relevant contract-level
-  property before committing to a concrete PQ scheme or verifier implementation.
+- `AAWallet` v0 now gives SoLean a first contract-level validation shape.
+- `PQVerifierWrapper` v0 now gives SoLean a first no-bypass wrapper shape.
+- The next serious proof should connect the wallet gate to the wrapper result
+  instead of leaving them as separate examples.
 
 First useful version:
 
-1. Add a hand-written Lean model of a focused AA wallet validation flow with
-   storage for a nonce and verification key commitment.
-2. Model the verifier as an abstract predicate or Boolean input, not as real PQ
-   cryptography.
-3. Prove that successful validation implies correct nonce use, operation/domain
-   binding, and modeled verifier success.
-4. State explicitly that this verifies contract logic around authentication,
-   not PQ cryptographic security.
+1. Define an integrated validation flow that first validates wrapper inputs and
+   then validates the AA wallet operation.
+2. Use shared operation hash, domain, key, and signature fields so the proof
+   states the same tuple is authenticated and then consumed by the wallet.
+3. Prove that successful integrated validation implies entry point, nonce,
+   domain, wrapper length checks, and verifier acceptance.
+4. Keep Solidity/Yul generation and real PQ cryptography out of scope until the
+   Lean integration proof is crisp.
 
 ## Updating This Roadmap
 
