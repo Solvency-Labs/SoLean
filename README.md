@@ -102,6 +102,12 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   final-write values are structured `Condition` / `ValueExpression` nodes
   over a small `Operand` DSL (param / slot / msgSender / const) instead of
   English condition strings.
+- `integratedCryptoAssumptions_cover_all_oracle_theorems` is a Lean-side
+  coverage theorem: the `theoremReference`s in `integratedCryptoAssumptions`
+  match the enumerated `OracleAssumptionId.theoremReference` for every
+  oracle-assumption safety theorem, by `rfl`. Adding a new
+  `*_under_oracle_assumption` without registering it in both lists breaks
+  the build.
 - `AAPQSource.BehaviorReflection` reflects that structured DSL into
   `SoLean.Stmt` semantics and proves that each phase of
   `integratedBehaviorSummary` reconstructs the corresponding proved program:

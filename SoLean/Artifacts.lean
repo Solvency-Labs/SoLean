@@ -636,7 +636,8 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQIntegration.replay_rejected_after_success",
       "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption",
       "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption",
-      "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption"
+      "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption",
+      "SoLean.Examples.AAPQSource.integratedCryptoAssumptions_cover_all_oracle_theorems"
     ]),
     ("unsupported", stringsJson [
       "real PQ cryptographic security",

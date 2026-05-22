@@ -89,6 +89,7 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption`
 - `SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption`
 - `SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption`
+- `SoLean.Examples.AAPQSource.integratedCryptoAssumptions_cover_all_oracle_theorems`
 
 ## Non-Claims
 

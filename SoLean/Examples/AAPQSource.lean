@@ -260,6 +260,43 @@ def integratedCryptoAssumptions : List CryptoAssumption :=
   ]
 
 /--
+Enumerated identifier for each AA/PQ safety theorem that depends on a named
+oracle assumption. Adding a new such theorem requires extending this
+inductive — `integratedCryptoAssumptions_cover_all_oracle_theorems` below
+then forces the corresponding `integratedCryptoAssumptions` entry to exist,
+catching drift at compile time.
+-/
+inductive OracleAssumptionId where
+  | domainSeparation
+  | signatureBinding
+  | keySeparation
+deriving Repr, DecidableEq
+
+def OracleAssumptionId.theoremReference : OracleAssumptionId -> String
+  | .domainSeparation =>
+      "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption"
+  | .signatureBinding =>
+      "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption"
+  | .keySeparation =>
+      "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption"
+
+def allOracleAssumptions : List OracleAssumptionId :=
+  [.domainSeparation, .signatureBinding, .keySeparation]
+
+/--
+Lean-side coverage theorem: the `theoremReference`s in
+`integratedCryptoAssumptions` are exactly the references for every
+`OracleAssumptionId`. Adding a new `*_under_oracle_assumption` safety
+theorem without extending both `OracleAssumptionId` and
+`integratedCryptoAssumptions` breaks this `rfl`, giving build-time drift
+detection that mirrors the Python audit at the proof layer.
+-/
+theorem integratedCryptoAssumptions_cover_all_oracle_theorems :
+    integratedCryptoAssumptions.map CryptoAssumption.theoremReference =
+      allOracleAssumptions.map OracleAssumptionId.theoremReference := by
+  rfl
+
+/--
 Lean-owned ordered behavior summary of the integrated AA/PQ flow.
 
 Each phase corresponds to a Solidity-shaped boundary in the integrated

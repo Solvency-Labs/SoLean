@@ -83,6 +83,11 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
 - `AAPQIntegration.validateIntegrated(...)` proves that successful integrated
   validation connects the wrapper and wallet checks over the same modeled
   verifier tuple.
+- `SoLean.Examples.AAPQSource.integratedCryptoAssumptions_cover_all_oracle_theorems`
+  is a Lean-side coverage theorem: the `theoremReference`s in
+  `integratedCryptoAssumptions` are exactly the references named by the
+  enumerated `OracleAssumptionId`. Build-time drift detection that mirrors
+  the Python audit at the proof layer.
 - `AAPQIntegration` carries five integrated-flow safety theorems:
   `noBypass_implies_verifier_accepted`, `replay_rejected_after_success`,
   `domain_separation_under_oracle_assumption`,
@@ -487,16 +492,18 @@ shared modeling vocabulary across Counter and AA/PQ.
 
 Useful candidate moves, in rough priority order:
 
-1. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
+1. Add an `executeUserOp` model and prove an execution-gating theorem:
+   `fullFlow = .seq validateProgram executeUserOp` succeeds only when
+   validation succeeds, so failed validation prevents any modeled execute
+   side effect. This turns the Phase 1 "execution is gated by successful
+   validation" candidate into a Lean theorem.
+2. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
    of `AAPQSource` into a shared `SoLean.Source.Shape` module and use it from
    the Counter source artifact too, reducing per-case-study duplication.
-2. Apply the AAPQSource pattern to a non-claim: an external-call shim
+3. Apply the AAPQSource pattern to a non-claim: an external-call shim
    (verified low-level call between wallet and wrapper), or replacing the
    abstract verifier oracle with a more concrete (still non-cryptographic)
    modeled scheme.
-3. Add a Lean-side check that `integratedCryptoAssumptions` covers every
-   `*_under_oracle_assumption` theorem in the file, mirroring the Python
-   audit at the proof layer.
 4. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 
