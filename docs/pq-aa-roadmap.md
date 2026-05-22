@@ -139,6 +139,16 @@ under the chosen scheme, parameter set, message, and public key.
 Goal: prove the wallet accepts only PQ-authenticated operations under explicit
 assumptions.
 
+Current v0:
+
+- `SoLean.Examples.AAPQIntegration` composes the wallet and wrapper validation
+  models as separate storage boundaries.
+- Lean proves that successful integrated validation implies wrapper checks,
+  wallet checks, key agreement, and abstract verifier acceptance of the shared
+  `(publicKey, opHash, domain, signature)` tuple.
+- External-call semantics, ABI/calldata, and real PQ cryptography remain out of
+  scope.
+
 Candidate properties:
 
 - the wallet calls the intended PQ verifier wrapper.
@@ -184,7 +194,7 @@ SoLean does not currently claim:
 The current near-term claim is:
 
 ```text
-For the hand-written AAWallet v0 and PQVerifierWrapper v0 models, Lean proves
-that successful validation implies the modeled account/wrapper guards passed
-and the abstract verifier oracle accepted the intended tuple.
+For the hand-written AAPQIntegration v0 model, Lean proves that successful
+integrated validation implies the modeled wallet and wrapper guards passed over
+the same authenticated tuple, under an abstract verifier-oracle assumption.
 ```

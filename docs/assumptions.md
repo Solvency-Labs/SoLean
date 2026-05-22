@@ -63,6 +63,19 @@ results.
 - This does not verify PQ cryptographic security, byte-level parsing, ABI,
   calldata, memory, external calls, gas, or EVM behavior.
 
+## AA + PQ Integration
+
+- `SoLean.Examples.AAPQIntegration` composes the abstract wallet and verifier
+  wrapper models.
+- The integration model treats the wallet and wrapper as separate
+  contract/storage boundaries.
+- Successful integrated validation proves wrapper checks, wallet checks, key
+  agreement between wrapper input and wallet storage, and abstract verifier
+  acceptance of the shared `(publicKey, opHash, domain, signature)` tuple.
+- This does not model a real external call from wallet to wrapper, ABI
+  encoding, calldata, memory, gas, reentrancy, or account-abstraction protocol
+  machinery.
+
 ## Solidity And Yul
 
 - Solidity parsing and generation of SoLean models are not implemented beyond

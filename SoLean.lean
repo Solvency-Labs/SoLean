@@ -4,6 +4,7 @@ import SoLean.Examples.Counter
 import SoLean.Examples.CounterCompiler
 import SoLean.Examples.CounterYul
 import SoLean.Examples.AAWallet
+import SoLean.Examples.AAPQIntegration
 import SoLean.Examples.PQVerifierWrapper
 import SoLean.Examples.SimpleVault
 import SoLean.Artifacts

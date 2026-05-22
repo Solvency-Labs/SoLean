@@ -81,6 +81,9 @@ For the current intuition and next steps, see `docs/roadmap.md` and
 - A `PQVerifierWrapper` model proving that successful wrapper validation
   implies the modeled key-length, signature-length, domain, and abstract
   verifier checks passed.
+- An `AAPQIntegration` model proving that successful integrated validation
+  connects wrapper checks and wallet checks over the same modeled verifier
+  tuple.
 - A strategic PQ/account-abstraction roadmap for the next serious case study.
 - Solidity examples in `examples/`.
 - Python placeholder tools for:
@@ -134,6 +137,8 @@ Python emitter output, and solc Yul all have the same semantics.
   `AAWallet` validation model.
 - Full PQ verifier-wrapper contract semantics beyond the abstract
   `PQVerifierWrapper` model.
+- External-call semantics between the wallet and verifier wrapper beyond the
+  abstract `AAPQIntegration` composition model.
 - PQ cryptographic security proofs.
 - Broad Solidity or DeFi verification claims.
 

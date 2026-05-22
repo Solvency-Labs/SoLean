@@ -80,6 +80,9 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
 - `PQVerifierWrapper.verifyProgram(input)` proves that successful modeled
   wrapper validation implies the configured key-length, signature-length,
   domain, and abstract verifier checks passed, with storage unchanged.
+- `AAPQIntegration.validateIntegrated(...)` proves that successful integrated
+  validation connects the wrapper and wallet checks over the same modeled
+  verifier tuple.
 - A restricted Yul semantics exists in Lean for the Counter-shaped subset.
 - A hand-written restricted Yul Counter program refines successful SoLean
   Counter executions.
@@ -136,6 +139,8 @@ proof chain yet.
   `AAWallet` validation model.
 - Full PQ verifier-wrapper contract semantics beyond the abstract
   `PQVerifierWrapper` model.
+- External-call semantics between the wallet and verifier wrapper beyond the
+  abstract `AAPQIntegration` composition model.
 - PQ cryptographic security proofs. Future PQ work should verify contract
   logic under explicit verifier assumptions unless a separate verified crypto
   model is introduced.
@@ -183,6 +188,9 @@ verifier acceptance.
 
 Prove that the wallet accepts only operations authenticated by the intended PQ
 verifier wrapper, with nonce and domain separation modeled explicitly.
+
+Status: started with `SoLean.Examples.AAPQIntegration`, a hand-written Lean
+composition of the wallet and wrapper models over a shared verifier tuple.
 
 ### Phase 4: Real Solidity And solc Boundary
 
@@ -409,7 +417,7 @@ Definition of done:
 The next best qualitative task is:
 
 ```text
-Integrate AAWallet v0 with PQVerifierWrapper v0.
+Move AA/PQ integration from pure Lean model to a Solidity-shaped source model.
 ```
 
 Why this matters:
@@ -419,19 +427,22 @@ Why this matters:
   signatures, not PQ precompiles.
 - `AAWallet` v0 now gives SoLean a first contract-level validation shape.
 - `PQVerifierWrapper` v0 now gives SoLean a first no-bypass wrapper shape.
-- The next serious proof should connect the wallet gate to the wrapper result
-  instead of leaving them as separate examples.
+- `AAPQIntegration` v0 now connects the two proof islands under an abstract
+  verifier-oracle assumption.
+- The next qualitative jump is to make the AA/PQ model auditable from a
+  Solidity-shaped source description, while still avoiding real Solidity/Yul
+  generation.
 
 First useful version:
 
-1. Define an integrated validation flow that first validates wrapper inputs and
-   then validates the AA wallet operation.
-2. Use shared operation hash, domain, key, and signature fields so the proof
-   states the same tuple is authenticated and then consumed by the wallet.
-3. Prove that successful integrated validation implies entry point, nonce,
-   domain, wrapper length checks, and verifier acceptance.
-4. Keep Solidity/Yul generation and real PQ cryptography out of scope until the
-   Lean integration proof is crisp.
+1. Define a Lean-owned source shape for the current integrated AA/PQ validation
+   flow.
+2. Export a deterministic artifact describing the integrated source shape and
+   theorem references, similar in spirit to the Counter bridge artifacts.
+3. Add a small hand-written Solidity sketch only as documentation or fixture,
+   not as a verified parser target yet.
+4. Keep real Solidity parsing, Yul emission, external calls, and real PQ
+   cryptography out of scope until the source-shape boundary is crisp.
 
 ## Updating This Roadmap
 
