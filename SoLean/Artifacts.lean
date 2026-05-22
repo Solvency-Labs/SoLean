@@ -1,4 +1,5 @@
 import SoLean.Bridge
+import SoLean.Examples.AAPQSource
 import SoLean.Examples.CounterCompiler
 
 namespace SoLean
@@ -446,6 +447,199 @@ def counterBridgeManifest : Json :=
 
 def counterBridgeManifestJson : String :=
   renderJson counterBridgeManifest
+
+namespace AAPQ
+
+def paramJson (param : SoLean.Examples.AAPQSource.Param) : Json :=
+  .obj [
+    ("name", .str param.name),
+    ("type", .str param.typeName)
+  ]
+
+def storageSlotJson (entry : SoLean.Examples.AAPQSource.StorageSlot) : Json :=
+  .obj [
+    ("name", .str entry.name),
+    ("slot", .num entry.slot),
+    ("type", .str entry.typeName)
+  ]
+
+def contractJson (contract : SoLean.Examples.AAPQSource.Contract) : Json :=
+  .obj [
+    ("function", .obj [
+      ("name", .str contract.functionName),
+      ("params", .arr (contract.params.map paramJson))
+    ]),
+    ("name", .str contract.name),
+    ("pragma", .str contract.pragma),
+    ("storage", .arr (contract.storage.map storageSlotJson))
+  ]
+
+def integratedFlow : Json :=
+  stringsJson [
+    "verify(publicKey, publicKeyLength, opHash, domain, signature, signatureLength)",
+    "require(wallet.keyCommitment == publicKey)",
+    "validateUserOp(opHash, nonce, domain, signature)"
+  ]
+
+def integratedContractJson
+    (contract : SoLean.Examples.AAPQSource.IntegratedContract) : Json :=
+  .obj [
+    ("integration", .obj [
+      ("flow", integratedFlow),
+      ("name", .str contract.integrationName),
+      ("params", .arr (contract.params.map paramJson))
+    ]),
+    ("kind", .str "aapqIntegratedSource"),
+    ("lean", .str "SoLean.Examples.AAPQSource.integratedContract"),
+    ("name", .str contract.name),
+    ("pragma", .str contract.pragma),
+    ("wallet", contractJson contract.wallet),
+    ("wrapper", contractJson contract.wrapper)
+  ]
+
+end AAPQ
+
+namespace AAPQBehavior
+
+def operandJson : SoLean.Examples.AAPQSource.Operand -> Json
+  | .param name =>
+      .obj [("kind", .str "param"), ("name", .str name)]
+  | .slot contract slotName =>
+      .obj [
+        ("contract", .str contract),
+        ("kind", .str "slot"),
+        ("name", .str slotName)
+      ]
+  | .msgSender =>
+      .obj [("kind", .str "msgSender")]
+  | .const value =>
+      .obj [("kind", .str "const"), ("value", .num value)]
+
+def conditionJson : SoLean.Examples.AAPQSource.Condition -> Json
+  | .eq lhs rhs =>
+      .obj [
+        ("args", .arr [operandJson lhs, operandJson rhs]),
+        ("kind", .str "eq")
+      ]
+  | .verifier key message domain signature =>
+      .obj [
+        ("args", .arr [
+          operandJson key, operandJson message, operandJson domain,
+          operandJson signature
+        ]),
+        ("kind", .str "verifier")
+      ]
+
+partial def valueJson : SoLean.Examples.AAPQSource.ValueExpression -> Json
+  | .operand op => operandJson op
+  | .checkedAdd lhs rhs =>
+      .obj [
+        ("args", .arr [valueJson lhs, valueJson rhs]),
+        ("kind", .str "checkedAdd")
+      ]
+
+def guardJson (guard : SoLean.Examples.AAPQSource.Guard) : Json :=
+  .obj [
+    ("condition", conditionJson guard.condition),
+    ("kind", .str (SoLean.Examples.AAPQSource.GuardKind.toString guard.kind))
+  ]
+
+def finalWriteJson (write : SoLean.Examples.AAPQSource.FinalWrite) : Json :=
+  .obj [
+    ("contract", .str write.contract),
+    ("name", .str write.slotName),
+    ("slot", .num write.slot),
+    ("value", valueJson write.value)
+  ]
+
+def phaseJson (phase : SoLean.Examples.AAPQSource.Phase) : Json :=
+  .obj [
+    ("contract", .str phase.contract),
+    ("finalWrites", .arr (phase.finalWrites.map finalWriteJson)),
+    ("guards", .arr (phase.guards.map guardJson)),
+    ("name", .str phase.name),
+    ("proofReference", .str phase.proofReference)
+  ]
+
+def summaryJson (summary : SoLean.Examples.AAPQSource.BehaviorSummary) : Json :=
+  .obj [
+    ("function", .str summary.function),
+    ("kind", .str "aapqBehaviorSummary"),
+    ("lean", .str "SoLean.Examples.AAPQSource.integratedBehaviorSummary"),
+    ("object", .str summary.object),
+    ("params", stringsJson summary.params),
+    ("phases", .arr (summary.phases.map phaseJson)),
+    ("version", .num 2)
+  ]
+
+end AAPQBehavior
+
+def aapqSourceJson : String :=
+  renderJson (AAPQ.integratedContractJson Examples.AAPQSource.integratedContract)
+
+/--
+Lean-owned source certificate for the integrated AA/PQ validation flow.
+
+This is an audit artifact, not a verified Solidity parser. It states the
+two-contract source shape, theorem references that back the integrated proof,
+and the explicit out-of-scope items for this first source boundary.
+-/
+def aapqSourceCertificate : Json :=
+  .obj [
+    ("assumptions", stringsJson [
+      "Two-contract boundary: AAWallet and PQVerifierWrapper have separate storage.",
+      "Verifier is an abstract oracle in Env; no PQ cryptographic semantics modeled.",
+      "Wallet-wrapper integration is modeled as direct composition over a shared input tuple, not as a low-level call/staticcall.",
+      "Wallet key commitment must equal the wrapper public key for the integrated path to be authorized.",
+      "ABI decoding, calldata, memory, gas, events, and reentrancy are not modeled."
+    ]),
+    ("contracts", .arr [
+      AAPQ.contractJson Examples.AAPQSource.walletContract,
+      AAPQ.contractJson Examples.AAPQSource.wrapperContract
+    ]),
+    ("expectedBehaviorSummary",
+      AAPQBehavior.summaryJson Examples.AAPQSource.integratedBehaviorSummary),
+    ("integration", .obj [
+      ("flow", AAPQ.integratedFlow),
+      ("lean", .str "SoLean.Examples.AAPQIntegration.validateIntegrated"),
+      ("name", .str "validateIntegrated"),
+      ("params", .arr (Examples.AAPQSource.integratedContract.params.map AAPQ.paramJson))
+    ]),
+    ("kind", .str "aapqSourceCertificate"),
+    ("lean", .str "SoLean.Examples.AAPQSource.integratedContract"),
+    ("proofReferences", stringsJson [
+      "SoLean.Examples.AAWallet.validate_success_properties",
+      "SoLean.Examples.PQVerifierWrapper.verify_success_properties",
+      "SoLean.Examples.AAPQIntegration.validateIntegrated_success_properties",
+      "SoLean.Examples.AAPQSource.walletSource_instantiates_to_existing_model",
+      "SoLean.Examples.AAPQSource.wrapperSource_instantiates_to_existing_model",
+      "SoLean.Examples.AAPQSource.integratedSource_instantiates_to_existing_model",
+      "SoLean.Examples.AAPQSource.BehaviorReflection.wrapperPhase_reflects_verifyProgram",
+      "SoLean.Examples.AAPQSource.BehaviorReflection.keyMatchPhase_reflects_keyMatchesWalletProgram",
+      "SoLean.Examples.AAPQSource.BehaviorReflection.walletPhase_reflects_validateProgram",
+      "SoLean.Examples.AAPQSource.BehaviorReflection.integratedBehaviorSummary_reflects_integratedProgram",
+      "SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateIntegrated_eq_validateIntegrated"
+    ]),
+    ("unsupported", stringsJson [
+      "real PQ cryptographic security",
+      "real external calls between wallet and wrapper",
+      "real ABI decoding",
+      "real calldata, memory, events, gas, reentrancy",
+      "Solidity parsing",
+      "Yul emission",
+      "solc bridge comparison"
+    ]),
+    ("version", .num 1)
+  ]
+
+def aapqSourceCertificateJson : String :=
+  renderJson aapqSourceCertificate
+
+def aapqBehaviorSummary : Json :=
+  AAPQBehavior.summaryJson Examples.AAPQSource.integratedBehaviorSummary
+
+def aapqBehaviorSummaryJson : String :=
+  renderJson aapqBehaviorSummary
 
 end Artifacts
 end SoLean

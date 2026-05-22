@@ -1,0 +1,106 @@
+# AA/PQ Source-Shape Research Demo
+
+This is the current presentation-grade demo for the AA/PQ side of SoLean. It
+shows the Lean-owned source artifact, source certificate, structured behavior
+summary, and the Python cross-check that ties them to the Solidity sketch and
+to each other — without claiming Yul or solc equivalence, and without claiming
+PQ cryptographic security.
+
+## One-Command Demo
+
+Run:
+
+```bash
+python3 scripts/demo_aapq_source.py
+```
+
+The demo runs:
+
+- `lake build`
+- the AA/PQ-focused Python test module (`tests.test_aapq_source`)
+- Lean artifact export smoke checks for `source-json`,
+  `source-certificate-json`, and `behavior-summary-json`
+- the AA/PQ source-shape report in Markdown mode
+  (`scripts/check_aapq_source.py --format markdown`)
+- a Trust Boundaries section sourced from the Lean-owned source certificate,
+  listing assumptions, out-of-scope items, and the Lean theorems that back
+  this boundary
+
+Use `--skip-tests` to skip the nested unittest step during fast iteration.
+
+No solc dependency: the AA/PQ source-shape boundary does not consume real
+solc output.
+
+## Architecture
+
+```text
+examples/AAPQIntegration.sol  -> restricted Solidity shape parser
+SoLean.Examples.AAPQSource    -> Lean source/certificate/behavior artifacts
+SoLean.Examples.AAPQSource
+  .BehaviorReflection         -> structural reflection theorems (rfl)
+scripts/check_aapq_source.py  -> deterministic cross-check report
+scripts/demo_aapq_source.py   -> one-command runner + trust boundary summary
+```
+
+## Current Claims
+
+The demo supports this claim:
+
+```text
+For the AA/PQ integrated validation flow, Lean proves contract-level safety of
+the wallet, wrapper, and composed integration under an abstract verifier
+oracle. The Solidity-shaped source description (AAPQSource) is pinned to those
+proved programs by instantiation theorems, and the structured behavior summary
+is pinned to the proved programs by a Lean reflection that reconstructs each
+phase by rfl. The Python audit cross-checks the Lean-owned source, certificate,
+and behavior summary against each other and against the Solidity sketch.
+```
+
+Lean theorems backing the boundary (exact names also surface in the demo's
+Trust Boundaries section):
+
+- `SoLean.Examples.AAWallet.validate_success_properties`
+- `SoLean.Examples.PQVerifierWrapper.verify_success_properties`
+- `SoLean.Examples.AAPQIntegration.validateIntegrated_success_properties`
+- `SoLean.Examples.AAPQSource.walletSource_instantiates_to_existing_model`
+- `SoLean.Examples.AAPQSource.wrapperSource_instantiates_to_existing_model`
+- `SoLean.Examples.AAPQSource.integratedSource_instantiates_to_existing_model`
+- `SoLean.Examples.AAPQSource.BehaviorReflection.wrapperPhase_reflects_verifyProgram`
+- `SoLean.Examples.AAPQSource.BehaviorReflection.keyMatchPhase_reflects_keyMatchesWalletProgram`
+- `SoLean.Examples.AAPQSource.BehaviorReflection.walletPhase_reflects_validateProgram`
+- `SoLean.Examples.AAPQSource.BehaviorReflection.integratedBehaviorSummary_reflects_integratedProgram`
+- `SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateIntegrated_eq_validateIntegrated`
+
+## Non-Claims
+
+The demo does not claim:
+
+- verified Solidity parsing
+- verified PQ cryptographic security
+- verified external-call semantics between wallet and wrapper
+- ABI decoding, calldata, memory, gas, events, or reentrancy semantics
+- semantic equivalence with any real Yul or `solc` output
+- production readiness for AA wallets
+
+The structured behavior summary is reflected to the proved programs by `rfl`
+both at the *syntactic* program-equality level (each phase reconstructs the
+proved program) and at the *execution* level
+(`reflectedValidateIntegrated_eq_validateIntegrated` shows that composing the
+reflected phases produces the same `IntegratedResult` as
+`AAPQIntegration.validateIntegrated` under any environment + storage).
+
+## Useful Commands
+
+Run the source-shape report directly:
+
+```bash
+python3 scripts/check_aapq_source.py --format markdown
+```
+
+Export individual Lean-owned artifacts:
+
+```bash
+lake env lean --run SoLean/AAPQArtifactsMain.lean source-json
+lake env lean --run SoLean/AAPQArtifactsMain.lean source-certificate-json
+lake env lean --run SoLean/AAPQArtifactsMain.lean behavior-summary-json
+```

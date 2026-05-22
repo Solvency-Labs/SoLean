@@ -1,0 +1,95 @@
+{
+  "artifacts": {
+    "behaviorSummaryHash": "b5cfd9fe5970806706c94c3988806899ffa5e85baa67379d472fff24e27304d4",
+    "sourceCertificateHash": "fb2427d4f71eeb657b828701b7ed818c62105ade29f180bf2e746b8bb75f1edd",
+    "sourceHash": "9ef06ae57aae9f38b47d9edcf3bbd32861ec8077f21297acda01c746e19f4f81"
+  },
+  "checks": [
+    {
+      "message": "Certificate's expectedBehaviorSummary matches standalone artifact.",
+      "name": "certificate.expectedBehaviorSummary == behavior-summary artifact",
+      "status": "passed",
+      "trust": "Lean-owned certificate"
+    },
+    {
+      "message": "Certificate contracts match the source-json wallet and wrapper.",
+      "name": "certificate.contracts == source-json wallet+wrapper",
+      "status": "passed",
+      "trust": "Lean-owned certificate"
+    },
+    {
+      "message": "All 3 phases carry a proofReference.",
+      "name": "behavior-summary phase proof references",
+      "status": "passed",
+      "trust": "Lean-owned behavior summary"
+    },
+    {
+      "message": "All structured operands reference a declared param or known storage slot.",
+      "name": "behavior-summary operands in scope",
+      "status": "passed",
+      "trust": "Lean-owned behavior summary"
+    },
+    {
+      "message": "Found contract 'PQVerifierWrapper' in the Solidity sketch.",
+      "name": "Solidity contract 'PQVerifierWrapper' present",
+      "status": "passed",
+      "trust": "trusted Solidity shape"
+    },
+    {
+      "message": "All required storage names present in 'PQVerifierWrapper'.",
+      "name": "Solidity PQVerifierWrapper storage slots",
+      "status": "passed",
+      "trust": "trusted Solidity shape"
+    },
+    {
+      "message": "All required external/public functions present in 'PQVerifierWrapper'.",
+      "name": "Solidity PQVerifierWrapper functions",
+      "status": "passed",
+      "trust": "trusted Solidity shape"
+    },
+    {
+      "message": "Found contract 'AAWallet' in the Solidity sketch.",
+      "name": "Solidity contract 'AAWallet' present",
+      "status": "passed",
+      "trust": "trusted Solidity shape"
+    },
+    {
+      "message": "All required storage names present in 'AAWallet'.",
+      "name": "Solidity AAWallet storage slots",
+      "status": "passed",
+      "trust": "trusted Solidity shape"
+    },
+    {
+      "message": "All required external/public functions present in 'AAWallet'.",
+      "name": "Solidity AAWallet functions",
+      "status": "passed",
+      "trust": "trusted Solidity shape"
+    },
+    {
+      "message": "Found contract 'AAPQIntegration' in the Solidity sketch.",
+      "name": "Solidity contract 'AAPQIntegration' present",
+      "status": "passed",
+      "trust": "trusted Solidity shape"
+    },
+    {
+      "message": "All required external/public functions present in 'AAPQIntegration'.",
+      "name": "Solidity AAPQIntegration functions",
+      "status": "passed",
+      "trust": "trusted Solidity shape"
+    }
+  ],
+  "limitations": [
+    "AA/PQ source-shape audit only.",
+    "Solidity parsing is a narrow restricted shape extractor for the AAPQ sketch.",
+    "Does not run solc or compare against Yul.",
+    "Does not verify external-call, ABI, calldata, memory, gas, or reentrancy semantics.",
+    "Verifier is an abstract oracle in the Lean models."
+  ],
+  "reportVersion": 2,
+  "solidityContracts": [
+    "AAPQIntegration",
+    "AAWallet",
+    "PQVerifierWrapper"
+  ],
+  "status": "passed"
+}

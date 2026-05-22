@@ -84,8 +84,39 @@ For the current intuition and next steps, see `docs/roadmap.md` and
 - An `AAPQIntegration` model proving that successful integrated validation
   connects wrapper checks and wallet checks over the same modeled verifier
   tuple.
+- An `AAPQSource` Solidity-shaped source description of the two-contract
+  layout with instantiation theorems back to the proved wallet, wrapper, and
+  integrated programs, plus Lean-owned `source-json`,
+  `source-certificate-json`, and `behavior-summary-json` artifacts emitted
+  from `AAPQArtifactsMain.lean`. The behavior summary names the ordered
+  guards per phase (wrapper, key-match, wallet), the final write to the
+  wallet nonce slot, and the Lean theorem backing each phase; its guards and
+  final-write values are structured `Condition` / `ValueExpression` nodes
+  over a small `Operand` DSL (param / slot / msgSender / const) instead of
+  English condition strings.
+- `AAPQSource.BehaviorReflection` reflects that structured DSL into
+  `SoLean.Stmt` semantics and proves that each phase of
+  `integratedBehaviorSummary` reconstructs the corresponding proved program:
+  `wrapperPhase_reflects_verifyProgram`,
+  `keyMatchPhase_reflects_keyMatchesWalletProgram`,
+  `walletPhase_reflects_validateProgram`, and
+  `integratedBehaviorSummary_reflects_integratedProgram`. The
+  execution-side corollary `reflectedValidateIntegrated_eq_validateIntegrated`
+  lifts this from syntactic program equality to a full execution-result
+  equivalence: composing the three reflected phases under any environment
+  and storage produces the exact same `IntegratedResult` as
+  `AAPQIntegration.validateIntegrated`.
 - A strategic PQ/account-abstraction roadmap for the next serious case study.
-- Solidity examples in `examples/`.
+- Solidity examples in `examples/`, including a hand-written
+  `AAPQIntegration.sol` sketch matching the Lean AA/PQ source shape as a
+  documentation fixture (not a parser target).
+- An AA/PQ source-shape audit script (`scripts/check_aapq_source.py`) that
+  loads the three Lean-owned AA/PQ artifacts, parses the restricted Solidity
+  sketch, and emits a deterministic JSON or Markdown report cross-checking
+  contract/storage/function names, the certificate's embedded behavior
+  summary, and structural scope of every operand in the behavior summary's
+  structured guard/value expressions. The report has a committed golden
+  fixture at `tests/golden/AAPQ.source.v2.json`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.
   - Yul subset classification for supported/unsupported compiler output.
@@ -157,6 +188,7 @@ still a restricted Solidity subset rather than an EVM semantics.
 ├── lean-toolchain
 ├── pyproject.toml
 ├── docs/
+│   ├── aapq-demo.md
 │   ├── assumptions.md
 │   ├── compiler.md
 │   ├── counter-bridge-v1.md
@@ -184,12 +216,18 @@ still a restricted Solidity subset rather than an EVM semantics.
 │   ├── Yul.lean
 │   ├── Artifacts.lean
 │   ├── CounterArtifactsMain.lean
+│   ├── AAPQArtifactsMain.lean
 │   └── Examples/
+│       ├── AAPQIntegration.lean
+│       ├── AAPQSource.lean
+│       ├── AAWallet.lean
 │       ├── Counter.lean
 │       ├── CounterCompiler.lean
 │       ├── CounterYul.lean
+│       ├── PQVerifierWrapper.lean
 │       └── SimpleVault.lean
 ├── examples/
+│   ├── AAPQIntegration.sol
 │   ├── Counter.sol
 │   └── SimpleVault.sol
 ├── scripts/
@@ -199,14 +237,18 @@ still a restricted Solidity subset rather than an EVM semantics.
 │   ├── classify_yul.py
 │   ├── check_equiv.py
 │   ├── check_counter_bridge.py
+│   ├── check_aapq_source.py
 │   ├── demo_counter_bridge.py
+│   ├── demo_aapq_source.py
 │   ├── solidity_to_solean.py
 │   └── yul_subset.py
 └── tests/
     ├── golden/
+    │   ├── AAPQ.source.v2.json
     │   ├── Counter.bridge.v7.json
     │   └── Counter.solean.yul
     ├── README.md
+    ├── test_aapq_source.py
     └── test_yul_tools.py
 ```
 
@@ -404,6 +446,42 @@ lake env lean --run SoLean/CounterArtifactsMain.lean yul-json
 lake env lean --run SoLean/CounterArtifactsMain.lean trace-skeleton-json
 lake env lean --run SoLean/CounterArtifactsMain.lean bridge-json
 ```
+
+Export the Lean-owned AA/PQ source-shape audit artifacts:
+
+```bash
+lake env lean --run SoLean/AAPQArtifactsMain.lean source-json
+lake env lean --run SoLean/AAPQArtifactsMain.lean source-certificate-json
+lake env lean --run SoLean/AAPQArtifactsMain.lean behavior-summary-json
+```
+
+Run the AA/PQ source-shape audit (deterministic JSON report by default):
+
+```bash
+python3 scripts/check_aapq_source.py
+python3 scripts/check_aapq_source.py --format markdown
+```
+
+The script invokes `lake` to fetch the three Lean-owned artifacts, parses
+`examples/AAPQIntegration.sol` with a narrow restricted shape extractor, and
+cross-checks contract/storage/function names plus the certificate's embedded
+behavior summary. It is a Solidity-shape-only audit; it does not run solc and
+does not claim Yul or semantic equivalence.
+
+Run the full AA/PQ source-shape research demo (build + tests + artifacts +
+markdown report + trust-boundary summary):
+
+```bash
+python3 scripts/demo_aapq_source.py
+```
+
+See `docs/aapq-demo.md` for the architecture, current claims, non-claims, and
+the full list of Lean theorems backing the boundary.
+
+These artifacts pin the Solidity-shaped two-contract description in
+`SoLean.Examples.AAPQSource.integratedContract` and name the theorems backing
+the integrated AA/PQ proof. They are not a verified Solidity parser output and
+do not claim Yul or solc equivalence.
 
 Python tests compare the Solidity source projection and Python Yul emitter
 shape against these Lean-exported artifacts. The Counter bridge report also

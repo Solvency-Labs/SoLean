@@ -146,6 +146,33 @@ Current v0:
 - Lean proves that successful integrated validation implies wrapper checks,
   wallet checks, key agreement, and abstract verifier acceptance of the shared
   `(publicKey, opHash, domain, signature)` tuple.
+- `SoLean.Examples.AAPQSource` defines the Solidity-shaped two-contract source
+  description (`walletContract`, `wrapperContract`, `integratedContract`) and
+  proves that wallet, wrapper, and integrated bodies instantiate to the
+  existing proved programs. The sub-namespace `BehaviorReflection` reflects
+  the behavior summary's structured `Operand`/`Condition`/`ValueExpression`
+  DSL back into `SoLean.Stmt` and proves that each phase of
+  `integratedBehaviorSummary` reconstructs the corresponding proved program
+  by `rfl` — so the structured summary cannot silently drift from the
+  proved validation flow. The execution-side corollary
+  `reflectedValidateIntegrated_eq_validateIntegrated` lifts that to an
+  execution-result equivalence: composing the reflected phases under any
+  environment and storage produces the same `IntegratedResult` as
+  `AAPQIntegration.validateIntegrated`.
+- `SoLean/AAPQArtifactsMain.lean` emits `source-json`,
+  `source-certificate-json`, and `behavior-summary-json` artifacts naming the
+  assumptions, contracts, integration flow, ordered phase guards (wrapper,
+  key-match, wallet), final wallet-nonce write, theorem references, and
+  explicit out-of-scope items. The source certificate embeds the behavior
+  summary as `expectedBehaviorSummary`.
+- `examples/AAPQIntegration.sol` is a Solidity fixture matching the source
+  shape, kept as documentation only.
+- `scripts/check_aapq_source.py` produces a deterministic source-shape audit
+  report (`tests/golden/AAPQ.source.v2.json`) cross-checking the three
+  Lean-owned artifacts against each other and against the Solidity sketch,
+  and walks every operand in the behavior summary's structured
+  `Condition`/`ValueExpression` shape to confirm it references a declared
+  parameter or a known storage slot.
 - External-call semantics, ABI/calldata, and real PQ cryptography remain out of
   scope.
 
@@ -197,4 +224,8 @@ The current near-term claim is:
 For the hand-written AAPQIntegration v0 model, Lean proves that successful
 integrated validation implies the modeled wallet and wrapper guards passed over
 the same authenticated tuple, under an abstract verifier-oracle assumption.
+The Solidity-shaped source description in AAPQSource v0 is pinned by
+instantiation theorems to those exact proved programs, and is exported as a
+deterministic source artifact, source certificate, and ordered behavior
+summary with theorem references and out-of-scope items.
 ```

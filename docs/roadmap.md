@@ -83,6 +83,26 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
 - `AAPQIntegration.validateIntegrated(...)` proves that successful integrated
   validation connects the wrapper and wallet checks over the same modeled
   verifier tuple.
+- `SoLean.Examples.AAPQSource.integratedContract` defines a Solidity-shaped
+  source description of the AA/PQ two-contract layout and proves that the
+  wallet, wrapper, and integrated bodies instantiate to the existing proved
+  programs.
+- `SoLean.Examples.AAPQSource.integratedBehaviorSummary` is the Lean-owned
+  ordered behavior summary of the integrated AA/PQ flow: structured
+  `Condition`/`ValueExpression` nodes over a small `Operand` DSL (param,
+  slot, msgSender, const) for each guard per phase (wrapper, key-match,
+  wallet), final writes per contract, and the Lean theorem reference that
+  backs each phase.
+- `SoLean.Examples.AAPQSource.BehaviorReflection` defines semantics
+  (`operandToValueExpr`, `conditionToBoolExpr`, `valueToValueExpr`,
+  `phaseToStmt`) for the structured DSL and proves that each phase of
+  `integratedBehaviorSummary` reconstructs the corresponding proved program:
+  the four `*_reflects_*` theorems. The structured summary is therefore a
+  Lean-checked property of the proved programs.
+- `reflectedValidateIntegrated_eq_validateIntegrated` extends that to
+  execution-result equality: composing the reflected phases under any
+  `Env` and `Storage` produces the same `IntegratedResult` as
+  `AAPQIntegration.validateIntegrated`.
 - A restricted Yul semantics exists in Lean for the Counter-shaped subset.
 - A hand-written restricted Yul Counter program refines successful SoLean
   Counter executions.
@@ -94,6 +114,25 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
 - Python emits deterministic Counter Yul-like text.
 - Lean exports deterministic Counter source, source certificate,
   restricted-Yul shape, trace skeleton, and bridge manifest artifacts.
+- Lean exports a deterministic AA/PQ integrated source artifact, source
+  certificate, and behavior summary via `SoLean/AAPQArtifactsMain.lean`,
+  naming the two-contract layout, integration flow, ordered phase guards,
+  final wallet-nonce write, theorem references, and out-of-scope items. The
+  source certificate carries the behavior summary as its
+  `expectedBehaviorSummary` field.
+- A hand-written Solidity sketch lives at `examples/AAPQIntegration.sol` as
+  documentation/audit fixture only; it is not parsed or compared to Lean.
+- `scripts/check_aapq_source.py` cross-checks the three Lean-owned AA/PQ
+  artifacts against the Solidity sketch and against each other (certificate's
+  `expectedBehaviorSummary` vs. the standalone behavior summary), and walks
+  the behavior summary's structured operands to verify each one references a
+  declared parameter or a real storage slot in source-json. The report is
+  committed as `tests/golden/AAPQ.source.v2.json`.
+- `scripts/demo_aapq_source.py` is a one-command research demo that runs
+  `lake build`, the AA/PQ-focused Python tests, the three artifact smokes,
+  the markdown source-shape report, and a Trust Boundaries summary sourced
+  from the Lean-owned source certificate. See `docs/aapq-demo.md` for the
+  current claims and non-claims.
 - Python tests check the Counter Yul emitter against the Lean-exported
   `CounterYul.counterProgram` artifact and a text golden file.
 - `check_counter_bridge.py` produces one deterministic Counter bridge report
@@ -414,35 +453,43 @@ Definition of done:
 
 ## Current Highest-Value Next Step
 
+The previous next step ("move AA/PQ integration from pure Lean model to a
+Solidity-shaped source model") has landed as a v0:
+
+- `SoLean.Examples.AAPQSource` defines the two-contract source shape and proves
+  `walletSource_instantiates_to_existing_model`,
+  `wrapperSource_instantiates_to_existing_model`, and
+  `integratedSource_instantiates_to_existing_model`.
+- `SoLean/AAPQArtifactsMain.lean` exports `source-json` and
+  `source-certificate-json` artifacts with theorem references and explicit
+  out-of-scope items.
+- `examples/AAPQIntegration.sol` is a hand-written Solidity fixture matching
+  the source shape; it is not parsed or compared to Lean.
+
 The next best qualitative task is:
 
 ```text
-Move AA/PQ integration from pure Lean model to a Solidity-shaped source model.
+Decide whether to deepen the AA/PQ source-shape audit chain or generalize the
+shared modeling vocabulary across Counter and AA/PQ.
 ```
 
-Why this matters:
+Useful candidate moves, in rough priority order:
 
-- Counter Bridge v7 is strong enough as a calibration path for now.
-- Antonio's feedback points toward Solidity/AA contracts around PQ transaction
-  signatures, not PQ precompiles.
-- `AAWallet` v0 now gives SoLean a first contract-level validation shape.
-- `PQVerifierWrapper` v0 now gives SoLean a first no-bypass wrapper shape.
-- `AAPQIntegration` v0 now connects the two proof islands under an abstract
-  verifier-oracle assumption.
-- The next qualitative jump is to make the AA/PQ model auditable from a
-  Solidity-shaped source description, while still avoiding real Solidity/Yul
-  generation.
-
-First useful version:
-
-1. Define a Lean-owned source shape for the current integrated AA/PQ validation
-   flow.
-2. Export a deterministic artifact describing the integrated source shape and
-   theorem references, similar in spirit to the Counter bridge artifacts.
-3. Add a small hand-written Solidity sketch only as documentation or fixture,
-   not as a verified parser target yet.
+1. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
+   of `AAPQSource` into a shared `SoLean.Source.Shape` module and use it from
+   the Counter source artifact too, reducing per-case-study duplication.
+2. Add a sibling Lean-owned trust-boundary artifact (a JSON listing of
+   assumptions / unsupported / proofReferences) so the demo no longer
+   re-parses the certificate to surface trust boundaries — making the
+   boundary list a first-class artifact rather than a derived demo output.
+3. Apply the AAPQSource pattern (structured source description + behavior
+   summary + reflection theorems + cross-check + demo) to one of the
+   intentionally-out-of-scope concerns: an external-call shim model
+   (verified low-level call between wallet and wrapper), or replacing the
+   abstract verifier oracle with a more concrete (still non-cryptographic)
+   modeled scheme.
 4. Keep real Solidity parsing, Yul emission, external calls, and real PQ
-   cryptography out of scope until the source-shape boundary is crisp.
+   cryptography out of scope until at least one of the above is done.
 
 ## Updating This Roadmap
 
