@@ -6,12 +6,15 @@ Lean.
 
 ## Mental Model
 
-SoLean's north star is traceable trust reduction:
+SoLean's north star is traceable trust reduction, now aimed at a concrete
+Ethereum-facing target: account-abstraction wallet validation with
+post-quantum verifier-wrapper contracts.
 
 ```text
-Build a boundary-aware verification pipeline where a tiny Solidity subset can
-be connected to a Lean model, proved, compiled to restricted Yul, and compared
-against pinned solc output, with every trusted step explicitly identified.
+Build a boundary-aware Lean/Solidity verification pipeline for
+account-abstraction contracts that authenticate user operations through
+post-quantum signature verification, with cryptographic assumptions explicit
+and contract-level safety properties proved.
 ```
 
 The project is trying to connect four worlds:
@@ -22,6 +25,15 @@ Solidity source
   -> Lean proofs
   -> restricted Yul output
   -> comparison with solc Yul
+```
+
+The intended first serious application is:
+
+```text
+AA wallet validation logic
+  -> PQ verifier-wrapper contract
+  -> integration proof that execution requires modeled PQ authentication,
+     nonce validity, and domain binding
 ```
 
 The important question at every step is:
@@ -49,6 +61,8 @@ See `docs/counter-bridge-v1.md` for the crisp Counter success condition,
 `docs/counter-bridge-v6.md` for the Lean-owned source certificate and trace
 skeleton, and `docs/counter-bridge-v7.md` for the current Lean-owned
 behavior-summary boundary.
+
+See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
 
 ## Current State
 
@@ -112,8 +126,53 @@ proof chain yet.
 - Parsing emitted Yul text back into Lean Yul data.
 - Real `solc 0.8.35 --ir` Counter semantic comparison.
 - Semantic equivalence against real Yul.
-- SimpleVault compilation to restricted Yul.
+- Account-abstraction wallet semantics.
+- PQ verifier-wrapper contract models.
+- PQ cryptographic security proofs. Future PQ work should verify contract
+  logic under explicit verifier assumptions unless a separate verified crypto
+  model is introduced.
+- SimpleVault or ERC-20 compilation to restricted Yul.
 - ABI, calldata, memory, calls, gas, events, reentrancy, or full EVM semantics.
+
+## Strategic Case-Study Roadmap
+
+This roadmap is hybrid, but it leans toward PQ account abstraction rather than
+broad DeFi verification.
+
+### Phase 0: Calibration
+
+Counter remains the bridge calibration case. Optional ERC-20 work should be
+small and tactical: balances, total supply, allowance decrease, and insufficient
+balance rejection. Do not turn this into a broad token framework.
+
+### Phase 1: Abstract AA Wallet Validation
+
+Model a minimal account-abstraction wallet validation flow with an abstract
+verifier predicate. Prove properties such as:
+
+- invalid modeled signatures reject.
+- valid modeled signatures with the correct nonce accept validation.
+- replay with an old nonce rejects.
+- the signature is bound to the operation hash and wallet/domain.
+- execution is gated by successful validation.
+
+### Phase 2: PQ Verifier Wrapper
+
+Model the Solidity wrapper around a PQ verifier under explicit crypto
+assumptions. Prove that inputs are bound correctly, length/domain checks happen
+before verifier use, verifier return values are interpreted safely, and there
+is no bypass path that accepts without verifier success.
+
+### Phase 3: AA + PQ Integration
+
+Prove that the wallet accepts only operations authenticated by the intended PQ
+verifier wrapper, with nonce and domain separation modeled explicitly.
+
+### Phase 4: Real Solidity And solc Boundary
+
+Apply the Counter bridge discipline to the smallest useful AA/PQ contract:
+source certificate, Lean model, proof, restricted Yul, pinned-solc inspection,
+and explicit trusted boundaries.
 
 ## Roadmap By Boundary
 
@@ -251,10 +310,11 @@ Done:
 
 Next tasks:
 
-- Consider exporting a Lean-side symbolic behavior summary if the trace or
-  equivalence story starts to depend on Python summary internals too much.
+- If continuing the Counter bridge, summarize the solc trace replay output
+  against the existing Lean-owned behavior summary.
 - Decide how much of the remaining Counter-only solc recognizer should become
-  checked by independent table-driven fixtures before adding SimpleVault Yul.
+  checked by independent table-driven fixtures before adding broader contract
+  examples.
 
 Definition of done:
 
@@ -308,51 +368,52 @@ Definition of done:
 - The checker can explain equivalence for the supported subset in terms of
   storage behavior, not just text, AST equality, or finite traces.
 
-### 5. Generalize Only After Counter Is Solid
+### 5. Generalize Toward AA/PQ Only After Counter Is Solid
 
-Goal: avoid building a broad framework before the first bridge is trustworthy.
+Goal: avoid building a broad framework before the first bridge and first AA/PQ
+model are trustworthy.
 
 Next tasks:
 
 - Extract reusable Lean lemmas from Counter compiler proofs.
-- Add the minimal source/compile forms SimpleVault needs.
-- Add SimpleVault restricted Yul only after Counter's emitted-text story is
-  clear.
+- Add a tiny ERC-20-style calibration only if it directly helps model mappings,
+  balances, allowances, or nonces for the AA/PQ path.
+- Define the minimal source/model forms needed for AA wallet validation:
+  operation hash, nonce, domain, abstract verifier result, and execution gate.
+- Defer SimpleVault restricted Yul until the AA/PQ direction has a crisp first
+  model.
 
 Definition of done:
 
-- SimpleVault reuses the Counter proof architecture rather than copying a large
-  one-off proof.
+- The first AA wallet validation model reuses the Counter proof architecture
+  rather than copying a large one-off proof.
 
 ## Current Highest-Value Next Step
 
 The next best qualitative task is:
 
 ```text
-Also check the solc-summary trace replay against the Lean-owned behavior
-summary, so the behavior-summary claim covers the solc-side path too.
+Define the first abstract AA wallet validation model.
 ```
 
 Why this matters:
 
-- Bridge v7 checks Python's symbolic summary of the *Python-emitted* Counter
-  Yul against the Lean-owned behavior summary. The Python-emitted Yul already
-  matches the Lean Yul, so this mostly pins what `summarize_symbolic` should
-  produce.
-- The same behavior summary is the natural Lean-owned shape for the solc
-  trace replay output. Summarizing the replayed program and comparing it to
-  the Lean-owned behavior summary would tighten the solc-side claim from
-  "shape matches Lean Yul" to "restricted state-transform shape matches
-  Lean".
+- Counter Bridge v7 is strong enough as a calibration path for now.
+- Antonio's feedback points toward Solidity/AA contracts around PQ transaction
+  signatures, not PQ precompiles.
+- An abstract AA model lets SoLean start proving the relevant contract-level
+  property before committing to a concrete PQ scheme or verifier implementation.
 
 Smallest useful version:
 
-1. Summarize the solc trace replay output with the existing symbolic
-   summarizer.
-2. Add a `solcTraceReplayBehaviorSummaryToLeanManifest` check in the bridge
-   report.
-3. Keep the result documented as trust reduction, not verified solc parsing
-   or real Yul equivalence.
+1. Add a hand-written Lean model of a tiny AA wallet validation flow with
+   storage for a nonce and verification key commitment.
+2. Model the verifier as an abstract predicate or Boolean input, not as real PQ
+   cryptography.
+3. Prove that successful validation implies correct nonce use, operation/domain
+   binding, and modeled verifier success.
+4. State explicitly that this verifies contract logic around authentication,
+   not PQ cryptographic security.
 
 ## Updating This Roadmap
 

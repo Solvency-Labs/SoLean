@@ -4,6 +4,17 @@ SoLean is a research prototype for small, proof-oriented case studies. This
 document records the assumptions that matter for interpreting the current
 results.
 
+## Research Direction
+
+- Counter is the calibration case for the Solidity/Lean/Yul bridge.
+- ERC-20-style examples are optional learning cases for mappings, balances,
+  allowances, and small invariants.
+- The main next research target is account-abstraction wallet validation and
+  post-quantum verifier-wrapper contract logic.
+- For PQ work, SoLean should verify contract-level authentication logic under
+  explicit verifier assumptions. It does not currently verify the cryptographic
+  security of a PQ signature scheme.
+
 ## Arithmetic
 
 - `UInt256` is represented as a structure carrying a `Nat` value plus a proof
@@ -81,3 +92,14 @@ results.
 - The Python emitter, Python parser, Solidity source, and real solc output are
   not yet connected to the Lean compiler by a verified translation. Current
   Python tests provide auditable structural alignment for Counter only.
+
+## Account Abstraction And PQ
+
+- No account-abstraction wallet semantics are implemented yet.
+- No PQ verifier-wrapper contracts are modeled yet.
+- Future AA/PQ models should make the verifier assumption explicit, for
+  example: `Verifier(pk, msg, sig) = true` iff the signature is valid under the
+  selected scheme and parameter set.
+- Until a separate verified crypto model exists, SoLean should not claim PQ
+  cryptographic security. It should only claim properties of the contract logic
+  around verifier use, nonce checks, domain binding, and execution gating.

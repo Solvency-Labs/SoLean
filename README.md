@@ -1,11 +1,14 @@
 # SoLean
 
 SoLean is a small research/engineering prototype for AI-assisted formal
-verification of Solidity and DeFi code using Lean 4.
+verification of Solidity contract logic using Lean 4.
 
 The project is intentionally narrow. The first goal is not to verify arbitrary
 Solidity. The first goal is to build a clean, inspectable skeleton around tiny
-case studies, starting with `Counter` and then `SimpleVault`.
+case studies. `Counter` is the calibration case for the Solidity/Lean/Yul
+bridge. The strategic research target is now account-abstraction wallet
+validation and post-quantum signature verifier-wrapper contracts, with ERC-20
+used only as an optional small learning case.
 
 ## Planned Pipeline
 
@@ -13,6 +16,18 @@ The sharper north star is traceable trust reduction: build a boundary-aware
 verification pipeline where a tiny Solidity subset can be connected to a Lean
 model, proved, compiled to restricted Yul, and compared against pinned `solc`
 output, with every trusted step explicitly identified.
+
+The near-term application target is PQ account abstraction:
+
+```text
+AA wallet validation logic
+  -> PQ verifier-wrapper contract
+  -> integration proof that execution requires modeled PQ authentication,
+     nonce validity, and domain binding
+```
+
+SoLean should verify the contract logic around PQ authentication. It does not
+currently verify the cryptographic security of a PQ signature scheme.
 
 The intended long-term loop is:
 
@@ -27,8 +42,9 @@ models, a tiny Lean model of the restricted Counter Yul path, and a tiny
 verified Counter compiler slice. The broader Solidity and Yul pipeline remains
 placeholder tooling.
 
-For the current intuition and next steps, see `docs/roadmap.md`. For the exact
-Counter bridge success condition, see `docs/counter-bridge-v1.md`.
+For the current intuition and next steps, see `docs/roadmap.md` and
+`docs/pq-aa-roadmap.md`. For the exact Counter bridge success condition, see
+`docs/counter-bridge-v1.md`.
 
 ## What Exists Now
 
@@ -58,6 +74,7 @@ Counter bridge success condition, see `docs/counter-bridge-v1.md`.
   the proved Counter shapes.
 - A `SimpleVault` model with successful-execution preservation proofs for
   `totalAssets >= totalShares`.
+- A strategic PQ/account-abstraction roadmap for the next serious case study.
 - Solidity examples in `examples/`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.
@@ -105,6 +122,9 @@ Python emitter output, and solc Yul all have the same semantics.
 - Verified Solidity-to-source-language translation.
   Python tests currently check Counter source-shape alignment against a
   Lean-exported artifact, not a proof.
+- Account-abstraction wallet semantics.
+- PQ verifier-wrapper contracts.
+- PQ cryptographic security proofs.
 - Broad Solidity or DeFi verification claims.
 
 Checked addition and subtraction are modeled for the current expression DSL.
@@ -134,6 +154,7 @@ still a small Solidity subset rather than an EVM semantics.
 │   ├── counter-demo.md
 │   ├── counter-yul.md
 │   ├── counter.md
+│   ├── pq-aa-roadmap.md
 │   ├── roadmap.md
 │   ├── simple-vault.md
 │   └── yul-subset.md
