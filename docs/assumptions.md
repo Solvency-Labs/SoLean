@@ -1,14 +1,14 @@
 # SoLean Assumptions
 
-SoLean is a research prototype for small, proof-oriented case studies. This
+SoLean is a research prototype for focused, proof-oriented case studies. This
 document records the assumptions that matter for interpreting the current
 results.
 
 ## Research Direction
 
 - Counter is the calibration case for the Solidity/Lean/Yul bridge.
-- ERC-20-style examples are optional learning cases for mappings, balances,
-  allowances, and small invariants.
+- ERC-20-style examples are optional calibration cases for mappings, balances,
+  allowances, and invariants.
 - The main next research target is account-abstraction wallet validation and
   post-quantum verifier-wrapper contract logic.
 - For PQ work, SoLean should verify contract-level authentication logic under
@@ -37,18 +37,18 @@ results.
 
 ## Solidity And Yul
 
-- Solidity parsing and generation of SoLean models are not implemented beyond a
-  tiny explicit Counter-subset parser.
+- Solidity parsing and generation of SoLean models are not implemented beyond
+  an explicit restricted Counter-subset parser.
 - Yul parsing is limited to the restricted subset in `docs/yul-subset.md`.
 - The current SoLean-to-Yul output is deterministic placeholder text for the
   Counter example only.
-- `SoLean/Yul.lean` contains a hand-written Lean semantics for a tiny restricted
+- `SoLean/Yul.lean` contains a hand-written Lean semantics for a restricted
   Yul subset. It is not full Yul or full EVM semantics.
 - The restricted Lean Yul semantics models wrapping `add`, local variables,
   storage load/store, and revert guards for the Counter path.
 - `SoLean/Examples/CounterYul.lean` proves that successful SoLean Counter
   executions are reproduced by the hand-written restricted Yul Counter model.
-- `SoLean/Compiler.lean` contains a tiny partial compiler from a one-parameter
+- `SoLean/Compiler.lean` contains a focused partial compiler from a one-parameter
   source language to restricted Lean Yul.
 - `SoLean/Examples/CounterCompiler.lean` proves that the generic Counter source
   function instantiates to the existing Counter model and compiles to the
@@ -58,7 +58,7 @@ results.
   proved to correspond to Python code.
 - The Counter Solidity parser can emit deterministic source-shape JSON that is
   tested against the Lean-exported `CounterCompiler.counterFunction` artifact.
-- The default Yul checker compares a tiny symbolic state-transform summary for
+- The default Yul checker compares a restricted symbolic state-transform summary for
   Counter-shaped restricted-subset programs. This is not semantic Yul
   equivalence.
 - The old bounded trace checker remains available as `--bounded-traces`.

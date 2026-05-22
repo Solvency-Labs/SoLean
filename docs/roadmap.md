@@ -47,7 +47,7 @@ Right now, the verified island is Counter inside Lean:
 ```text
 Counter source function in Lean
   -> instantiate to existing SoLean Counter model
-  -> compile with tiny Lean compiler
+  -> compile with focused Lean compiler
   -> restricted Lean Yul Counter program
   -> prove successful executions preserve the Counter assertion
 ```
@@ -77,7 +77,7 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
 - A restricted Yul semantics exists in Lean for the Counter-shaped subset.
 - A hand-written restricted Yul Counter program refines successful SoLean
   Counter executions.
-- A tiny Lean compiler emits that restricted Yul Counter program from a
+- A focused Lean compiler emits that restricted Yul Counter program from a
   parameterized Counter source function.
 
 ### Implemented But Not Verified End-To-End
@@ -96,7 +96,7 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
 - Python performs symbolic state-transform checks for Counter-shaped restricted
   Yul programs, with bounded trace checks still available as an explicit legacy
   mode.
-- Python recognizes a tiny Counter-shaped Solidity subset.
+- Python recognizes a restricted Counter-shaped Solidity subset.
 - Python emits deterministic Counter source-shape JSON that is tested against
   the Lean-exported `CounterCompiler.counterFunction` artifact.
 - Python emits a deterministic Counter source certificate that is tested against
@@ -142,12 +142,12 @@ broad DeFi verification.
 ### Phase 0: Calibration
 
 Counter remains the bridge calibration case. Optional ERC-20 work should be
-small and tactical: balances, total supply, allowance decrease, and insufficient
-balance rejection. Do not turn this into a broad token framework.
+focused and tactical: balances, total supply, allowance decrease, and
+insufficient balance rejection. Do not turn this into a broad token framework.
 
 ### Phase 1: Abstract AA Wallet Validation
 
-Model a minimal account-abstraction wallet validation flow with an abstract
+Model a scope-controlled account-abstraction wallet validation flow with an abstract
 verifier predicate. Prove properties such as:
 
 - invalid modeled signatures reject.
@@ -170,7 +170,7 @@ verifier wrapper, with nonce and domain separation modeled explicitly.
 
 ### Phase 4: Real Solidity And solc Boundary
 
-Apply the Counter bridge discipline to the smallest useful AA/PQ contract:
+Apply the Counter bridge discipline to the first useful AA/PQ contract:
 source certificate, Lean model, proof, restricted Yul, pinned-solc inspection,
 and explicit trusted boundaries.
 
@@ -178,7 +178,7 @@ and explicit trusted boundaries.
 
 ### 1. Keep Counter As The Calibration Case
 
-Goal: make one tiny path genuinely understandable and hard to fool.
+Goal: make one calibrated path genuinely understandable and hard to fool.
 
 Done:
 
@@ -265,18 +265,18 @@ Done:
   trusted rule with the Lean theorem (if any) that backs its semantic
   translation.
 - Model the first Counter bridge adapter rule semantically in Lean:
-  `SoLean.Bridge.RequireHelper` defines a tiny step semantics for
+  `SoLean.Bridge.RequireHelper` defines a focused step semantics for
   `require_helper(cond)` and proves `target_refines_source`, which shows the
   emitted `if iszero(cond) { revert(0, 0) }` shape has the same step result as
   the modeled helper under the restricted Yul semantics. This is the first
   rule whose translation is Lean-backed rather than only trusted Python pattern
   recognition.
 - Model the second Counter bridge adapter rule semantically in Lean:
-  `SoLean.Bridge.AssertHelper` defines a tiny step semantics for
+  `SoLean.Bridge.AssertHelper` defines a focused step semantics for
   `assert_helper(cond)` and proves the current Counter-specific rewrite
   `assert_helper(iszero(bad)) ~> if bad { revert(0, 0) }`.
 - Model the checked-add Counter bridge adapter rule semantically in Lean:
-  `SoLean.Bridge.CheckedAdd` defines a tiny model of
+  `SoLean.Bridge.CheckedAdd` defines a focused model of
   `checked_add_t_uint256(old_x, amount)` and proves the current
   Counter-specific rewrite
   `let new_x := add(old_x, amount); if lt(new_x, old_x) { revert(0, 0) }`.
@@ -301,7 +301,7 @@ Done:
   ordered revert guards, final slot-0 write), check Python's symbolic
   state-transform summary against it, and stabilize the resulting
   `reportVersion: 7` report against `tests/golden/Counter.bridge.v7.json`.
-- Keep `hexLiteralAsNat` as explicit parser-level trust and cover the narrow
+- Keep `hexLiteralAsNat` as explicit parser-level trust and cover the specific
   hex-literal parser behavior with focused tests.
 - Add Markdown bridge-report output and a one-command Counter demo runner.
 - Add a rendering path from the Lean-exported Counter Yul artifact, so the demo
@@ -344,13 +344,13 @@ Definition of done:
 - The accepted Solidity source certificate and solc trace skeleton are
   Lean-owned artifacts checked by the bridge report.
 
-### 4. Replace Bounded Trace Checks With Small Semantics
+### 4. Replace Bounded Trace Checks With Restricted Semantics
 
 Goal: move from finite smoke tests toward real restricted equivalence.
 
 Done:
 
-- The default checker now compares a tiny symbolic state-transform summary for
+- The default checker now compares a restricted symbolic state-transform summary for
   supported restricted Yul: parameters, ordered revert conditions, and final
   storage writes.
 - The old finite Counter trace checker remains available as
@@ -358,7 +358,7 @@ Done:
 
 Next tasks:
 
-- Add tiny simplification/normalization for equivalent symbolic expressions
+- Add targeted simplification/normalization for equivalent symbolic expressions
   only when needed by Counter.
 - Mirror the symbolic summary in Lean or export Lean-side summaries if this
   becomes part of the trusted bridge.
@@ -376,9 +376,9 @@ model are trustworthy.
 Next tasks:
 
 - Extract reusable Lean lemmas from Counter compiler proofs.
-- Add a tiny ERC-20-style calibration only if it directly helps model mappings,
+- Add a focused ERC-20-style calibration only if it directly helps model mappings,
   balances, allowances, or nonces for the AA/PQ path.
-- Define the minimal source/model forms needed for AA wallet validation:
+- Define the focused source/model forms needed for AA wallet validation:
   operation hash, nonce, domain, abstract verifier result, and execution gate.
 - Defer SimpleVault restricted Yul until the AA/PQ direction has a crisp first
   model.
@@ -404,9 +404,9 @@ Why this matters:
 - An abstract AA model lets SoLean start proving the relevant contract-level
   property before committing to a concrete PQ scheme or verifier implementation.
 
-Smallest useful version:
+First useful version:
 
-1. Add a hand-written Lean model of a tiny AA wallet validation flow with
+1. Add a hand-written Lean model of a focused AA wallet validation flow with
    storage for a nonce and verification key commitment.
 2. Model the verifier as an abstract predicate or Boolean input, not as real PQ
    cryptography.

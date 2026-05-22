@@ -1,20 +1,21 @@
 # SoLean
 
-SoLean is a small research/engineering prototype for AI-assisted formal
+SoLean is a focused research/engineering prototype for AI-assisted formal
 verification of Solidity contract logic using Lean 4.
 
-The project is intentionally narrow. The first goal is not to verify arbitrary
-Solidity. The first goal is to build a clean, inspectable skeleton around tiny
-case studies. `Counter` is the calibration case for the Solidity/Lean/Yul
-bridge. The strategic research target is now account-abstraction wallet
+The project is intentionally scope-controlled. The first goal is not to verify
+arbitrary Solidity. The first goal is to build a clean, inspectable skeleton
+around calibrated case studies. `Counter` is the calibration case for the
+Solidity/Lean/Yul bridge. The strategic research target is now
+account-abstraction wallet
 validation and post-quantum signature verifier-wrapper contracts, with ERC-20
-used only as an optional small learning case.
+used only as an optional calibration case.
 
 ## Planned Pipeline
 
 The sharper north star is traceable trust reduction: build a boundary-aware
-verification pipeline where a tiny Solidity subset can be connected to a Lean
-model, proved, compiled to restricted Yul, and compared against pinned `solc`
+verification pipeline where a restricted Solidity subset can be connected to a
+Lean model, proved, compiled to restricted Yul, and compared against pinned `solc`
 output, with every trusted step explicitly identified.
 
 The near-term application target is PQ account abstraction:
@@ -37,9 +38,9 @@ The intended long-term loop is:
 4. Compile SoLean back to Yul2.
 5. Check that Yul1 and Yul2 are equivalent for a restricted subset.
 
-Today, the proof side has checked-arithmetic semantics for small hand-written
-models, a tiny Lean model of the restricted Counter Yul path, and a tiny
-verified Counter compiler slice. The broader Solidity and Yul pipeline remains
+Today, the proof side has checked-arithmetic semantics for focused hand-written
+models, a restricted Lean model of the Counter Yul path, and a focused verified
+Counter compiler slice. The broader Solidity and Yul pipeline remains
 placeholder tooling.
 
 For the current intuition and next steps, see `docs/roadmap.md` and
@@ -49,7 +50,7 @@ For the current intuition and next steps, see `docs/roadmap.md` and
 ## What Exists Now
 
 - A Lake-based Lean 4 project.
-- A minimal SoLean DSL:
+- A focused SoLean DSL:
   - `UInt256` modeled as a bounded natural-number structure.
   - Storage modeled as `Slot -> UInt256`.
   - An environment with `msg.sender`.
@@ -59,13 +60,13 @@ For the current intuition and next steps, see `docs/roadmap.md` and
 - A manual SoLean model of `Counter.inc`.
 - A theorem showing that if modeled `Counter.inc(amount)` succeeds, then the
   final modeled `x` is at least `amount`.
-- A tiny restricted Yul AST and execution semantics in Lean.
+- A restricted Yul AST and execution semantics in Lean.
 - A hand-written restricted Yul model of `Counter.inc`, with a theorem showing
   that successful SoLean Counter executions are reproduced by the restricted Yul
   model with the same final storage.
 - A Yul-side Counter theorem showing successful restricted Yul execution implies
   the final modeled `x` is at least `amount`.
-- A tiny parameter-aware source language and partial compiler to restricted
+- A focused parameter-aware source language and partial compiler to restricted
   Lean Yul for the Counter pattern.
 - A theorem showing the generic Counter source function instantiates to the
   existing SoLean Counter model and compiles to the existing restricted Yul
@@ -86,7 +87,8 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   - Yul text normalization.
   - Restricted-subset symbolic state-transform comparison, with bounded trace,
     strict AST, and normalized-text modes as explicit fallbacks.
-  - Counter-only Solidity-to-SoLean sketching through a tiny explicit parser.
+  - Counter-only Solidity-to-SoLean sketching through an explicit restricted
+    parser.
 - GitHub Actions CI that runs `lake build`, Python bytecode checks, and Python
   unit tests.
 
@@ -97,7 +99,7 @@ For the current prototype, the trusted base includes:
 - Lean's kernel and the Lake/Lean toolchain.
 - The hand-written SoLean model matching the intended Solidity fragment.
 - The hand-written restricted Yul model matching the intended Counter emitter.
-- The tiny Counter compiler implemented in Lean.
+- The Counter compiler implemented in Lean.
 - The small-step choices encoded in `SoLean.Semantics`.
 - The restricted Yul semantics encoded in `SoLean.Yul`.
 - `solc`, when used to produce Yul IR.
@@ -129,7 +131,7 @@ Python emitter output, and solc Yul all have the same semantics.
 
 Checked addition and subtraction are modeled for the current expression DSL.
 Stored values are type-enforced as bounded `UInt256` values, but the model is
-still a small Solidity subset rather than an EVM semantics.
+still a restricted Solidity subset rather than an EVM semantics.
 
 ## Repository Layout
 
@@ -347,7 +349,7 @@ python3 scripts/check_equiv.py build/Counter.yul build/Counter.solean.yul --diff
 ```
 
 By default, this parses the restricted Yul subset documented in
-`docs/yul-subset.md` and compares a tiny symbolic summary of parameters,
+`docs/yul-subset.md` and compares a restricted symbolic summary of parameters,
 ordered revert conditions, and final storage writes. This is useful
 state-transform tooling for the restricted subset, not a semantic equivalence
 proof. The old bounded trace checker is available with `--bounded-traces`,
@@ -359,8 +361,8 @@ Sketch the exact Counter Solidity example into a Lean reference:
 python3 scripts/solidity_to_solean.py examples/Counter.sol
 ```
 
-This is not a general Solidity parser. It tokenizes and validates only a tiny
-Counter subset and rejects unsupported input.
+This is not a general Solidity parser. It tokenizes and validates only a
+restricted Counter subset and rejects unsupported input.
 
 Emit the same parsed Counter shape as deterministic JSON:
 

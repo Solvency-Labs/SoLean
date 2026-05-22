@@ -4,8 +4,8 @@ SoLean's strategic target is now a hybrid path that leans toward Ethereum
 post-quantum account abstraction work.
 
 Counter remains the calibration case for the bridge machinery. ERC-20-style
-examples may be used as small learning exercises. The serious research target
-is contract-level verification around account-abstraction wallets and
+examples may be used as focused calibration exercises. The serious research
+target is contract-level verification around account-abstraction wallets and
 post-quantum signature verifier wrappers.
 
 ## North Star
@@ -63,7 +63,7 @@ allowances.
 
 ## Phase 1: Abstract AA Wallet Validation
 
-Goal: model the smallest useful account validation flow with an abstract
+Goal: model the first useful account validation flow with an abstract
 signature verifier predicate.
 
 Candidate state:
@@ -163,10 +163,10 @@ SoLean does not currently claim:
 - verified equivalence between real solc Yul and SoLean-generated Yul.
 - production readiness for account-abstraction wallets.
 
-The near-term claim should be narrower:
+The near-term claim should be more precise:
 
 ```text
-For a tiny modeled AA/PQ authentication flow, Lean proves that successful
+For a focused modeled AA/PQ authentication flow, Lean proves that successful
 validation/execution implies the operation satisfied the modeled authentication,
 nonce, and domain checks.
 ```

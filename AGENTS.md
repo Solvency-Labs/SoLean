@@ -1,13 +1,13 @@
 # Instructions For Future Agents
 
-SoLean is a serious research prototype, not a broad framework yet.
+SoLean is a focused research prototype, not a broad framework yet.
 
 - The strategic direction is now hybrid but PQ-account-abstraction leaning:
-  keep Counter as the bridge calibration case, use ERC-20 only as a small
-  learning case if useful, and prioritize account-abstraction wallet
+  keep Counter as the bridge calibration case, use ERC-20 only as a focused
+  calibration case if useful, and prioritize account-abstraction wallet
   validation plus post-quantum verifier-wrapper contract logic.
-- Keep the project minimal and proof-oriented.
-- Prefer small verified case studies over broad framework work.
+- Keep the project proof-oriented and scope-controlled.
+- Prefer focused verified case studies over broad framework work.
 - Do not drift into a broad DeFi framework before the AA/PQ authentication path
   is crisp.
 - Do not silently approximate unsupported Solidity, EVM, or Yul features.
