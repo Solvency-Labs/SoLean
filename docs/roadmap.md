@@ -505,14 +505,13 @@ shared modeling vocabulary across Counter and AA/PQ.
 
 Useful candidate moves, in rough priority order:
 
-1. Add a `validateAndExecute` phase to the structured behavior summary —
-   one more phase ("execute") with a single `finalWrite` recording the
-   opHash to `lastOpHashSlot`. Then extend `BehaviorReflection` to cover
-   the new phase and prove the reflection still reconstructs the now-larger
-   integrated flow.
-2. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
+1. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
    of `AAPQSource` into a shared `SoLean.Source.Shape` module and use it from
    the Counter source artifact too, reducing per-case-study duplication.
+2. Surface the full-flow behavior summary in `scripts/check_aapq_source.py`
+   as a checked artifact: load `full-behavior-summary-json`, verify it
+   includes an `"execute"` phase with a single `finalWrite` to
+   `AAWallet.lastOpHashSlot`, and that its operand scope still passes.
 3. Apply the AAPQSource pattern to a non-claim: an external-call shim
    (verified low-level call between wallet and wrapper), or replacing the
    abstract verifier oracle with a more concrete (still non-cryptographic)

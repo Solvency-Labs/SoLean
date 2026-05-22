@@ -94,6 +94,9 @@ Trust Boundaries section):
 - `SoLean.Examples.AAWallet.fullFlow_success_records_opHash`
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_success_implies_validateIntegrated_success`
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_success_records_opHash`
+- `SoLean.Examples.AAPQSource.BehaviorReflection.executePhase_reflects_executeUserOp`
+- `SoLean.Examples.AAPQSource.BehaviorReflection.integratedFullBehaviorSummary_reflects_validateAndExecuteFlow`
+- `SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateAndExecute_eq_validateAndExecute`
 
 ## Non-Claims
 
@@ -127,4 +130,9 @@ Export individual Lean-owned artifacts:
 lake env lean --run SoLean/AAPQArtifactsMain.lean source-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean source-certificate-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean behavior-summary-json
+lake env lean --run SoLean/AAPQArtifactsMain.lean full-behavior-summary-json
 ```
+
+`full-behavior-summary-json` covers `validateAndExecute` (the four-phase
+flow: wrapper + key-match + wallet + execute). `behavior-summary-json` covers
+the three-phase `validateIntegrated` (no execute).

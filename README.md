@@ -479,6 +479,7 @@ Export the Lean-owned AA/PQ source-shape audit artifacts:
 lake env lean --run SoLean/AAPQArtifactsMain.lean source-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean source-certificate-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean behavior-summary-json
+lake env lean --run SoLean/AAPQArtifactsMain.lean full-behavior-summary-json
 ```
 
 Run the AA/PQ source-shape audit (deterministic JSON report by default):

@@ -641,7 +641,10 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAWallet.fullFlow_success_implies_validate_success",
       "SoLean.Examples.AAWallet.fullFlow_success_records_opHash",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_success_implies_validateIntegrated_success",
-      "SoLean.Examples.AAPQIntegration.validateAndExecute_success_records_opHash"
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_success_records_opHash",
+      "SoLean.Examples.AAPQSource.BehaviorReflection.executePhase_reflects_executeUserOp",
+      "SoLean.Examples.AAPQSource.BehaviorReflection.integratedFullBehaviorSummary_reflects_validateAndExecuteFlow",
+      "SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateAndExecute_eq_validateAndExecute"
     ]),
     ("unsupported", stringsJson [
       "real PQ cryptographic security",
@@ -663,6 +666,12 @@ def aapqBehaviorSummary : Json :=
 
 def aapqBehaviorSummaryJson : String :=
   renderJson aapqBehaviorSummary
+
+def aapqFullBehaviorSummary : Json :=
+  AAPQBehavior.summaryJson Examples.AAPQSource.integratedFullBehaviorSummary
+
+def aapqFullBehaviorSummaryJson : String :=
+  renderJson aapqFullBehaviorSummary
 
 end Artifacts
 end SoLean

@@ -378,6 +378,27 @@ def integratedBehaviorSummary : BehaviorSummary :=
        "signature", "signatureLength"],
     phases := [wrapperPhase, keyMatchPhase, walletPhase] }
 
+def executePhase : Phase :=
+  { name := "execute",
+    contract := "AAWallet",
+    guards := [],
+    finalWrites := [
+      { contract := "AAWallet",
+        slotName := "lastOpHash",
+        slot := AAWallet.lastOpHashSlot,
+        value := .operand (paramOperand "opHash") }
+    ],
+    proofReference :=
+      "SoLean.Examples.AAWallet.executeUserOp" }
+
+def integratedFullBehaviorSummary : BehaviorSummary :=
+  { object := "AAPQIntegration",
+    function := "validateAndExecute",
+    params :=
+      ["publicKey", "publicKeyLength", "opHash", "nonce", "domain",
+       "signature", "signatureLength"],
+    phases := [wrapperPhase, keyMatchPhase, walletPhase, executePhase] }
+
 -- Semantics for the structured Operand/Condition/ValueExpression DSL under a
 -- concrete AAPQIntegration.IntegratedInput. The reflection is intentionally
 -- total: unrecognized parameter names, slot roles, or constants return `none`.
@@ -571,6 +592,79 @@ theorem reflectedValidateIntegrated_eq_validateIntegrated
     reflectedValidateIntegrated env input wrapperStorage walletStorage =
       some
         (AAPQIntegration.validateIntegrated env input wrapperStorage walletStorage) := by
+  rfl
+
+/--
+The reflected `executePhase` reconstructs exactly the proved
+`AAWallet.executeUserOp` for the user op projected from any `IntegratedInput`.
+-/
+theorem executePhase_reflects_executeUserOp
+    (input : AAPQIntegration.IntegratedInput) :
+    phaseToStmt input executePhase =
+      some (AAWallet.executeUserOp (AAPQIntegration.toUserOp input)) := by
+  rfl
+
+/--
+The reflected `integratedFullBehaviorSummary` reconstructs the four programs
+composed by `AAPQIntegration.validateAndExecute`: wrapper validation,
+key-match guard, wallet validation, and the modeled execute step.
+-/
+theorem integratedFullBehaviorSummary_reflects_validateAndExecuteFlow
+    (input : AAPQIntegration.IntegratedInput) :
+    integratedFullBehaviorSummary.phases.map (phaseToStmt input) =
+      [ some
+          (PQVerifierWrapper.verifyProgram
+            (AAPQIntegration.toWrapperInput input)),
+        some (AAPQIntegration.keyMatchesWalletProgram input),
+        some (AAWallet.validateProgram (AAPQIntegration.toUserOp input)),
+        some (AAWallet.executeUserOp (AAPQIntegration.toUserOp input)) ] := by
+  rfl
+
+/--
+Execute the four reflected phases of `integratedFullBehaviorSummary` in the
+same composition pattern as `AAPQIntegration.validateAndExecute`.
+-/
+def reflectedValidateAndExecute
+    (env : SoLean.Env)
+    (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage : SoLean.Storage) :
+    Option AAPQIntegration.IntegratedFullResult :=
+  match phaseToStmt input wrapperPhase,
+        phaseToStmt input keyMatchPhase,
+        phaseToStmt input walletPhase,
+        phaseToStmt input executePhase with
+  | some wrapperStmt, some keyMatchStmt, some walletStmt, some executeStmt =>
+      some
+        (match
+            (match SoLean.exec env wrapperStmt wrapperStorage with
+             | .success finalWrapperStorage =>
+                 match SoLean.exec env (.seq keyMatchStmt walletStmt) walletStorage with
+                 | .success finalWalletStorage =>
+                     AAPQIntegration.IntegratedResult.success
+                       finalWrapperStorage finalWalletStorage
+                 | .revert failure => .revert failure
+             | .revert failure => .revert failure) with
+         | .success postWrapper postWallet =>
+             match SoLean.exec env executeStmt postWallet with
+             | .success finalWalletStorage =>
+                 AAPQIntegration.IntegratedFullResult.success
+                   postWrapper finalWalletStorage
+             | .revert failure => .revert failure
+         | .revert failure => .revert failure)
+  | _, _, _, _ => none
+
+/--
+Execution-side equivalence for the full flow: running the four reflected
+phases produces the same `IntegratedFullResult` as
+`AAPQIntegration.validateAndExecute`.
+-/
+theorem reflectedValidateAndExecute_eq_validateAndExecute
+    (env : SoLean.Env)
+    (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage : SoLean.Storage) :
+    reflectedValidateAndExecute env input wrapperStorage walletStorage =
+      some
+        (AAPQIntegration.validateAndExecute env input wrapperStorage walletStorage) := by
   rfl
 
 end BehaviorReflection
