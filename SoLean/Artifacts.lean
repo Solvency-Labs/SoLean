@@ -637,7 +637,9 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption",
       "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption",
       "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption",
-      "SoLean.Examples.AAPQSource.integratedCryptoAssumptions_cover_all_oracle_theorems"
+      "SoLean.Examples.AAPQSource.integratedCryptoAssumptions_cover_all_oracle_theorems",
+      "SoLean.Examples.AAWallet.fullFlow_success_implies_validate_success",
+      "SoLean.Examples.AAWallet.fullFlow_success_records_opHash"
     ]),
     ("unsupported", stringsJson [
       "real PQ cryptographic security",

@@ -213,6 +213,14 @@ named, non-cryptographic assumptions on the verifier oracle and are
 recorded explicitly in the source certificate's `cryptoAssumptions` field
 (name, Lean reference, informal statement).
 
+`SoLean.Examples.AAWallet` additionally models execution gating via
+`executeUserOp` (writes `op.opHash` to `lastOpHashSlot`) and the
+composition `fullFlow = .seq validateProgram executeUserOp`. The two
+gate theorems are `fullFlow_success_implies_validate_success` (no
+bypass of validation) and `fullFlow_success_records_opHash`
+(observable execute side-effect requires having satisfied every
+validation guard).
+
 This is the first target that should feel like a serious Ethereum research demo.
 
 ## Phase 4: Bridge To Real Solidity And solc

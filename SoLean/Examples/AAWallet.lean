@@ -8,6 +8,7 @@ def nonceSlot : Slot := 0
 def keyCommitmentSlot : Slot := 1
 def domainSlot : Slot := 2
 def entryPointSlot : Slot := 3
+def lastOpHashSlot : Slot := 4
 
 def nonceExpr : ValueExpr :=
   .slot nonceSlot
@@ -143,6 +144,76 @@ theorem validate_ensures (op : UserOp) :
       exact validate_success_properties env storage finalStorage op h
   | revert _ =>
       trivial
+
+/--
+Modeled execute step that records the operation hash to `lastOpHashSlot`.
+
+This is a deliberately tiny execute model: it stores `op.opHash` in a
+dedicated storage slot, giving the gate theorems below something concrete to
+say about the post-execute state. It does not model real EVM execute
+semantics, calldata, gas, or external calls.
+-/
+def executeUserOp (op : UserOp) : Stmt :=
+  .assign lastOpHashSlot (.const op.opHash)
+
+/--
+Validate-then-execute composition. Successful `fullFlow` requires successful
+validation followed by the modeled execute step.
+-/
+def fullFlow (op : UserOp) : Stmt :=
+  .seq (validateProgram op) (executeUserOp op)
+
+/--
+Execution gating: successful `fullFlow` implies validation succeeded with
+some intermediate storage. There is no path to execute side-effects that
+bypasses validation.
+-/
+private theorem fullFlow_step
+    (env : Env) (storage : Storage) (op : UserOp) :
+    exec env (fullFlow op) storage =
+      (match exec env (validateProgram op) storage with
+       | .success storage' => exec env (executeUserOp op) storage'
+       | .revert failure => .revert failure) := rfl
+
+theorem fullFlow_success_implies_validate_success
+    (env : Env) (storage finalStorage : Storage) (op : UserOp)
+    (h :
+      exec env (fullFlow op) storage = ExecResult.success finalStorage) :
+    ∃ midStorage,
+      exec env (validateProgram op) storage =
+        ExecResult.success midStorage := by
+  cases hValidate : exec env (validateProgram op) storage with
+  | success midStorage => exact ⟨midStorage, rfl⟩
+  | revert failure =>
+      rw [fullFlow_step, hValidate] at h
+      cases h
+
+/--
+After a successful `fullFlow`, the modeled execute side-effect is observable:
+the wallet's `lastOpHashSlot` records the operation hash that was validated.
+Combined with `fullFlow_success_implies_validate_success`, this gives the
+forward direction of execution gating: observing the execute write to slot 4
+requires having satisfied every modeled validation guard.
+-/
+theorem fullFlow_success_records_opHash
+    (env : Env) (storage finalStorage : Storage) (op : UserOp)
+    (h :
+      exec env (fullFlow op) storage = ExecResult.success finalStorage) :
+    finalStorage.read lastOpHashSlot = op.opHash := by
+  cases hValidate : exec env (validateProgram op) storage with
+  | success midStorage =>
+      rw [fullFlow_step, hValidate] at h
+      have hExec :
+          ExecResult.success
+              (Storage.write midStorage lastOpHashSlot op.opHash) =
+            ExecResult.success finalStorage := by
+        show exec env (executeUserOp op) midStorage = _
+        exact h
+      cases hExec
+      exact Storage.read_write_same midStorage lastOpHashSlot op.opHash
+  | revert failure =>
+      rw [fullFlow_step, hValidate] at h
+      cases h
 
 end AAWallet
 end Examples

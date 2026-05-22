@@ -77,7 +77,12 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   `totalAssets >= totalShares`.
 - An `AAWallet` validation model proving that successful validation implies the
   modeled entry point, nonce, domain, and abstract verifier checks passed, and
-  that the nonce advanced through checked arithmetic.
+  that the nonce advanced through checked arithmetic. Plus a modeled
+  `executeUserOp` step (writes `op.opHash` to a dedicated slot) and a
+  `fullFlow = .seq validateProgram executeUserOp` composition with two gate
+  theorems: `fullFlow_success_implies_validate_success` (no bypass of
+  validation) and `fullFlow_success_records_opHash` (observable execute
+  side-effect requires having satisfied every validation guard).
 - A `PQVerifierWrapper` model proving that successful wrapper validation
   implies the modeled key-length, signature-length, domain, and abstract
   verifier checks passed.

@@ -77,6 +77,12 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
 - `AAWallet.validateProgram(op)` proves that successful modeled validation
   implies the configured entry point, nonce, domain, and abstract verifier
   checks passed, and that the nonce advanced with checked arithmetic.
+- `AAWallet.fullFlow = .seq validateProgram executeUserOp` plus
+  `fullFlow_success_implies_validate_success` and
+  `fullFlow_success_records_opHash`: modeled execution gating. The
+  `executeUserOp` step writes `op.opHash` to a dedicated `lastOpHashSlot`,
+  giving the gate theorems something observable. Any path that produces
+  the execute write must have first satisfied every validation guard.
 - `PQVerifierWrapper.verifyProgram(input)` proves that successful modeled
   wrapper validation implies the configured key-length, signature-length,
   domain, and abstract verifier checks passed, with storage unchanged.
@@ -492,11 +498,9 @@ shared modeling vocabulary across Counter and AA/PQ.
 
 Useful candidate moves, in rough priority order:
 
-1. Add an `executeUserOp` model and prove an execution-gating theorem:
-   `fullFlow = .seq validateProgram executeUserOp` succeeds only when
-   validation succeeds, so failed validation prevents any modeled execute
-   side effect. This turns the Phase 1 "execution is gated by successful
-   validation" candidate into a Lean theorem.
+1. Promote `fullFlow` to the integrated level: define `validateAndExecute`
+   over the AA/PQ integration that runs `AAPQIntegration.validateIntegrated`
+   then `AAWallet.executeUserOp`, and prove the same gate properties.
 2. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
    of `AAPQSource` into a shared `SoLean.Source.Shape` module and use it from
    the Counter source artifact too, reducing per-case-study duplication.
