@@ -221,6 +221,14 @@ bypass of validation) and `fullFlow_success_records_opHash`
 (observable execute side-effect requires having satisfied every
 validation guard).
 
+`SoLean.Examples.AAPQIntegration.validateAndExecute` lifts that gate
+to the integrated flow: validateIntegrated then executeUserOp on the
+post-validation wallet storage. The two gate theorems
+(`validateAndExecute_success_implies_validateIntegrated_success` and
+`validateAndExecute_success_records_opHash`) show that observing the
+integrated execute write requires satisfying every wrapper, key-match,
+and wallet validation guard.
+
 This is the first target that should feel like a serious Ethereum research demo.
 
 ## Phase 4: Bridge To Real Solidity And solc

@@ -83,6 +83,13 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   `executeUserOp` step writes `op.opHash` to a dedicated `lastOpHashSlot`,
   giving the gate theorems something observable. Any path that produces
   the execute write must have first satisfied every validation guard.
+- `AAPQIntegration.validateAndExecute` lifts the gate to the integrated
+  flow: validateIntegrated then executeUserOp on the post-validation
+  wallet storage. The two gate theorems
+  (`validateAndExecute_success_implies_validateIntegrated_success` and
+  `validateAndExecute_success_records_opHash`) show that observing the
+  integrated execute write requires satisfying every wrapper +
+  key-match + wallet validation guard.
 - `PQVerifierWrapper.verifyProgram(input)` proves that successful modeled
   wrapper validation implies the configured key-length, signature-length,
   domain, and abstract verifier checks passed, with storage unchanged.
@@ -498,9 +505,11 @@ shared modeling vocabulary across Counter and AA/PQ.
 
 Useful candidate moves, in rough priority order:
 
-1. Promote `fullFlow` to the integrated level: define `validateAndExecute`
-   over the AA/PQ integration that runs `AAPQIntegration.validateIntegrated`
-   then `AAWallet.executeUserOp`, and prove the same gate properties.
+1. Add a `validateAndExecute` phase to the structured behavior summary —
+   one more phase ("execute") with a single `finalWrite` recording the
+   opHash to `lastOpHashSlot`. Then extend `BehaviorReflection` to cover
+   the new phase and prove the reflection still reconstructs the now-larger
+   integrated flow.
 2. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
    of `AAPQSource` into a shared `SoLean.Source.Shape` module and use it from
    the Counter source artifact too, reducing per-case-study duplication.

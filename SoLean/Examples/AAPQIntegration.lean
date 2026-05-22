@@ -460,6 +460,100 @@ theorem key_separation_under_oracle_assumption
     hKeySep input1.publicKey input2.publicKey input1.opHash
       input1.domain input1.signature hVerify1 hVerify2'
 
+inductive IntegratedFullResult where
+  | success : Storage -> Storage -> IntegratedFullResult
+  | revert : Failure -> IntegratedFullResult
+
+/--
+Integrated validate-then-execute composition.
+
+Runs `validateIntegrated`; if it succeeds, runs `AAWallet.executeUserOp` on
+the post-validation wallet storage to record the operation hash to
+`AAWallet.lastOpHashSlot`. The wrapper storage is unchanged by the execute
+step (the wrapper has no execute model).
+-/
+def validateAndExecute
+    (env : Env)
+    (input : IntegratedInput)
+    (wrapperStorage walletStorage : Storage) : IntegratedFullResult :=
+  match validateIntegrated env input wrapperStorage walletStorage with
+  | .success postWrapper postWallet =>
+      match exec env (AAWallet.executeUserOp (toUserOp input)) postWallet with
+      | .success finalWallet => .success postWrapper finalWallet
+      | .revert failure => .revert failure
+  | .revert failure => .revert failure
+
+private theorem validateAndExecute_step
+    (env : Env) (input : IntegratedInput)
+    (wrapperStorage walletStorage : Storage) :
+    validateAndExecute env input wrapperStorage walletStorage =
+      (match validateIntegrated env input wrapperStorage walletStorage with
+       | .success postWrapper postWallet =>
+           match exec env (AAWallet.executeUserOp (toUserOp input)) postWallet with
+           | .success finalWallet =>
+               IntegratedFullResult.success postWrapper finalWallet
+           | .revert failure => .revert failure
+       | .revert failure => .revert failure) := rfl
+
+/--
+Integrated execution gating: a successful `validateAndExecute` implies the
+full integrated validation succeeded. There is no path that produces an
+integrated execute side-effect without first satisfying every wrapper +
+key-match + wallet validation guard.
+-/
+private theorem executeUserOp_step
+    (env : Env) (storage : Storage) (op : AAWallet.UserOp) :
+    exec env (AAWallet.executeUserOp op) storage =
+      ExecResult.success
+        (Storage.write storage AAWallet.lastOpHashSlot op.opHash) := rfl
+
+theorem validateAndExecute_success_implies_validateIntegrated_success
+    (env : Env) (input : IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateAndExecute env input wrapperStorage walletStorage =
+        IntegratedFullResult.success finalWrapper finalWallet) :
+    ∃ postWallet,
+      validateIntegrated env input wrapperStorage walletStorage =
+        IntegratedResult.success finalWrapper postWallet := by
+  cases hValidate :
+      validateIntegrated env input wrapperStorage walletStorage with
+  | success postWrapper postWallet =>
+      simp only [validateAndExecute_step, hValidate, executeUserOp_step] at h
+      injection h with hWrap _
+      subst hWrap
+      exact ⟨postWallet, rfl⟩
+  | revert failure =>
+      simp only [validateAndExecute_step, hValidate] at h
+      cases h
+
+/--
+After a successful integrated `validateAndExecute`, the wallet's
+`lastOpHashSlot` records the operation hash. Combined with the gate theorem
+above, this shows that observing the integrated execute write requires
+satisfying every modeled validation guard, including the wrapper length and
+domain checks, the cross-contract key-match, and the wallet entry-point,
+nonce, domain, and verifier checks.
+-/
+theorem validateAndExecute_success_records_opHash
+    (env : Env) (input : IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateAndExecute env input wrapperStorage walletStorage =
+        IntegratedFullResult.success finalWrapper finalWallet) :
+    finalWallet.read AAWallet.lastOpHashSlot = input.opHash := by
+  cases hValidate :
+      validateIntegrated env input wrapperStorage walletStorage with
+  | success postWrapper postWallet =>
+      simp only [validateAndExecute_step, hValidate, executeUserOp_step] at h
+      injection h with _ hWallet
+      rw [← hWallet]
+      exact Storage.read_write_same postWallet AAWallet.lastOpHashSlot
+        (toUserOp input).opHash
+  | revert failure =>
+      simp only [validateAndExecute_step, hValidate] at h
+      cases h
+
 end AAPQIntegration
 end Examples
 end SoLean

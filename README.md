@@ -97,6 +97,11 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   (`VerifierDomainSeparation`), `signature_non_malleability_under_oracle_
   assumption` (`VerifierSignatureBinding`), and
   `key_separation_under_oracle_assumption` (`VerifierKeySeparation`).
+  Also models integrated execution gating via `validateAndExecute`
+  (validateIntegrated then `AAWallet.executeUserOp` on the post-validation
+  wallet storage) with two gate theorems:
+  `validateAndExecute_success_implies_validateIntegrated_success` and
+  `validateAndExecute_success_records_opHash`.
 - An `AAPQSource` Solidity-shaped source description of the two-contract
   layout with instantiation theorems back to the proved wallet, wrapper, and
   integrated programs, plus Lean-owned `source-json`,
