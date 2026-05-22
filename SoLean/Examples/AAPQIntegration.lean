@@ -308,6 +308,33 @@ def VerifierDomainSeparation (env : Env) : Prop :=
     domain1 = domain2
 
 /--
+Crypto assumption: the abstract verifier oracle binds the signature.
+
+If two signatures are accepted for the same `(publicKey, message, domain)`
+triple, they must be equal. Real PQ schemes typically have this kind of
+binding/non-malleability property; this is the named assumption that lets
+SoLean model the consequence at the contract layer.
+-/
+def VerifierSignatureBinding (env : Env) : Prop :=
+  ∀ key message domain signature1 signature2,
+    env.verifier key message domain signature1 = true ->
+    env.verifier key message domain signature2 = true ->
+    signature1 = signature2
+
+/--
+Crypto assumption: the abstract verifier oracle is key-separated.
+
+If two public keys both accept the same `(message, domain, signature)`
+triple, they must be equal. This is the named assumption behind
+`key_separation_under_oracle_assumption`.
+-/
+def VerifierKeySeparation (env : Env) : Prop :=
+  ∀ key1 key2 message domain signature,
+    env.verifier key1 message domain signature = true ->
+    env.verifier key2 message domain signature = true ->
+    key1 = key2
+
+/--
 Under `VerifierDomainSeparation env`, two successful integrated validations of
 operations sharing the same `publicKey`, `opHash`, and `signature` must also
 share the same `domain` — there is no domain-confusion bypass through the
@@ -348,6 +375,90 @@ theorem domain_separation_under_oracle_assumption
   exact
     hSep input1.publicKey input1.opHash input1.domain input2.domain
       input1.signature hVerify1 hVerify2'
+
+/--
+Under `VerifierSignatureBinding env`, two successful integrated validations of
+operations sharing `publicKey`, `opHash`, and `domain` must also share
+`signature`. The integrated flow forwards modeled non-malleability of the
+underlying verifier into the contract layer.
+-/
+theorem signature_non_malleability_under_oracle_assumption
+    (env : Env)
+    (hBind : VerifierSignatureBinding env)
+    (input1 input2 : IntegratedInput)
+    (wrapperStorage1 walletStorage1 finalWrapper1 finalWallet1 : Storage)
+    (wrapperStorage2 walletStorage2 finalWrapper2 finalWallet2 : Storage)
+    (hKey : input1.publicKey = input2.publicKey)
+    (hOpHash : input1.opHash = input2.opHash)
+    (hDomain : input1.domain = input2.domain)
+    (h1 :
+      validateIntegrated env input1 wrapperStorage1 walletStorage1 =
+        IntegratedResult.success finalWrapper1 finalWallet1)
+    (h2 :
+      validateIntegrated env input2 wrapperStorage2 walletStorage2 =
+        IntegratedResult.success finalWrapper2 finalWallet2) :
+    input1.signature = input2.signature := by
+  have hVerify1 :
+      env.verifier input1.publicKey input1.opHash input1.domain
+          input1.signature = true :=
+    noBypass_implies_verifier_accepted
+      env input1 wrapperStorage1 walletStorage1
+      finalWrapper1 finalWallet1 h1
+  have hVerify2 :
+      env.verifier input2.publicKey input2.opHash input2.domain
+          input2.signature = true :=
+    noBypass_implies_verifier_accepted
+      env input2 wrapperStorage2 walletStorage2
+      finalWrapper2 finalWallet2 h2
+  have hVerify2' :
+      env.verifier input1.publicKey input1.opHash input1.domain
+          input2.signature = true := by
+    rw [hKey, hOpHash, hDomain]; exact hVerify2
+  exact
+    hBind input1.publicKey input1.opHash input1.domain
+      input1.signature input2.signature hVerify1 hVerify2'
+
+/--
+Under `VerifierKeySeparation env`, two successful integrated validations of
+operations sharing `opHash`, `domain`, and `signature` must also share
+`publicKey`. The integrated flow forwards modeled key-separation of the
+underlying verifier into the contract layer.
+-/
+theorem key_separation_under_oracle_assumption
+    (env : Env)
+    (hKeySep : VerifierKeySeparation env)
+    (input1 input2 : IntegratedInput)
+    (wrapperStorage1 walletStorage1 finalWrapper1 finalWallet1 : Storage)
+    (wrapperStorage2 walletStorage2 finalWrapper2 finalWallet2 : Storage)
+    (hOpHash : input1.opHash = input2.opHash)
+    (hDomain : input1.domain = input2.domain)
+    (hSignature : input1.signature = input2.signature)
+    (h1 :
+      validateIntegrated env input1 wrapperStorage1 walletStorage1 =
+        IntegratedResult.success finalWrapper1 finalWallet1)
+    (h2 :
+      validateIntegrated env input2 wrapperStorage2 walletStorage2 =
+        IntegratedResult.success finalWrapper2 finalWallet2) :
+    input1.publicKey = input2.publicKey := by
+  have hVerify1 :
+      env.verifier input1.publicKey input1.opHash input1.domain
+          input1.signature = true :=
+    noBypass_implies_verifier_accepted
+      env input1 wrapperStorage1 walletStorage1
+      finalWrapper1 finalWallet1 h1
+  have hVerify2 :
+      env.verifier input2.publicKey input2.opHash input2.domain
+          input2.signature = true :=
+    noBypass_implies_verifier_accepted
+      env input2 wrapperStorage2 walletStorage2
+      finalWrapper2 finalWallet2 h2
+  have hVerify2' :
+      env.verifier input2.publicKey input1.opHash input1.domain
+          input1.signature = true := by
+    rw [hOpHash, hDomain, hSignature]; exact hVerify2
+  exact
+    hKeySep input1.publicKey input2.publicKey input1.opHash
+      input1.domain input1.signature hVerify1 hVerify2'
 
 end AAPQIntegration
 end Examples
