@@ -370,6 +370,33 @@ theorem validateIntegratedViaEvmCall_preserves_wallet_configuration
     ⟨_, _, _, _, _, _, hKeyUnchanged, hDomainUnchanged, hEntryUnchanged⟩
   exact ⟨hKeyUnchanged, hDomainUnchanged, hEntryUnchanged⟩
 
+/--
+Address discrimination: the call-shaped flow's outcome depends only on the
+oracle's behavior at `wrapperAddress`. Two `EvmEnv`s that agree on
+`base`, `wrapperAddress`, and the oracle's value at `wrapperAddress` (for
+the input's calldata) produce the same `EvmCallIntegratedResult`,
+regardless of what their oracles do at any other address.
+
+Inter-contract isolation: the wallet can call the wrapper without worrying
+about the oracle's behavior at unrelated addresses leaking into the
+result. A different `wrapperCodeHash` or a different oracle at some
+unrelated address cannot change what the integrated flow computes.
+-/
+theorem validateIntegratedViaEvmCall_depends_only_on_wrapper_oracle
+    (eenv eenv' : EvmEnv)
+    (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage : Storage)
+    (hBase : eenv.base = eenv'.base)
+    (hOracleAtWrapper :
+      eenv.evmCall eenv.wrapperAddress
+          (buildVerifierCalldata input) wrapperStorage =
+        eenv'.evmCall eenv'.wrapperAddress
+          (buildVerifierCalldata input) wrapperStorage) :
+    validateIntegratedViaEvmCall eenv input wrapperStorage walletStorage =
+      validateIntegratedViaEvmCall eenv' input wrapperStorage walletStorage := by
+  unfold validateIntegratedViaEvmCall
+  rw [hOracleAtWrapper, hBase]
+
 end AAPQEvmCall
 end Examples
 end SoLean
