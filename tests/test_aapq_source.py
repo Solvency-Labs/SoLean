@@ -16,6 +16,7 @@ from scripts.check_aapq_source import (
     check_crypto_assumptions_link_to_proofs,
     check_full_behavior_summary_extends_short_summary,
     check_full_behavior_summary_includes_execute_phase,
+    check_integration_variants,
     check_phase_proof_references,
     check_source_contracts_match_certificate,
     check_under_oracle_assumption_theorems_covered,
@@ -42,7 +43,7 @@ from scripts.demo_aapq_source import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOLIDITY_PATH = REPO_ROOT / "examples" / "AAPQIntegration.sol"
-GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v4.json"
+GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v5.json"
 
 
 @lru_cache(maxsize=None)
@@ -620,6 +621,71 @@ class VerifierModelCalibrationTests(unittest.TestCase):
         result = check_verifier_model_calibrations(certificate)
         self.assertEqual(result["status"], "failed")
         self.assertIn("Module.missing", result["message"])
+
+
+class IntegrationVariantsAuditTests(unittest.TestCase):
+    def test_integration_variants_pass_on_real_certificate(self) -> None:
+        certificate = cached_artifact("source-certificate-json")
+        result = check_integration_variants(certificate)
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_integration_variants_fail_without_section(self) -> None:
+        result = check_integration_variants({})
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("no integrationVariants", result["message"])
+
+    def test_integration_variants_fail_on_dangling_equivalence(self) -> None:
+        certificate = {
+            "integrationVariants": [
+                {
+                    "name": "canon",
+                    "flow": "flowA",
+                    "lean": "Module.canon",
+                    "equivalenceProof": "",
+                    "canonical": 1,
+                },
+                {
+                    "name": "variant",
+                    "flow": "flowA",
+                    "lean": "Module.variant",
+                    "equivalenceProof": "Module.missing_proof",
+                    "canonical": 0,
+                },
+            ],
+            "proofReferences": ["Module.canon"],
+        }
+        result = check_integration_variants(certificate)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("Module.missing_proof", result["message"])
+
+    def test_integration_variants_fail_on_zero_canonical(self) -> None:
+        certificate = {
+            "integrationVariants": [
+                {
+                    "name": "v1",
+                    "flow": "flow",
+                    "lean": "X",
+                    "equivalenceProof": "X.eq",
+                    "canonical": 0,
+                },
+            ],
+            "proofReferences": ["X.eq"],
+        }
+        result = check_integration_variants(certificate)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("expected exactly one canonical variant", result["message"])
+
+    def test_integration_variants_fail_on_two_canonicals(self) -> None:
+        certificate = {
+            "integrationVariants": [
+                {"name": "a", "flow": "f", "lean": "A", "equivalenceProof": "", "canonical": 1},
+                {"name": "b", "flow": "f", "lean": "B", "equivalenceProof": "", "canonical": 1},
+            ],
+            "proofReferences": [],
+        }
+        result = check_integration_variants(certificate)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("expected exactly one canonical variant", result["message"])
 
 
 class DemoTests(unittest.TestCase):

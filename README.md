@@ -159,6 +159,10 @@ For the current intuition and next steps, see `docs/roadmap.md` and
 - Solidity examples in `examples/`, including a hand-written
   `AAPQIntegration.sol` sketch matching the Lean AA/PQ source shape as a
   documentation fixture (not a parser target).
+- The source certificate surfaces both `validateIntegrated` and the
+  call-shim variant `validateIntegratedViaCall` as `integrationVariants`,
+  each pointing at its Lean program and the equivalence proof linking
+  variants to the canonical one.
 - An AA/PQ source-shape audit script (`scripts/check_aapq_source.py`) that
   loads the four Lean-owned AA/PQ artifacts, parses the restricted Solidity
   sketch, and emits a deterministic JSON or Markdown report cross-checking
@@ -171,7 +175,7 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   summary's first three phases. Markdown reports and the demo render that
   graph as a grouped trust-boundary view. The same audit checks
   `verifierModelCalibrations` proof references and non-claim text. The
-  report has a committed golden fixture at `tests/golden/AAPQ.source.v4.json`.
+  report has a committed golden fixture at `tests/golden/AAPQ.source.v5.json`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.
   - Yul subset classification for supported/unsupported compiler output.
@@ -303,7 +307,7 @@ still a restricted Solidity subset rather than an EVM semantics.
 │   └── yul_subset.py
 └── tests/
     ├── golden/
-    │   ├── AAPQ.source.v4.json
+    │   ├── AAPQ.source.v5.json
     │   ├── Counter.bridge.v7.json
     │   └── Counter.solean.yul
     ├── README.md

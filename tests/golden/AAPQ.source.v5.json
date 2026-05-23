@@ -2,7 +2,7 @@
   "artifacts": {
     "behaviorSummaryHash": "b5cfd9fe5970806706c94c3988806899ffa5e85baa67379d472fff24e27304d4",
     "fullBehaviorSummaryHash": "ba0e5c7b39e848f763ff16a8b7690eca288836ee98f5ba740c75ab21e4179335",
-    "sourceCertificateHash": "1bcf3942c894e917dc720393fdc6291aeb483d33dde0c3d4e3c3dd349074e60e",
+    "sourceCertificateHash": "499a77bb5feb344f5a486ddd5eea6fc19049834a2d9660a07cdfedff6f227416",
     "sourceHash": "9ef06ae57aae9f38b47d9edcf3bbd32861ec8077f21297acda01c746e19f4f81"
   },
   "checks": [
@@ -51,6 +51,12 @@
     {
       "message": "All 3 verifier calibration(s) resolve 12 proof references for 9 discharged assumptions.",
       "name": "verifier model calibrations resolve",
+      "status": "passed",
+      "trust": "Lean-owned certificate"
+    },
+    {
+      "message": "All 4 integration variant(s) across 2 flow(s) resolve.",
+      "name": "integration variants resolve",
       "status": "passed",
       "trust": "Lean-owned certificate"
     },
@@ -181,7 +187,7 @@
     "Does not verify external-call, ABI, calldata, memory, gas, or reentrancy semantics.",
     "Verifier is an abstract oracle in the Lean models."
   ],
-  "reportVersion": 4,
+  "reportVersion": 5,
   "solidityContracts": [
     "AAPQIntegration",
     "AAWallet",

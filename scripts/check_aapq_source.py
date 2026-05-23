@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-REPORT_VERSION = 4
+REPORT_VERSION = 5
 
 LIMITATIONS = [
     "AA/PQ source-shape audit only.",
@@ -608,6 +608,74 @@ def format_crypto_assumption_graph_markdown(
     return "\n".join(lines)
 
 
+def check_integration_variants(
+    certificate: dict[str, Any],
+) -> dict[str, str]:
+    """integrationVariants must include exactly one canonical entry per flow
+    and every non-canonical entry must point to an equivalenceProof that
+    appears in proofReferences."""
+    variants = certificate.get("integrationVariants", [])
+    if not variants:
+        return failed(
+            "integrationVariants present",
+            "Lean-owned certificate",
+            "Certificate has no integrationVariants array.",
+        )
+
+    proofs = set(certificate.get("proofReferences", []))
+    problems: list[str] = []
+    canonical_per_flow: dict[str, int] = {}
+
+    for variant in variants:
+        name = variant.get("name", "?")
+        flow = variant.get("flow", "")
+        lean = variant.get("lean", "")
+        equivalence = variant.get("equivalenceProof", "")
+        canonical = variant.get("canonical", 0)
+
+        if not flow:
+            problems.append(f"{name}: missing flow")
+            continue
+        if not lean:
+            problems.append(f"{name}: missing lean reference")
+
+        canonical_per_flow[flow] = canonical_per_flow.get(flow, 0) + (1 if canonical else 0)
+
+        if canonical:
+            if equivalence:
+                problems.append(
+                    f"{name}: canonical variant should not carry an equivalenceProof"
+                )
+        else:
+            if not equivalence:
+                problems.append(
+                    f"{name}: non-canonical variant requires an equivalenceProof"
+                )
+            elif equivalence not in proofs:
+                problems.append(
+                    f"{name}: equivalenceProof {equivalence} not in proofReferences"
+                )
+
+    for flow, count in canonical_per_flow.items():
+        if count != 1:
+            problems.append(
+                f"flow '{flow}': expected exactly one canonical variant, found {count}"
+            )
+
+    if problems:
+        return failed(
+            "integration variants resolve",
+            "Lean-owned certificate",
+            "Broken variants: " + "; ".join(problems),
+        )
+
+    return passed(
+        "integration variants resolve",
+        "Lean-owned certificate",
+        f"All {len(variants)} integration variant(s) across {len(canonical_per_flow)} flow(s) resolve.",
+    )
+
+
 def check_verifier_model_calibrations(
     certificate: dict[str, Any],
 ) -> dict[str, str]:
@@ -832,6 +900,7 @@ def run_audit(
     checks.append(check_under_oracle_assumption_theorems_covered(certificate))
     checks.append(check_crypto_assumption_support_graph(certificate))
     checks.append(check_verifier_model_calibrations(certificate))
+    checks.append(check_integration_variants(certificate))
     checks.append(
         check_full_behavior_summary_includes_execute_phase(full_behavior_summary)
     )

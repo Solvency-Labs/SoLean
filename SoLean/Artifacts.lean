@@ -717,6 +717,38 @@ def aapqSourceCertificate : Json :=
       ("name", .str "validateIntegrated"),
       ("params", .arr (Examples.AAPQSource.integratedContract.params.map AAPQ.paramJson))
     ]),
+    ("integrationVariants", .arr [
+      .obj [
+        ("canonical", .num 1),
+        ("equivalenceProof", .str ""),
+        ("flow", .str "validateIntegrated"),
+        ("lean", .str "SoLean.Examples.AAPQIntegration.validateIntegrated"),
+        ("name", .str "validateIntegrated")
+      ],
+      .obj [
+        ("canonical", .num 0),
+        ("equivalenceProof", .str
+          "SoLean.Examples.AAPQIntegration.validateIntegratedViaCall_eq_validateIntegrated"),
+        ("flow", .str "validateIntegrated"),
+        ("lean", .str "SoLean.Examples.AAPQIntegration.validateIntegratedViaCall"),
+        ("name", .str "validateIntegratedViaCall")
+      ],
+      .obj [
+        ("canonical", .num 1),
+        ("equivalenceProof", .str ""),
+        ("flow", .str "validateAndExecute"),
+        ("lean", .str "SoLean.Examples.AAPQIntegration.validateAndExecute"),
+        ("name", .str "validateAndExecute")
+      ],
+      .obj [
+        ("canonical", .num 0),
+        ("equivalenceProof", .str
+          "SoLean.Examples.AAPQIntegration.validateAndExecuteViaCall_eq_validateAndExecute"),
+        ("flow", .str "validateAndExecute"),
+        ("lean", .str "SoLean.Examples.AAPQIntegration.validateAndExecuteViaCall"),
+        ("name", .str "validateAndExecuteViaCall")
+      ]
+    ]),
     ("kind", .str "aapqSourceCertificate"),
     ("lean", .str "SoLean.Examples.AAPQSource.integratedContract"),
     ("proofReferences", stringsJson [

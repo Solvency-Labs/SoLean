@@ -176,7 +176,7 @@ Current v0:
 - `examples/AAPQIntegration.sol` is a Solidity fixture matching the source
   shape, kept as documentation only.
 - `scripts/check_aapq_source.py` produces a deterministic source-shape audit
-  report (`tests/golden/AAPQ.source.v4.json`) cross-checking the four
+  report (`tests/golden/AAPQ.source.v5.json`) cross-checking the four
   Lean-owned artifacts against each other and against the Solidity sketch,
   walks every operand in the short and full behavior summaries to confirm it
   references a declared parameter or a known storage slot, audits the

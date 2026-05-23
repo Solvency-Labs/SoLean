@@ -173,7 +173,7 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   and demo output, checks `verifierModelCalibrations`, and verifies the
   full-behavior-summary contains an `execute` phase with the
   expected `lastOpHash` finalWrite and extends the standalone three-phase
-  summary. The report is committed as `tests/golden/AAPQ.source.v4.json`
+  summary. The report is committed as `tests/golden/AAPQ.source.v5.json`
   (reportVersion 4).
 - `scripts/demo_aapq_source.py` is a one-command research demo that runs
   `lake build`, the AA/PQ-focused Python tests, the three artifact smokes,
