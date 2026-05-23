@@ -120,6 +120,89 @@ theorem validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is
         hDirect
     exact ⟨fw, fwa, by rw [hInner]⟩
 
+/--
+EIP-150-aware variant of the gas budget check: the caller forwards only
+`forward6364 gasBudget` to the wrapper, holding back `1/64` for its own
+post-call cleanup. The wrapper must fit within the forwarded amount.
+
+A real-EVM-faithful gas-cost comparison: not against the caller's full
+budget but against what the call frame actually sees after the 63/64
+trim.
+-/
+def EnoughGasAfter6364Forwarding
+    (geenv : EvmGasEnv) (input : AAPQIntegration.IntegratedInput) : Prop :=
+  geenv.gasCost geenv.wrapperAddress
+      (AAPQEvmCall.buildVerifierCalldata input) <=
+    EVM.forward6364 geenv.gasBudget
+
+/--
+`EnoughGasAfter6364Forwarding` is stricter than `EnoughGas`: surviving the
+63/64 trim implies surviving the unrestricted budget check. Useful as a
+"refinement" lemma when reasoning about EIP-150 in terms of the existing
+gas-aware flow.
+-/
+theorem enoughGasAfter6364Forwarding_implies_enoughGas
+    (geenv : EvmGasEnv) (input : AAPQIntegration.IntegratedInput)
+    (h : EnoughGasAfter6364Forwarding geenv input) :
+    EnoughGas geenv input :=
+  Nat.le_trans h (EVM.forward6364_le_self geenv.gasBudget)
+
+/--
+EIP-150-aware gas-aware flow: same shape as
+`validateIntegratedViaEvmCallWithGas`, but the forwarded gas is
+`forward6364 gasBudget`. Returns `outOfGas` when the cost exceeds the
+forwarded amount.
+-/
+def validateIntegratedViaEvmCallWith6364Gas
+    (geenv : EvmGasEnv)
+    (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage : Storage) : GasAwareIntegratedResult :=
+  if geenv.gasCost geenv.wrapperAddress
+      (AAPQEvmCall.buildVerifierCalldata input) <=
+      EVM.forward6364 geenv.gasBudget then
+    .run
+      (AAPQEvmCall.validateIntegratedViaEvmCall geenv.toEvmEnv input
+        wrapperStorage walletStorage)
+  else
+    .outOfGas
+
+/--
+Under EIP-150's 63/64 rule, when the caller has enough gas after
+forwarding, the EIP-150-aware flow is exactly the gas-free EVM-call flow.
+-/
+theorem validateIntegratedViaEvmCallWith6364Gas_eq_under_enoughGas
+    (geenv : EvmGasEnv) (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage : Storage)
+    (h : EnoughGasAfter6364Forwarding geenv input) :
+    validateIntegratedViaEvmCallWith6364Gas geenv input wrapperStorage
+        walletStorage =
+      GasAwareIntegratedResult.run
+        (AAPQEvmCall.validateIntegratedViaEvmCall geenv.toEvmEnv input
+          wrapperStorage walletStorage) := by
+  unfold validateIntegratedViaEvmCallWith6364Gas
+  unfold EnoughGasAfter6364Forwarding at h
+  rw [if_pos h]
+
+/--
+Conservative-collapse theorem: when EIP-150 forwarding is satisfied, the
+EIP-150-aware flow agrees with the existing non-63/64 gas-aware flow.
+The EIP-150 refinement does not change the outcome whenever the caller
+has enough gas-after-forwarding.
+-/
+theorem validateIntegratedViaEvmCallWith6364Gas_eq_unrestricted_under_enoughGas
+    (geenv : EvmGasEnv) (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage : Storage)
+    (h : EnoughGasAfter6364Forwarding geenv input) :
+    validateIntegratedViaEvmCallWith6364Gas geenv input wrapperStorage
+        walletStorage =
+      validateIntegratedViaEvmCallWithGas geenv input wrapperStorage
+        walletStorage := by
+  rw [validateIntegratedViaEvmCallWith6364Gas_eq_under_enoughGas geenv input
+        wrapperStorage walletStorage h]
+  rw [validateIntegratedViaEvmCallWithGas_eq_under_enough_gas geenv input
+        wrapperStorage walletStorage
+        (enoughGasAfter6364Forwarding_implies_enoughGas geenv input h)]
+
 end AAPQEvmCallGas
 end Examples
 end SoLean

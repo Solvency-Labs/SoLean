@@ -144,6 +144,9 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success`
+- `SoLean.Examples.AAPQEvmCallGas.enoughGasAfter6364Forwarding_implies_enoughGas`
+- `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWith6364Gas_eq_under_enoughGas`
+- `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWith6364Gas_eq_unrestricted_under_enoughGas`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation`

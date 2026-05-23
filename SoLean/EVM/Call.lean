@@ -98,6 +98,22 @@ structure EvmGasEnv extends EvmEnv where
   gasBudget : Gas
 
 /--
+EIP-150 63/64 rule: when a contract makes an external call, the EVM caps
+the gas forwarded to the callee at `63/64` of the *available* gas at the
+call site. The remaining `1/64` stays with the caller so it can recover
+from a callee revert.
+
+Computed as `g - g/64` using Nat division. For all `g`, this is at most
+`g` (so the caller has at least `g/64` left after the call) and at most
+`(63/64) * g` (the real EIP-150 forwarding cap).
+-/
+def forward6364 (g : Gas) : Gas := g - g / 64
+
+theorem forward6364_le_self (g : Gas) : forward6364 g <= g := by
+  unfold forward6364
+  exact Nat.sub_le g (g / 64)
+
+/--
 Gas-aware call. Returns `none` when the caller's `gasBudget` is below the
 modeled `gasCost` for the call; otherwise returns `some` of the underlying
 `evmCall` result. The `Option` distinguishes "out of gas" from
