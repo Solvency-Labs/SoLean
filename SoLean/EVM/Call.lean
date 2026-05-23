@@ -12,6 +12,13 @@ structure Address where
 deriving Repr, DecidableEq
 
 /--
+Modeled function selector. Real EVM selectors are the first 4 bytes of
+`keccak256(signature)`; this model uses a full `UInt256` to stay inside
+the existing word size without modeling hashing.
+-/
+abbrev Selector := UInt256
+
+/--
 Modeled calldata as a sequence of `UInt256` words.
 
 This is a deliberate simplification: real EVM calldata is a byte string with

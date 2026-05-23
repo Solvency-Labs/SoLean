@@ -565,6 +565,14 @@ graph is now visible in the Markdown/demo trust-boundary surface:
   full EVM CALL — no gas, no reentrancy, no code resolution, no value
   transfer — but it is the first non-claim from the original AA/PQ list
   that has been brought into scope.
+- `SoLean.Examples.AAPQEvmCall` now uses a selector-prefixed calldata
+  layout. `verifySelector` is the modeled function ID;
+  `parseVerifierCalldata` rejects wrong-selector and wrong-length
+  inputs (`parseVerifierCalldata_rejects_wrong_selector`,
+  `parseVerifierCalldata_rejects_short_calldata`). Third non-claim
+  from the original AA/PQ list (ABI shape) partially brought into
+  scope — wrong-function calldata is rejected by shape before any
+  field is interpreted.
 - `SoLean.Examples.AAPQEvmCallGas` adds a gas dimension on top of the
   EVM-call boundary. `EvmGasEnv` extends `EvmEnv` with `gasCost` and
   `gasBudget`, and `validateIntegratedViaEvmCallWithGas` returns
@@ -594,17 +602,16 @@ accounting, returndata, or ABI calldata structure.
 
 Useful candidate moves, in rough priority order:
 
-1. Add a basic ABI calldata layout: a `Selector` (4-byte function ID) and a
-   structured argument decoder so `parseVerifierCalldata` can distinguish
-   correct from malformed calldata under more than a length check.
-2. Refine the gas model toward EIP-150's 63/64 forwarding rule: when the
-   wallet calls the wrapper, only forward (63/64) * remainingGas, and prove
-   the gas-aware flow still agrees with the canonical when the caller had
-   enough gas-of-gas-after-forwarding.
-3. Bring a tiny reentrancy boundary into scope: model that the wrapper
+1. Bring a tiny reentrancy boundary into scope: model that the wrapper
    itself cannot call back into the wallet via `evmCall` (the simplest
    form is a "no-reentrant-callbacks" assumption on the oracle); prove
    the wallet's nonce slot is preserved across the wrapper call.
+2. Add a Code-Resolution layer: model that `wrapperAddress` actually
+   resolves to a known wrapper program (not arbitrary code) — a named
+   `WrapperCodeResolution` assumption that the oracle's behavior on
+   `wrapperAddress` is bounded by some declared code hash.
+3. Refine the gas model toward EIP-150's 63/64 forwarding rule: when the
+   wallet calls the wrapper, only forward (63/64) * remainingGas.
 4. Keep real PQ cryptography out of scope until at least one of the above
    is done.
 

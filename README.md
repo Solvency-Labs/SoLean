@@ -166,16 +166,17 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   at its Lean program and the equivalence proof linking variants to the
   canonical one.
 - `SoLean.EVM.Call` introduces a first-cut EVM CALL boundary
-  (`Calldata`, `Returndata`, `CallResult`, `Address`, `EvmEnv`, plus
-  `Gas` and `EvmGasEnv`). The call-shaped flow forces explicit
-  calldata serialization and result dispatch and is proved equivalent
-  to the direct composition under a named `WrapperOracleConsistent`
-  assumption. `SoLean.Examples.AAPQEvmCallGas` adds a gas-aware
-  variant with an `EnoughGas` predicate that distinguishes
-  out-of-gas from business-logic revert. Both assumptions are
-  recorded as structured entries in the certificate's
-  `evmCallAssumptions` field. These are the first two
-  previously-out-of-scope non-claims brought into scope; not full EVM
+  (`Calldata`, `Returndata`, `CallResult`, `Address`, `EvmEnv`, `Selector`,
+  plus `Gas` and `EvmGasEnv`). The call-shaped flow forces explicit
+  calldata serialization (with selector dispatch) and result dispatch,
+  and is proved equivalent to the direct composition under a named
+  `WrapperOracleConsistent` assumption.
+  `SoLean.Examples.AAPQEvmCall` uses a selector-prefixed calldata
+  layout and proves `parseVerifierCalldata` rejects wrong-selector and
+  wrong-length inputs. `SoLean.Examples.AAPQEvmCallGas` adds a
+  gas-aware variant with an `EnoughGas` predicate. Three non-claims
+  from the original AA/PQ list — real external calls, gas accounting,
+  and ABI calldata shape — are now partially in scope; not full EVM
   CALL (no per-opcode gas schedule, no reentrancy, no code resolution).
 - An AA/PQ source-shape audit script (`scripts/check_aapq_source.py`) that
   loads the four Lean-owned AA/PQ artifacts, parses the restricted Solidity

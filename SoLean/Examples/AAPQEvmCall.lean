@@ -8,33 +8,47 @@ namespace AAPQEvmCall
 open EVM
 
 /--
+The modeled function selector for `PQVerifierWrapper.verify`.
+
+Real EVM uses the first 4 bytes of `keccak256("verify(uint256,uint256,...)")`;
+here we just pick a distinct `UInt256` constant. The point is that
+`parseVerifierCalldata` checks the selector against this constant before
+accepting any arguments — so calldata addressed to a different function
+selector is rejected by shape.
+-/
+def verifySelector : Selector := UInt256.one
+
+/--
 Serialize the wrapper-side arguments of an `IntegratedInput` into modeled
-calldata. The argument order matches `PQVerifierWrapper.verifyProgram`'s
-parameter list: publicKey, publicKeyLength, message (= opHash), domain,
-signature, signatureLength.
+calldata, prepended by the `verifySelector`. The argument order matches
+`PQVerifierWrapper.verifyProgram`'s parameter list: publicKey,
+publicKeyLength, message (= opHash), domain, signature, signatureLength.
 -/
 def buildVerifierCalldata (input : AAPQIntegration.IntegratedInput) :
     Calldata :=
-  [input.publicKey, input.publicKeyLength, input.opHash, input.domain,
-   input.signature, input.signatureLength]
+  [verifySelector, input.publicKey, input.publicKeyLength, input.opHash,
+   input.domain, input.signature, input.signatureLength]
 
 /--
 Parse a modeled calldata word list back into a `WrapperInput`. Returns
-`none` for any calldata that doesn't have exactly six words in the expected
-order — this is the smallest "well-formed calldata" check the caller can
-make.
+`none` for any calldata whose first word isn't `verifySelector` (wrong
+function) or whose argument count is wrong (malformed payload).
 -/
 def parseVerifierCalldata (calldata : Calldata) :
     Option PQVerifierWrapper.WrapperInput :=
   match calldata with
-  | [publicKey, publicKeyLength, message, domain, signature, signatureLength] =>
-      some
-        { publicKey := publicKey,
-          publicKeyLength := publicKeyLength,
-          message := message,
-          domain := domain,
-          signature := signature,
-          signatureLength := signatureLength }
+  | [selector, publicKey, publicKeyLength, message, domain, signature,
+     signatureLength] =>
+      if selector = verifySelector then
+        some
+          { publicKey := publicKey,
+            publicKeyLength := publicKeyLength,
+            message := message,
+            domain := domain,
+            signature := signature,
+            signatureLength := signatureLength }
+      else
+        none
   | _ => none
 
 /--
@@ -46,6 +60,40 @@ theorem parse_build_verifier_calldata
     parseVerifierCalldata (buildVerifierCalldata input) =
       some (AAPQIntegration.toWrapperInput input) := by
   rfl
+
+/--
+Wrong-selector rejection: a 7-word calldata whose first word isn't
+`verifySelector` is rejected by `parseVerifierCalldata`. The selector check
+is the smallest piece of ABI dispatch discipline this layer enforces.
+-/
+theorem parseVerifierCalldata_rejects_wrong_selector
+    (selector publicKey publicKeyLength message domain signature
+      signatureLength : UInt256)
+    (h : Not (selector = verifySelector)) :
+    parseVerifierCalldata
+        [selector, publicKey, publicKeyLength, message, domain, signature,
+         signatureLength] = none := by
+  simp only [parseVerifierCalldata, h, if_false]
+
+/--
+Wrong-length rejection: a calldata word list with fewer than seven words is
+rejected outright, regardless of any selector word. Shows that the layer
+demands the full ABI shape before any field is interpreted.
+-/
+theorem parseVerifierCalldata_rejects_short_calldata
+    (words : Calldata) (h : words.length < 7) :
+    parseVerifierCalldata words = none := by
+  match words, h with
+  | [], _ => rfl
+  | [_], _ => rfl
+  | [_, _], _ => rfl
+  | [_, _, _], _ => rfl
+  | [_, _, _, _], _ => rfl
+  | [_, _, _, _, _], _ => rfl
+  | [_, _, _, _, _, _], _ => rfl
+  | _ :: _ :: _ :: _ :: _ :: _ :: _ :: _, h =>
+      simp only [List.length_cons] at h
+      omega
 
 /--
 Lift a wrapper `ExecResult` into the modeled `CallResult`.

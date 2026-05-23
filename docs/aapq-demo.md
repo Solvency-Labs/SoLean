@@ -132,6 +132,8 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wrapper_storage`
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wallet_configuration`
 - `SoLean.Examples.AAPQEvmCall.parse_build_verifier_calldata`
+- `SoLean.Examples.AAPQEvmCall.parseVerifierCalldata_rejects_wrong_selector`
+- `SoLean.Examples.AAPQEvmCall.parseVerifierCalldata_rejects_short_calldata`
 - `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated`
 - `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas`
@@ -160,8 +162,9 @@ The demo does not claim:
   no code resolution, no value transfer) — a first calldata/returndata
   CALL boundary exists, conditional on `WrapperOracleConsistent`, with
   a single-cost gas-aware variant conditional on `EnoughGas`
-- full ABI encoding (the calldata model is one word per argument, no
-  selector, no padding)
+- full ABI encoding (the calldata model is one word per argument plus a
+  4-byte function selector modeled as a full word; no per-byte padding,
+  no dynamic types)
 - memory, events, or full revert-data propagation
 - semantic equivalence with any real Yul or `solc` output
 - production readiness for AA wallets

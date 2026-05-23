@@ -293,6 +293,13 @@ Two lifted contract-level claims about the full flow:
   `validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success`
   lifts that to a two-sided equivalence: the call-shaped flow succeeds
   iff the canonical flow succeeds.
+- `SoLean.Examples.AAPQEvmCall` now uses a selector-prefixed calldata
+  layout: `buildVerifierCalldata` prepends a modeled `verifySelector`,
+  and `parseVerifierCalldata` rejects calldata with the wrong selector
+  or insufficient length (`parseVerifierCalldata_rejects_wrong_selector`
+  and `parseVerifierCalldata_rejects_short_calldata`). The smallest
+  piece of ABI dispatch discipline — wrong-function calldata is
+  rejected by shape before any field is interpreted.
 - `SoLean.Examples.AAPQEvmCallGas` adds a first-cut gas dimension on
   top: `EvmGasEnv` carries a per-call `gasCost` function and a
   `gasBudget`; `validateIntegratedViaEvmCallWithGas` returns
