@@ -863,6 +863,8 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQEvmCall.WrapperCodeBound_eq_canonical",
       "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_depends_only_on_wrapper_oracle",
       "SoLean.Examples.AAPQEvmCall.validateIntegratedViaReentrantEvmCall_eq_nonReentrant_under_noCallback",
+      "SoLean.EVM.encode_length",
+      "SoLean.EVM.encode_head_is_selector",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success",

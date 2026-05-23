@@ -19,6 +19,67 @@ the existing word size without modeling hashing.
 abbrev Selector := UInt256
 
 /--
+Structured ABI calldata: a selector, a fixed-shape `head` for
+statically-sized arguments, and a `tail` for dynamically-sized data
+(currently just a word list).
+
+Real Solidity ABI distinguishes static heads (encoded inline) from
+dynamic tails (encoded at offsets named in the head). This model keeps
+both as `List UInt256` — there's no per-byte layout — but the
+separation lets the encoder/decoder distinguish "what the function
+signature requires" from "extra data."
+-/
+structure CalldataABI where
+  selector : Selector
+  head : List UInt256
+  tail : List UInt256
+deriving Repr, DecidableEq
+
+/--
+Encode a `CalldataABI` into the flat `Calldata` word list. Selector
+goes first, then head, then tail. This is the inverse of
+`decodeCalldataABI` for the fixed-head case below.
+-/
+def CalldataABI.encode (c : CalldataABI) : List UInt256 :=
+  c.selector :: (c.head ++ c.tail)
+
+/--
+Decode a flat calldata into a `CalldataABI` with a head of the given
+length and the remainder as tail. Returns `none` if the calldata is
+shorter than `selector + head`.
+-/
+def decodeCalldataABI (headLen : Nat) (calldata : List UInt256) :
+    Option CalldataABI :=
+  match calldata with
+  | [] => none
+  | selector :: rest =>
+      if h : headLen <= rest.length then
+        some
+          { selector := selector,
+            head := rest.take headLen,
+            tail := rest.drop headLen }
+      else
+        none
+
+/--
+Encoded calldata length: selector + head + tail.
+-/
+theorem encode_length (c : CalldataABI) :
+    (CalldataABI.encode c).length = 1 + c.head.length + c.tail.length := by
+  unfold CalldataABI.encode
+  simp [List.length_cons, List.length_append]
+  omega
+
+/--
+Encoded calldata starts with the selector.
+-/
+theorem encode_head_is_selector (c : CalldataABI) :
+    ∃ rest, CalldataABI.encode c = c.selector :: rest := by
+  refine ⟨c.head ++ c.tail, ?_⟩
+  unfold CalldataABI.encode
+  rfl
+
+/--
 Modeled calldata as a sequence of `UInt256` words.
 
 This is a deliberate simplification: real EVM calldata is a byte string with
