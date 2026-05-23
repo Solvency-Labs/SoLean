@@ -508,16 +508,19 @@ shared modeling vocabulary across Counter and AA/PQ.
 
 Useful candidate moves, in rough priority order:
 
-1. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
+1. Prove `validateAndExecute_replay_rejected`: after a successful
+   validateAndExecute, re-running on the post-state (finalWrapper,
+   finalWallet) cannot succeed. The first call advanced the wallet
+   nonce; the lastOpHash write is on a different slot, so the nonce
+   in the replay wallet storage is still the post-advance value, and
+   the validation's nonce check fails.
+2. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
    of `AAPQSource` into a shared `SoLean.Source.Shape` module and use it from
    the Counter source artifact too, reducing per-case-study duplication.
-2. Apply the AAPQSource pattern to a non-claim: an external-call shim
+3. Apply the AAPQSource pattern to a non-claim: an external-call shim
    (verified low-level call between wallet and wrapper), or replacing the
    abstract verifier oracle with a more concrete (still non-cryptographic)
    modeled scheme.
-3. Add a Lean-side proof of `validateAndExecute` no-bypass over the full
-   flow (lift `noBypass_implies_verifier_accepted` to the full flow:
-   successful validateAndExecute ⇒ verifier accepted the tuple).
 4. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 

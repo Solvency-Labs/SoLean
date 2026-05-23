@@ -97,6 +97,8 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQSource.BehaviorReflection.executePhase_reflects_executeUserOp`
 - `SoLean.Examples.AAPQSource.BehaviorReflection.integratedFullBehaviorSummary_reflects_validateAndExecuteFlow`
 - `SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateAndExecute_eq_validateAndExecute`
+- `SoLean.Examples.AAPQIntegration.validateAndExecute_implies_verifier_accepted`
+- `SoLean.Examples.AAPQIntegration.validateAndExecute_records_authorized_opHash`
 
 ## Non-Claims
 

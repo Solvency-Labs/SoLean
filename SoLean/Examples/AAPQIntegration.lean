@@ -554,6 +554,57 @@ theorem validateAndExecute_success_records_opHash
       simp only [validateAndExecute_step, hValidate] at h
       cases h
 
+/--
+Successful `validateAndExecute` implies the abstract verifier accepted the
+exact modeled `(publicKey, opHash, domain, signature)` tuple. Lifts
+`noBypass_implies_verifier_accepted` to the full validate-then-execute flow.
+-/
+theorem validateAndExecute_implies_verifier_accepted
+    (env : Env) (input : IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateAndExecute env input wrapperStorage walletStorage =
+        IntegratedFullResult.success finalWrapper finalWallet) :
+    env.verifier input.publicKey input.opHash input.domain input.signature =
+      true := by
+  obtain ⟨postWallet, hValidate⟩ :=
+    validateAndExecute_success_implies_validateIntegrated_success
+      env input wrapperStorage walletStorage finalWrapper finalWallet h
+  exact
+    noBypass_implies_verifier_accepted
+      env input wrapperStorage walletStorage finalWrapper postWallet hValidate
+
+/--
+After a successful `validateAndExecute`, the wallet's `lastOpHashSlot` records
+an *authenticated* `opHash` — both equal to `input.opHash` and accepted by
+the abstract verifier under the wallet's stored `keyCommitment`. An external
+observer reading `lastOpHashSlot` learns that the recorded value was
+authorized by `Env.verifier` for the wallet's committed key.
+-/
+theorem validateAndExecute_records_authorized_opHash
+    (env : Env) (input : IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateAndExecute env input wrapperStorage walletStorage =
+        IntegratedFullResult.success finalWrapper finalWallet) :
+    finalWallet.read AAWallet.lastOpHashSlot = input.opHash ∧
+      env.verifier
+          (walletStorage.read AAWallet.keyCommitmentSlot)
+          input.opHash
+          input.domain
+          input.signature = true := by
+  refine ⟨?_, ?_⟩
+  · exact
+      validateAndExecute_success_records_opHash
+        env input wrapperStorage walletStorage finalWrapper finalWallet h
+  · obtain ⟨postWallet, hValidate⟩ :=
+      validateAndExecute_success_implies_validateIntegrated_success
+        env input wrapperStorage walletStorage finalWrapper finalWallet h
+    exact
+      (validateIntegrated_success_properties
+          env wrapperStorage walletStorage finalWrapper postWallet input
+          hValidate).2.2.2.2
+
 end AAPQIntegration
 end Examples
 end SoLean

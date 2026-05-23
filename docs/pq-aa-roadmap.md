@@ -229,6 +229,16 @@ post-validation wallet storage. The two gate theorems
 integrated execute write requires satisfying every wrapper, key-match,
 and wallet validation guard.
 
+Two lifted contract-level claims about the full flow:
+
+- `validateAndExecute_implies_verifier_accepted`: successful
+  validateAndExecute forces abstract verifier acceptance.
+- `validateAndExecute_records_authorized_opHash`: after success,
+  the wallet's lastOpHashSlot equals input.opHash AND that opHash
+  was verifier-accepted under the wallet's stored keyCommitment.
+  External observers reading lastOpHashSlot learn the recorded value
+  was authorized.
+
 This is the first target that should feel like a serious Ethereum research demo.
 
 ## Phase 4: Bridge To Real Solidity And solc
