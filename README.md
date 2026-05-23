@@ -99,9 +99,12 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   `key_separation_under_oracle_assumption` (`VerifierKeySeparation`).
   Also models integrated execution gating via `validateAndExecute`
   (validateIntegrated then `AAWallet.executeUserOp` on the post-validation
-  wallet storage) with two gate theorems:
-  `validateAndExecute_success_implies_validateIntegrated_success` and
-  `validateAndExecute_success_records_opHash`.
+  wallet storage) with gate theorems:
+  `validateAndExecute_success_implies_validateIntegrated_success`,
+  `validateAndExecute_success_records_opHash`, and the contrapositive
+  companion `validateAndExecute_reverts_iff_validateIntegrated_reverts`
+  (the modeled execute side-effect happens exactly when the underlying
+  integrated validation accepts, and reverts propagate unchanged).
 - An `AAPQSource` Solidity-shaped source description of the two-contract
   layout with instantiation theorems back to the proved wallet, wrapper, and
   integrated programs, plus Lean-owned `source-json`,

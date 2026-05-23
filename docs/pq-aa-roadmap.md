@@ -265,6 +265,13 @@ Two lifted contract-level claims about the full flow:
   wallet nonce; the execute step writes to a different slot, so the
   replay storage retains the post-advance nonce and the validation's
   nonce check fails.
+- `validateAndExecute_reverts_when_validateIntegrated_reverts` and
+  the iff form `validateAndExecute_reverts_iff_validateIntegrated_
+  reverts` are the contrapositive companions to the success-side
+  gate theorems: validateAndExecute reverts with failure F exactly
+  when the underlying validateIntegrated reverts with the same F.
+  The execute step (`.assign` over `.const`) cannot itself revert,
+  so the only source of revert is the integrated validation.
 
 The three sibling oracle-assumption theorems are also lifted to the
 full validateAndExecute flow:

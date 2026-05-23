@@ -757,6 +757,8 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQIntegration.validateAndExecute_domain_separation_under_oracle_assumption",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_signature_non_malleability_under_oracle_assumption",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_key_separation_under_oracle_assumption",
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_reverts_when_validateIntegrated_reverts",
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_reverts_iff_validateIntegrated_reverts",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation",

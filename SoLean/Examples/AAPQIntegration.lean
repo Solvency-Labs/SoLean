@@ -908,6 +908,56 @@ theorem validateAndExecute_key_separation_under_oracle_assumption
       wrapperStorage2 walletStorage2 finalWrapper2 postWallet2
       hOpHash hDomain hSignature hValidate1 hValidate2
 
+/--
+Contrapositive gate theorem: when `validateIntegrated` reverts,
+`validateAndExecute` reverts with the same `Failure` value. The execute step
+is `.assign lastOpHashSlot (.const op.opHash)`, which cannot itself revert
+(constants always evaluate), so the only way `validateAndExecute` reverts is
+if validation reverts first — and the failure propagates unchanged.
+-/
+theorem validateAndExecute_reverts_when_validateIntegrated_reverts
+    (env : Env) (input : IntegratedInput)
+    (wrapperStorage walletStorage : Storage) (failure : Failure)
+    (h :
+      validateIntegrated env input wrapperStorage walletStorage =
+        IntegratedResult.revert failure) :
+    validateAndExecute env input wrapperStorage walletStorage =
+      IntegratedFullResult.revert failure := by
+  simp only [validateAndExecute_step, h]
+
+/--
+Two-sided gate characterization: `validateAndExecute` reverts if and only if
+`validateIntegrated` reverts (with the same `Failure`). Together with
+`validateAndExecute_success_implies_validateIntegrated_success`, this fully
+characterizes when the modeled execute side-effect happens: exactly when the
+underlying integrated validation accepts.
+-/
+theorem validateAndExecute_reverts_iff_validateIntegrated_reverts
+    (env : Env) (input : IntegratedInput)
+    (wrapperStorage walletStorage : Storage) (failure : Failure) :
+    validateAndExecute env input wrapperStorage walletStorage =
+        IntegratedFullResult.revert failure ↔
+      validateIntegrated env input wrapperStorage walletStorage =
+        IntegratedResult.revert failure := by
+  refine ⟨?_, ?_⟩
+  · intro hFull
+    cases hValidate :
+        validateIntegrated env input wrapperStorage walletStorage with
+    | success postWrapper postWallet =>
+        simp only [validateAndExecute_step, hValidate, executeUserOp_step]
+          at hFull
+        cases hFull
+    | revert failure' =>
+        have hValidateAndExec := validateAndExecute_reverts_when_validateIntegrated_reverts
+          env input wrapperStorage walletStorage failure' hValidate
+        rw [hValidateAndExec] at hFull
+        injection hFull with hFailure
+        subst hFailure
+        rfl
+  · exact
+      validateAndExecute_reverts_when_validateIntegrated_reverts
+        env input wrapperStorage walletStorage failure
+
 end AAPQIntegration
 end Examples
 end SoLean

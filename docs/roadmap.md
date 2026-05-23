@@ -539,26 +539,37 @@ graph is now visible in the Markdown/demo trust-boundary surface:
   `parametricVerifierCalibration`), and the Python audit's
   `CALIBRATION_KINDS` set is the single source of truth for accepted
   kinds.
+- `validateAndExecute_reverts_iff_validateIntegrated_reverts` (and the
+  forward `..._when_...` form) are the contrapositive companions to the
+  existing success-side gate theorems. They state that the modeled execute
+  side-effect happens exactly when the integrated validation accepts; revert
+  failures propagate unchanged through the execute composition.
+
+Explicit non-claim — *no concrete `DerivedSignatureModel` instance is
+provided in `UInt256`*. By pigeon-hole, no total function `UInt256³ →
+UInt256` can be injective in all three arguments (cardinality `2^768` vs
+`2^256`), so the parametric model documents the shape a useful verifier
+relation must have but cannot be inhabited by a concrete `UInt256`
+derivation. A concrete witness would require either restricting to a
+finite sub-domain or moving to a richer codomain (e.g., tuples).
 
 The next best qualitative task is:
 
 ```text
-Either provide a concrete instance of DerivedSignatureModel proven over a
-small UInt256-level derivation, or move beyond verifier-model calibration to
-strengthen the AA flow itself (e.g., a multi-call integration).
+Strengthen the wallet-storage isolation story or extend the source-shape
+pipeline to a second integration variant.
 ```
 
 Useful candidate moves, in rough priority order:
 
-1. Provide a concrete `DerivedSignatureModel` instance — even a trivial one
-   — and prove its injectivity hypotheses. The current parametric
-   calibration documents the *shape* but ships no witness in `UInt256`.
-   A trivial witness would close that gap.
-2. Add a "no-execute-without-validation" Lean theorem at the integrated
-   level that states the contrapositive of the gate: `validateIntegrated`
-   reverts ⇒ no `validateAndExecute` writes to `lastOpHashSlot` (the slot
-   value is unchanged). This is a small follow-on to the existing
-   `validateAndExecute_success_*` theorems.
+1. Add a "wallet-storage isolation" theorem: a successful `validateAndExecute`
+   only writes to `lastOpHashSlot` and `nonceSlot`; all other wallet slots
+   (`keyCommitmentSlot`, `domainSlot`, `entryPointSlot`) are unchanged.
+   This formalizes the implicit assumption that the integrated flow doesn't
+   silently touch wallet configuration.
+2. Extend the source-shape pipeline to cover the `callVerifierWrapperViaCall`
+   variant as a second integration option in the certificate, alongside the
+   existing direct composition.
 3. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 
