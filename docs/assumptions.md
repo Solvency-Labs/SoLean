@@ -69,12 +69,14 @@ results.
   wrapper models.
 - The integration model treats the wallet and wrapper as separate
   contract/storage boundaries.
+- `AAPQIntegration.callVerifierWrapper` is a focused external-call shim that
+  executes the wrapper model on wrapper storage and is proved equivalent to the
+  previous direct integrated composition.
 - Successful integrated validation proves wrapper checks, wallet checks, key
   agreement between wrapper input and wallet storage, and abstract verifier
   acceptance of the shared `(publicKey, opHash, domain, signature)` tuple.
-- This does not model a real external call from wallet to wrapper, ABI
-  encoding, calldata, memory, gas, reentrancy, or account-abstraction protocol
-  machinery.
+- This does not model EVM `CALL`/`STATICCALL`, ABI encoding, returndata,
+  calldata, memory, gas, reentrancy, or account-abstraction protocol machinery.
 
 ## Solidity And Yul
 

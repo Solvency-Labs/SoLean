@@ -64,6 +64,62 @@ def validateIntegrated
       | .revert failure => .revert failure
   | .revert failure => .revert failure
 
+/--
+Focused external-call shim from the wallet/integration boundary to the verifier
+wrapper.
+
+This is not EVM `CALL` or `STATICCALL`: it models only the current contract
+logic boundary by running the wrapper program on wrapper storage and returning
+the same `ExecResult`.
+-/
+def callVerifierWrapper
+    (env : Env)
+    (input : IntegratedInput)
+    (wrapperStorage : Storage) : ExecResult :=
+  exec env (PQVerifierWrapper.verifyProgram (toWrapperInput input)) wrapperStorage
+
+theorem callVerifierWrapper_eq_verifyProgram
+    (env : Env)
+    (input : IntegratedInput)
+    (wrapperStorage : Storage) :
+    callVerifierWrapper env input wrapperStorage =
+      exec env (PQVerifierWrapper.verifyProgram (toWrapperInput input))
+        wrapperStorage := rfl
+
+theorem callVerifierWrapper_success_properties
+    (env : Env)
+    (input : IntegratedInput)
+    (wrapperStorage finalWrapperStorage : Storage)
+    (h :
+      callVerifierWrapper env input wrapperStorage =
+        ExecResult.success finalWrapperStorage) :
+    PQVerifierWrapper.VerificationPost
+      (toWrapperInput input)
+      env
+      wrapperStorage
+      finalWrapperStorage :=
+  PQVerifierWrapper.verify_success_properties
+    env wrapperStorage finalWrapperStorage (toWrapperInput input) h
+
+def validateIntegratedViaCall
+    (env : Env)
+    (input : IntegratedInput)
+    (wrapperStorage walletStorage : Storage) : IntegratedResult :=
+  match callVerifierWrapper env input wrapperStorage with
+  | .success finalWrapperStorage =>
+      match exec env (walletProgram input) walletStorage with
+      | .success finalWalletStorage =>
+          .success finalWrapperStorage finalWalletStorage
+      | .revert failure => .revert failure
+  | .revert failure => .revert failure
+
+theorem validateIntegratedViaCall_eq_validateIntegrated
+    (env : Env)
+    (input : IntegratedInput)
+    (wrapperStorage walletStorage : Storage) :
+    validateIntegratedViaCall env input wrapperStorage walletStorage =
+      validateIntegrated env input wrapperStorage walletStorage := rfl
+
 def IntegratedPost
     (input : IntegratedInput)
     (env : Env)
@@ -205,6 +261,29 @@ theorem validateIntegrated_success_properties
           simp [validateIntegrated, hWrapper, hWallet] at h
   | revert failure =>
       simp [validateIntegrated, hWrapper] at h
+
+theorem validateIntegratedViaCall_success_properties
+    (env : Env)
+    (wrapperStorage walletStorage finalWrapperStorage finalWalletStorage :
+      Storage)
+    (input : IntegratedInput)
+    (h :
+      validateIntegratedViaCall env input wrapperStorage walletStorage =
+        IntegratedResult.success finalWrapperStorage finalWalletStorage) :
+    IntegratedPost
+      input
+      env
+      wrapperStorage
+      walletStorage
+      finalWrapperStorage
+      finalWalletStorage := by
+  exact
+    validateIntegrated_success_properties
+      env wrapperStorage walletStorage finalWrapperStorage finalWalletStorage
+      input
+      (by
+        rw [← validateIntegratedViaCall_eq_validateIntegrated]
+        exact h)
 
 /--
 Successful integrated validation implies the abstract verifier accepted the
@@ -482,6 +561,26 @@ def validateAndExecute
       | .success finalWallet => .success postWrapper finalWallet
       | .revert failure => .revert failure
   | .revert failure => .revert failure
+
+def validateAndExecuteViaCall
+    (env : Env)
+    (input : IntegratedInput)
+    (wrapperStorage walletStorage : Storage) : IntegratedFullResult :=
+  match validateIntegratedViaCall env input wrapperStorage walletStorage with
+  | .success postWrapper postWallet =>
+      match exec env (AAWallet.executeUserOp (toUserOp input)) postWallet with
+      | .success finalWallet => .success postWrapper finalWallet
+      | .revert failure => .revert failure
+  | .revert failure => .revert failure
+
+theorem validateAndExecuteViaCall_eq_validateAndExecute
+    (env : Env)
+    (input : IntegratedInput)
+    (wrapperStorage walletStorage : Storage) :
+    validateAndExecuteViaCall env input wrapperStorage walletStorage =
+      validateAndExecute env input wrapperStorage walletStorage := by
+  rw [validateAndExecuteViaCall, validateAndExecute,
+    validateIntegratedViaCall_eq_validateIntegrated]
 
 private theorem validateAndExecute_step
     (env : Env) (input : IntegratedInput)

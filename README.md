@@ -133,6 +133,11 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   equivalence: composing the three reflected phases under any environment
   and storage produces the exact same `IntegratedResult` as
   `AAPQIntegration.validateIntegrated`.
+- `AAPQIntegration.callVerifierWrapper` is a focused external-call shim:
+  successful shim calls imply the wrapper proof obligations, and
+  `validateIntegratedViaCall`/`validateAndExecuteViaCall` are proved equal to
+  the existing integrated flows. This is not EVM `CALL` or `STATICCALL`
+  semantics.
 - A strategic PQ/account-abstraction roadmap for the next serious case study.
 - Solidity examples in `examples/`, including a hand-written
   `AAPQIntegration.sol` sketch matching the Lean AA/PQ source shape as a
@@ -231,6 +236,7 @@ still a restricted Solidity subset rather than an EVM semantics.
 │   ├── counter-demo.md
 │   ├── counter-yul.md
 │   ├── counter.md
+│   ├── external-call-shim.md
 │   ├── pq-aa-roadmap.md
 │   ├── roadmap.md
 │   ├── simple-vault.md

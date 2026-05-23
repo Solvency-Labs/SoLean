@@ -143,6 +143,9 @@ Current v0:
 
 - `SoLean.Examples.AAPQIntegration` composes the wallet and wrapper validation
   models as separate storage boundaries.
+- `AAPQIntegration.callVerifierWrapper` gives the integration an explicit
+  external-call shim boundary and proves the shim is behaviorally equivalent to
+  the existing direct composition. It is not EVM `CALL` or `STATICCALL`.
 - Lean proves that successful integrated validation implies wrapper checks,
   wallet checks, key agreement, and abstract verifier acceptance of the shared
   `(publicKey, opHash, domain, signature)` tuple.
@@ -175,8 +178,8 @@ Current v0:
   and walks every operand in the behavior summary's structured
   `Condition`/`ValueExpression` shape to confirm it references a declared
   parameter or a known storage slot.
-- External-call semantics, ABI/calldata, and real PQ cryptography remain out of
-  scope.
+- Real external-call semantics, ABI/calldata, and real PQ cryptography remain
+  out of scope.
 
 Candidate properties:
 

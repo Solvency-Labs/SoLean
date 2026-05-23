@@ -134,6 +134,10 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   execution-result equality: composing the reflected phases under any
   `Env` and `Storage` produces the same `IntegratedResult` as
   `AAPQIntegration.validateIntegrated`.
+- `AAPQIntegration.callVerifierWrapper` makes the wallet-to-wrapper boundary
+  explicit as a focused external-call shim. The shim is proved equivalent to
+  the direct wrapper execution used by the integrated flow; this is not EVM
+  `CALL` or `STATICCALL` semantics.
 - A restricted Yul semantics exists in Lean for the Counter-shaped subset.
 - A hand-written restricted Yul Counter program refines successful SoLean
   Counter executions.
@@ -490,8 +494,9 @@ Definition of done:
 ## Current Highest-Value Next Step
 
 The previous next steps ("move AA/PQ integration from pure Lean model to a
-Solidity-shaped source model" and "generalize the shared modeling vocabulary
-across Counter and AA/PQ") have landed as v0s:
+Solidity-shaped source model", "generalize the shared modeling vocabulary
+across Counter and AA/PQ", and "add a modeled external-call shim") have landed
+as v0s:
 
 - `SoLean.Examples.AAPQSource` defines the two-contract source shape and proves
   `walletSource_instantiates_to_existing_model`,
@@ -504,23 +509,23 @@ across Counter and AA/PQ") have landed as v0s:
   the source shape; it is not parsed or compared to Lean.
 - `SoLean.Source.Shape` now owns the shared Solidity-shaped source metadata
   vocabulary, and both Counter and AA/PQ artifacts use it.
+- `AAPQIntegration.callVerifierWrapper` and the `ViaCall` variants make the
+  wallet-wrapper boundary explicit while staying below real EVM call semantics.
 
 The next best qualitative task is:
 
 ```text
-Add a modeled external-call shim between wallet and verifier wrapper.
+Promote cryptoAssumptions into a directed support graph.
 ```
 
 Useful candidate moves, in rough priority order:
 
-1. Apply the AAPQSource pattern to a non-claim: an external-call shim
-   (verified low-level call between wallet and wrapper), or replacing the
-   abstract verifier oracle with a more concrete (still non-cryptographic)
-   modeled scheme.
-2. Promote `cryptoAssumptions` from a flat list to a directed graph of
+1. Promote `cryptoAssumptions` from a flat list to a directed graph of
    assumption-to-theorem-to-flow edges (which assumption supports which
    theorem at which composition layer), so the audit can render a fuller
    trust-boundary tree rather than a flat list.
+2. Replace the abstract verifier oracle with a more concrete
+   non-cryptographic modeled scheme only if it clarifies the contract boundary.
 3. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 

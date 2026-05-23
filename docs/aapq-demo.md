@@ -75,7 +75,11 @@ Trust Boundaries section):
 
 - `SoLean.Examples.AAWallet.validate_success_properties`
 - `SoLean.Examples.PQVerifierWrapper.verify_success_properties`
+- `SoLean.Examples.AAPQIntegration.callVerifierWrapper_eq_verifyProgram`
+- `SoLean.Examples.AAPQIntegration.callVerifierWrapper_success_properties`
 - `SoLean.Examples.AAPQIntegration.validateIntegrated_success_properties`
+- `SoLean.Examples.AAPQIntegration.validateIntegratedViaCall_eq_validateIntegrated`
+- `SoLean.Examples.AAPQIntegration.validateIntegratedViaCall_success_properties`
 - `SoLean.Examples.AAPQSource.walletSource_instantiates_to_existing_model`
 - `SoLean.Examples.AAPQSource.wrapperSource_instantiates_to_existing_model`
 - `SoLean.Examples.AAPQSource.integratedSource_instantiates_to_existing_model`
@@ -93,6 +97,7 @@ Trust Boundaries section):
 - `SoLean.Examples.AAWallet.fullFlow_success_implies_validate_success`
 - `SoLean.Examples.AAWallet.fullFlow_success_records_opHash`
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_success_implies_validateIntegrated_success`
+- `SoLean.Examples.AAPQIntegration.validateAndExecuteViaCall_eq_validateAndExecute`
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_success_records_opHash`
 - `SoLean.Examples.AAPQSource.BehaviorReflection.executePhase_reflects_executeUserOp`
 - `SoLean.Examples.AAPQSource.BehaviorReflection.integratedFullBehaviorSummary_reflects_validateAndExecuteFlow`
