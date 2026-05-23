@@ -292,10 +292,19 @@ Two lifted contract-level claims about the full flow:
   the success path, and
   `validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success`
   lifts that to a two-sided equivalence: the call-shaped flow succeeds
-  iff the canonical flow succeeds. This is *not* full EVM CALL — no
-  gas, no reentrancy, no code resolution — but it is the first time
-  the AA/PQ pipeline genuinely crosses a calldata boundary instead of
-  pretending the wrapper is a direct subroutine.
+  iff the canonical flow succeeds.
+- `SoLean.Examples.AAPQEvmCallGas` adds a first-cut gas dimension on
+  top: `EvmGasEnv` carries a per-call `gasCost` function and a
+  `gasBudget`; `validateIntegratedViaEvmCallWithGas` returns
+  `outOfGas` when the budget is below cost and otherwise delegates to
+  the gas-free flow. Under the named `EnoughGas` assumption the
+  gas-aware flow reduces to the gas-free one (and the success-iff
+  equivalence lifts), and under `Not (EnoughGas)` the flow returns
+  `outOfGas` regardless of input semantics. This is not full EVM gas
+  accounting — no per-opcode schedule, no calldata word/byte costs,
+  no refunds, no EIP-150 63/64 rule — but it is the second non-claim
+  from the original AA/PQ list to be brought into scope after EVM
+  CALL itself.
 
 The three sibling oracle-assumption theorems are also lifted to the
 full validateAndExecute flow:

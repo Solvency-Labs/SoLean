@@ -134,6 +134,9 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQEvmCall.parse_build_verifier_calldata`
 - `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated`
 - `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success`
+- `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas`
+- `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient`
+- `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation`
@@ -153,9 +156,10 @@ The demo does not claim:
 
 - verified Solidity parsing
 - verified PQ cryptographic security
-- full EVM CALL semantics (no gas accounting, no reentrancy, no code
-  resolution, no value transfer) — a first calldata/returndata CALL
-  boundary exists but is conditional on `WrapperOracleConsistent`
+- full EVM CALL semantics (no per-opcode gas schedule, no reentrancy,
+  no code resolution, no value transfer) — a first calldata/returndata
+  CALL boundary exists, conditional on `WrapperOracleConsistent`, with
+  a single-cost gas-aware variant conditional on `EnoughGas`
 - full ABI encoding (the calldata model is one word per argument, no
   selector, no padding)
 - memory, events, or full revert-data propagation

@@ -565,6 +565,16 @@ graph is now visible in the Markdown/demo trust-boundary surface:
   full EVM CALL — no gas, no reentrancy, no code resolution, no value
   transfer — but it is the first non-claim from the original AA/PQ list
   that has been brought into scope.
+- `SoLean.Examples.AAPQEvmCallGas` adds a gas dimension on top of the
+  EVM-call boundary. `EvmGasEnv` extends `EvmEnv` with `gasCost` and
+  `gasBudget`, and `validateIntegratedViaEvmCallWithGas` returns
+  `outOfGas` when the budget is below cost. Three theorems
+  characterize the gas-aware variant: it reduces to the gas-free flow
+  under `EnoughGas`, it returns `outOfGas` under `Not EnoughGas`, and
+  its success-iff equivalence with the canonical flow lifts through
+  the gas reduction. Not full EVM gas accounting — single per-call
+  cost vs. budget — but it makes "did the caller forward enough gas?"
+  a Lean-checkable question.
 
 Explicit non-claim — *no concrete `DerivedSignatureModel` instance is
 provided in `UInt256`*. By pigeon-hole, no total function `UInt256³ →
@@ -584,17 +594,17 @@ accounting, returndata, or ABI calldata structure.
 
 Useful candidate moves, in rough priority order:
 
-1. Extend `SoLean.EVM.Call` with a returndata-carrying revert path: lift the
-   wrapper's `Failure` into structured `Returndata`, prove the revert path
-   of the via-EVM-call flow matches the canonical flow, and add a contrapositive
-   gate theorem (call boundary reverts iff direct flow reverts).
-2. Add a basic ABI calldata layout: a `Selector` (4-byte function ID) and a
+1. Add a basic ABI calldata layout: a `Selector` (4-byte function ID) and a
    structured argument decoder so `parseVerifierCalldata` can distinguish
    correct from malformed calldata under more than a length check.
-3. Bring gas accounting into scope as a separate non-claim: add a `Gas`
-   counter to `EvmEnv`, decrement on `evmCall`, and model out-of-gas as a
-   distinct revert kind. The first proof would show that under
-   "enough gas" the call-shaped flow still agrees with the canonical.
+2. Refine the gas model toward EIP-150's 63/64 forwarding rule: when the
+   wallet calls the wrapper, only forward (63/64) * remainingGas, and prove
+   the gas-aware flow still agrees with the canonical when the caller had
+   enough gas-of-gas-after-forwarding.
+3. Bring a tiny reentrancy boundary into scope: model that the wrapper
+   itself cannot call back into the wallet via `evmCall` (the simplest
+   form is a "no-reentrant-callbacks" assumption on the oracle); prove
+   the wallet's nonce slot is preserved across the wrapper call.
 4. Keep real PQ cryptography out of scope until at least one of the above
    is done.
 

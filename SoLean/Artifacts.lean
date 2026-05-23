@@ -688,7 +688,7 @@ def aapqSourceCertificate : Json :=
     ("assumptions", stringsJson [
       "Two-contract boundary: AAWallet and PQVerifierWrapper have separate storage.",
       "Verifier is an abstract oracle in Env; no PQ cryptographic semantics modeled.",
-      "Wallet-wrapper integration includes a focused external-call shim over a shared input tuple, and a calldata/returndata EVM-call boundary parameterized by an EvmEnv oracle. Neither is real EVM CALL/STATICCALL with gas, reentrancy, or code resolution.",
+      "Wallet-wrapper integration includes a focused external-call shim, a calldata/returndata EVM-call boundary parameterized by an EvmEnv oracle, and a gas-aware variant over EvmGasEnv. None of these are real EVM CALL/STATICCALL with full gas accounting, reentrancy, or code resolution. The gas model is a single per-call cost vs. budget check; real EVM has per-opcode costs, calldata word/byte costs, refunds, and the EIP-150 63/64 forwarding rule.",
       "Wallet key commitment must equal the wrapper public key for the integrated path to be authorized.",
       "ABI decoding, calldata, memory, gas, events, and reentrancy are not modeled.",
       "Named, non-cryptographic crypto assumptions on Env.verifier are listed under cryptoAssumptions.",
@@ -769,6 +769,18 @@ def aapqSourceCertificate : Json :=
           "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated",
           "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success"
         ])
+      ],
+      .obj [
+        ("leanReference", .str
+          "SoLean.Examples.AAPQEvmCallGas.EnoughGas"),
+        ("name", .str "EnoughGas"),
+        ("statement", .str
+          "The caller's gasBudget is at least the modeled gasCost of the wrapper call. Below this budget the gas-aware flow returns OutOfGas; above it, the gas-aware flow agrees with the gas-free call-shaped flow."),
+        ("theoremReferences", stringsJson [
+          "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
+          "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
+          "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success"
+        ])
       ]
     ]),
     ("kind", .str "aapqSourceCertificate"),
@@ -818,6 +830,9 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQEvmCall.parse_build_verifier_calldata",
       "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated",
       "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success",
+      "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
+      "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
+      "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation",

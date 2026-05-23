@@ -60,5 +60,46 @@ structure EvmEnv where
   evmCall : Address -> Calldata -> Storage -> CallResult
   wrapperAddress : Address
 
+/--
+Modeled EVM gas counter. A natural number; one "unit" per modeled
+operation. This is not the real EVM gas schedule (no per-opcode costs,
+no calldata word/byte costs, no refunds) — it is the smallest counter
+needed to make "did the caller forward enough gas?" a meaningful
+question.
+-/
+abbrev Gas := Nat
+
+/--
+An `EvmEnv` extended with a per-call gas-cost function and a gas budget
+held by the caller.
+
+`gasCost addr calldata` is the modeled gas consumed by a call to `addr`
+with the given calldata. `gasBudget` is the gas the caller has available
+to forward. A call with `gasBudget < gasCost ...` is considered out-of-gas
+and produces no `CallResult`.
+
+This is the data layer for "did the caller forward enough gas?" — the
+consistency assumptions and the gas-aware call function live in modules
+that consume this type.
+-/
+structure EvmGasEnv extends EvmEnv where
+  gasCost : Address -> Calldata -> Gas
+  gasBudget : Gas
+
+/--
+Gas-aware call. Returns `none` when the caller's `gasBudget` is below the
+modeled `gasCost` for the call; otherwise returns `some` of the underlying
+`evmCall` result. The `Option` distinguishes "out of gas" from
+"called, then reverted" — two structurally different failure modes that
+real auditors care about.
+-/
+def EvmGasEnv.callWithGas
+    (geenv : EvmGasEnv) (addr : Address) (calldata : Calldata)
+    (storage : Storage) : Option CallResult :=
+  if geenv.gasCost addr calldata <= geenv.gasBudget then
+    some (geenv.evmCall addr calldata storage)
+  else
+    none
+
 end EVM
 end SoLean
