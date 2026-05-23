@@ -231,7 +231,7 @@ structure CryptoAssumption where
   name : String
   leanReference : String
   statement : String
-  theoremReference : String
+  theoremReferences : List String
 deriving Repr, DecidableEq
 
 def integratedCryptoAssumptions : List CryptoAssumption :=
@@ -241,22 +241,28 @@ def integratedCryptoAssumptions : List CryptoAssumption :=
         "SoLean.Examples.AAPQIntegration.VerifierDomainSeparation",
       statement :=
         "Env.verifier accepts each (publicKey, message, signature) under at most one domain.",
-      theoremReference :=
-        "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption" },
+      theoremReferences := [
+        "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption",
+        "SoLean.Examples.AAPQIntegration.validateAndExecute_domain_separation_under_oracle_assumption"
+      ] },
     { name := "VerifierSignatureBinding",
       leanReference :=
         "SoLean.Examples.AAPQIntegration.VerifierSignatureBinding",
       statement :=
         "Env.verifier accepts each (publicKey, message, domain) under at most one signature.",
-      theoremReference :=
-        "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption" },
+      theoremReferences := [
+        "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption",
+        "SoLean.Examples.AAPQIntegration.validateAndExecute_signature_non_malleability_under_oracle_assumption"
+      ] },
     { name := "VerifierKeySeparation",
       leanReference :=
         "SoLean.Examples.AAPQIntegration.VerifierKeySeparation",
       statement :=
         "Env.verifier accepts each (message, domain, signature) under at most one publicKey.",
-      theoremReference :=
-        "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption" }
+      theoremReferences := [
+        "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption",
+        "SoLean.Examples.AAPQIntegration.validateAndExecute_key_separation_under_oracle_assumption"
+      ] }
   ]
 
 /--
@@ -272,28 +278,34 @@ inductive OracleAssumptionId where
   | keySeparation
 deriving Repr, DecidableEq
 
-def OracleAssumptionId.theoremReference : OracleAssumptionId -> String
-  | .domainSeparation =>
-      "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption"
-  | .signatureBinding =>
-      "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption"
-  | .keySeparation =>
-      "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption"
+def OracleAssumptionId.theoremReferences : OracleAssumptionId -> List String
+  | .domainSeparation => [
+      "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption",
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_domain_separation_under_oracle_assumption"
+    ]
+  | .signatureBinding => [
+      "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption",
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_signature_non_malleability_under_oracle_assumption"
+    ]
+  | .keySeparation => [
+      "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption",
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_key_separation_under_oracle_assumption"
+    ]
 
 def allOracleAssumptions : List OracleAssumptionId :=
   [.domainSeparation, .signatureBinding, .keySeparation]
 
 /--
-Lean-side coverage theorem: the `theoremReference`s in
-`integratedCryptoAssumptions` are exactly the references for every
+Lean-side coverage theorem: the `theoremReferences` listed by
+`integratedCryptoAssumptions` are exactly the references named by every
 `OracleAssumptionId`. Adding a new `*_under_oracle_assumption` safety
-theorem without extending both `OracleAssumptionId` and
+theorem without extending both `OracleAssumptionId.theoremReferences` and
 `integratedCryptoAssumptions` breaks this `rfl`, giving build-time drift
 detection that mirrors the Python audit at the proof layer.
 -/
 theorem integratedCryptoAssumptions_cover_all_oracle_theorems :
-    integratedCryptoAssumptions.map CryptoAssumption.theoremReference =
-      allOracleAssumptions.map OracleAssumptionId.theoremReference := by
+    integratedCryptoAssumptions.map CryptoAssumption.theoremReferences =
+      allOracleAssumptions.map OracleAssumptionId.theoremReferences := by
   rfl
 
 /--

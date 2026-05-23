@@ -578,7 +578,7 @@ def cryptoAssumptionJson
     ("leanReference", .str entry.leanReference),
     ("name", .str entry.name),
     ("statement", .str entry.statement),
-    ("theoremReference", .str entry.theoremReference)
+    ("theoremReferences", stringsJson entry.theoremReferences)
   ]
 
 end AAPQBehavior
@@ -648,7 +648,10 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQIntegration.validateAndExecute_implies_verifier_accepted",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_records_authorized_opHash",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_success_structure",
-      "SoLean.Examples.AAPQIntegration.validateAndExecute_replay_rejected"
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_replay_rejected",
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_domain_separation_under_oracle_assumption",
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_signature_non_malleability_under_oracle_assumption",
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_key_separation_under_oracle_assumption"
     ]),
     ("unsupported", stringsJson [
       "real PQ cryptographic security",

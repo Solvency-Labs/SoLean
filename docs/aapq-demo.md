@@ -101,6 +101,9 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_records_authorized_opHash`
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_success_structure`
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_replay_rejected`
+- `SoLean.Examples.AAPQIntegration.validateAndExecute_domain_separation_under_oracle_assumption`
+- `SoLean.Examples.AAPQIntegration.validateAndExecute_signature_non_malleability_under_oracle_assumption`
+- `SoLean.Examples.AAPQIntegration.validateAndExecute_key_separation_under_oracle_assumption`
 
 ## Non-Claims
 

@@ -705,6 +705,110 @@ theorem validateAndExecute_replay_rejected
   rw [hAdvanced] at hSameNat
   exact absurd hSameNat (Nat.ne_of_lt (Nat.lt_succ_self _))
 
+/--
+Lift of `domain_separation_under_oracle_assumption` to the full
+validateAndExecute flow. Two successful `validateAndExecute` calls sharing
+`publicKey`, `opHash`, and `signature` must share `domain`, under
+`VerifierDomainSeparation`.
+-/
+theorem validateAndExecute_domain_separation_under_oracle_assumption
+    (env : Env)
+    (hSep : VerifierDomainSeparation env)
+    (input1 input2 : IntegratedInput)
+    (wrapperStorage1 walletStorage1 finalWrapper1 finalWallet1 : Storage)
+    (wrapperStorage2 walletStorage2 finalWrapper2 finalWallet2 : Storage)
+    (hKey : input1.publicKey = input2.publicKey)
+    (hOpHash : input1.opHash = input2.opHash)
+    (hSignature : input1.signature = input2.signature)
+    (h1 :
+      validateAndExecute env input1 wrapperStorage1 walletStorage1 =
+        IntegratedFullResult.success finalWrapper1 finalWallet1)
+    (h2 :
+      validateAndExecute env input2 wrapperStorage2 walletStorage2 =
+        IntegratedFullResult.success finalWrapper2 finalWallet2) :
+    input1.domain = input2.domain := by
+  obtain ⟨postWallet1, hValidate1⟩ :=
+    validateAndExecute_success_implies_validateIntegrated_success
+      env input1 wrapperStorage1 walletStorage1
+      finalWrapper1 finalWallet1 h1
+  obtain ⟨postWallet2, hValidate2⟩ :=
+    validateAndExecute_success_implies_validateIntegrated_success
+      env input2 wrapperStorage2 walletStorage2
+      finalWrapper2 finalWallet2 h2
+  exact
+    domain_separation_under_oracle_assumption env hSep input1 input2
+      wrapperStorage1 walletStorage1 finalWrapper1 postWallet1
+      wrapperStorage2 walletStorage2 finalWrapper2 postWallet2
+      hKey hOpHash hSignature hValidate1 hValidate2
+
+/--
+Lift of `signature_non_malleability_under_oracle_assumption` to the full
+validateAndExecute flow.
+-/
+theorem validateAndExecute_signature_non_malleability_under_oracle_assumption
+    (env : Env)
+    (hBind : VerifierSignatureBinding env)
+    (input1 input2 : IntegratedInput)
+    (wrapperStorage1 walletStorage1 finalWrapper1 finalWallet1 : Storage)
+    (wrapperStorage2 walletStorage2 finalWrapper2 finalWallet2 : Storage)
+    (hKey : input1.publicKey = input2.publicKey)
+    (hOpHash : input1.opHash = input2.opHash)
+    (hDomain : input1.domain = input2.domain)
+    (h1 :
+      validateAndExecute env input1 wrapperStorage1 walletStorage1 =
+        IntegratedFullResult.success finalWrapper1 finalWallet1)
+    (h2 :
+      validateAndExecute env input2 wrapperStorage2 walletStorage2 =
+        IntegratedFullResult.success finalWrapper2 finalWallet2) :
+    input1.signature = input2.signature := by
+  obtain ⟨postWallet1, hValidate1⟩ :=
+    validateAndExecute_success_implies_validateIntegrated_success
+      env input1 wrapperStorage1 walletStorage1
+      finalWrapper1 finalWallet1 h1
+  obtain ⟨postWallet2, hValidate2⟩ :=
+    validateAndExecute_success_implies_validateIntegrated_success
+      env input2 wrapperStorage2 walletStorage2
+      finalWrapper2 finalWallet2 h2
+  exact
+    signature_non_malleability_under_oracle_assumption env hBind input1 input2
+      wrapperStorage1 walletStorage1 finalWrapper1 postWallet1
+      wrapperStorage2 walletStorage2 finalWrapper2 postWallet2
+      hKey hOpHash hDomain hValidate1 hValidate2
+
+/--
+Lift of `key_separation_under_oracle_assumption` to the full
+validateAndExecute flow.
+-/
+theorem validateAndExecute_key_separation_under_oracle_assumption
+    (env : Env)
+    (hKeySep : VerifierKeySeparation env)
+    (input1 input2 : IntegratedInput)
+    (wrapperStorage1 walletStorage1 finalWrapper1 finalWallet1 : Storage)
+    (wrapperStorage2 walletStorage2 finalWrapper2 finalWallet2 : Storage)
+    (hOpHash : input1.opHash = input2.opHash)
+    (hDomain : input1.domain = input2.domain)
+    (hSignature : input1.signature = input2.signature)
+    (h1 :
+      validateAndExecute env input1 wrapperStorage1 walletStorage1 =
+        IntegratedFullResult.success finalWrapper1 finalWallet1)
+    (h2 :
+      validateAndExecute env input2 wrapperStorage2 walletStorage2 =
+        IntegratedFullResult.success finalWrapper2 finalWallet2) :
+    input1.publicKey = input2.publicKey := by
+  obtain ⟨postWallet1, hValidate1⟩ :=
+    validateAndExecute_success_implies_validateIntegrated_success
+      env input1 wrapperStorage1 walletStorage1
+      finalWrapper1 finalWallet1 h1
+  obtain ⟨postWallet2, hValidate2⟩ :=
+    validateAndExecute_success_implies_validateIntegrated_success
+      env input2 wrapperStorage2 walletStorage2
+      finalWrapper2 finalWallet2 h2
+  exact
+    key_separation_under_oracle_assumption env hKeySep input1 input2
+      wrapperStorage1 walletStorage1 finalWrapper1 postWallet1
+      wrapperStorage2 walletStorage2 finalWrapper2 postWallet2
+      hOpHash hDomain hSignature hValidate1 hValidate2
+
 end AAPQIntegration
 end Examples
 end SoLean

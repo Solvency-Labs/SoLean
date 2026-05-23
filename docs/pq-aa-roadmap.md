@@ -244,6 +244,19 @@ Two lifted contract-level claims about the full flow:
   replay storage retains the post-advance nonce and the validation's
   nonce check fails.
 
+The three sibling oracle-assumption theorems are also lifted to the
+full validateAndExecute flow:
+
+- `validateAndExecute_domain_separation_under_oracle_assumption`
+- `validateAndExecute_signature_non_malleability_under_oracle_assumption`
+- `validateAndExecute_key_separation_under_oracle_assumption`
+
+Each derives from the integrated-level theorem via the
+`validateAndExecute_success_implies_validateIntegrated_success` gate.
+The certificate's `cryptoAssumptions` field now lists both the
+integrated and lifted theorem for each named predicate via a
+`theoremReferences : List String` field (was singular before).
+
 This is the first target that should feel like a serious Ethereum research demo.
 
 ## Phase 4: Bridge To Real Solidity And solc

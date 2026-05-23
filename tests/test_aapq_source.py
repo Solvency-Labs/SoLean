@@ -392,7 +392,7 @@ class CryptoAssumptionAuditTests(unittest.TestCase):
     def test_link_to_proofs_fails_when_assumption_dangles(self) -> None:
         certificate = {
             "cryptoAssumptions": [
-                {"name": "X", "theoremReference": "Module.theorem_x"},
+                {"name": "X", "theoremReferences": ["Module.theorem_x"]},
             ],
             "proofReferences": ["Module.other_theorem"],
         }
@@ -402,12 +402,29 @@ class CryptoAssumptionAuditTests(unittest.TestCase):
 
     def test_link_to_proofs_fails_on_missing_theorem_reference(self) -> None:
         certificate = {
-            "cryptoAssumptions": [{"name": "X"}],
+            "cryptoAssumptions": [{"name": "X", "theoremReferences": []}],
             "proofReferences": [],
         }
         result = check_crypto_assumptions_link_to_proofs(certificate)
         self.assertEqual(result["status"], "failed")
-        self.assertIn("missing theoremReference", result["message"])
+        self.assertIn("missing theoremReferences", result["message"])
+
+    def test_link_to_proofs_fails_on_partial_coverage(self) -> None:
+        certificate = {
+            "cryptoAssumptions": [
+                {
+                    "name": "X",
+                    "theoremReferences": [
+                        "Module.theorem_a",
+                        "Module.theorem_missing",
+                    ],
+                },
+            ],
+            "proofReferences": ["Module.theorem_a"],
+        }
+        result = check_crypto_assumptions_link_to_proofs(certificate)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("Module.theorem_missing", result["message"])
 
     def test_link_to_proofs_fails_when_section_absent(self) -> None:
         result = check_crypto_assumptions_link_to_proofs({})
@@ -426,7 +443,7 @@ class CryptoAssumptionAuditTests(unittest.TestCase):
                 "Module.unrelated_theorem",
             ],
             "cryptoAssumptions": [
-                {"theoremReference": "Module.foo_under_oracle_assumption"},
+                {"theoremReferences": ["Module.foo_under_oracle_assumption"]},
             ],
         }
         result = check_under_oracle_assumption_theorems_covered(certificate)

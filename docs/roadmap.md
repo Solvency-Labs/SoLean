@@ -511,15 +511,14 @@ Useful candidate moves, in rough priority order:
 1. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
    of `AAPQSource` into a shared `SoLean.Source.Shape` module and use it from
    the Counter source artifact too, reducing per-case-study duplication.
-2. Lift the three sibling crypto-assumption theorems
-   (`domain_separation`, `signature_non_malleability`, `key_separation`)
-   to the full validateAndExecute flow, mirroring how
-   `noBypass_implies_verifier_accepted` was lifted to
-   `validateAndExecute_implies_verifier_accepted`.
-3. Apply the AAPQSource pattern to a non-claim: an external-call shim
+2. Apply the AAPQSource pattern to a non-claim: an external-call shim
    (verified low-level call between wallet and wrapper), or replacing the
    abstract verifier oracle with a more concrete (still non-cryptographic)
    modeled scheme.
+3. Promote `cryptoAssumptions` from a flat list to a directed graph of
+   assumption-to-theorem-to-flow edges (which assumption supports which
+   theorem at which composition layer), so the audit can render a fuller
+   trust-boundary tree rather than a flat list.
 4. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 
