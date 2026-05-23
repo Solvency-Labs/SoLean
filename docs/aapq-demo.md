@@ -138,6 +138,7 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success`
 - `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_wallet_step_isolated_from_oracle`
 - `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_preserves_wallet_configuration`
+- `SoLean.Examples.AAPQEvmCall.WrapperCodeBound_eq_canonical`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success`

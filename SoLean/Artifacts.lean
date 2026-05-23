@@ -774,6 +774,16 @@ def aapqSourceCertificate : Json :=
       ],
       .obj [
         ("leanReference", .str
+          "SoLean.Examples.AAPQEvmCall.WrapperCodeBound"),
+        ("name", .str "WrapperCodeBound"),
+        ("statement", .str
+          "The modeled code deployed at wrapperAddress matches canonicalWrapperCodeHash. Real EVM uses EXTCODEHASH/keccak256; here the hash is a placeholder identifier. Pairs with WrapperOracleConsistent: code identity at the address + oracle behavior consistent with the wrapper semantics."),
+        ("theoremReferences", stringsJson [
+          "SoLean.Examples.AAPQEvmCall.WrapperCodeBound_eq_canonical"
+        ])
+      ],
+      .obj [
+        ("leanReference", .str
           "SoLean.Examples.AAPQEvmCallGas.EnoughGas"),
         ("name", .str "EnoughGas"),
         ("statement", .str
@@ -836,6 +846,7 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success",
       "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_wallet_step_isolated_from_oracle",
       "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_preserves_wallet_configuration",
+      "SoLean.Examples.AAPQEvmCall.WrapperCodeBound_eq_canonical",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success",

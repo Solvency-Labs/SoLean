@@ -130,6 +130,41 @@ def WrapperOracleConsistent (eenv : EvmEnv) : Prop :=
           wrapperStorage)
 
 /--
+The canonical code hash that an honest wrapper deployment should declare.
+
+This is a *placeholder* constant — there is no `keccak256` here yet — but
+it gives `WrapperCodeBound` something concrete to compare against. Two
+`EvmEnv`s declaring the same `wrapperCodeHash` are claiming to deploy the
+same wrapper code at `wrapperAddress`.
+-/
+def canonicalWrapperCodeHash : UInt256 := UInt256.one
+
+/--
+Code-resolution assumption: the modeled code deployed at `wrapperAddress`
+matches the canonical wrapper code hash. This is the named EVM-layer
+companion to `WrapperOracleConsistent` — together they say "the address
+hosts the right code, and the oracle's behavior at that address matches
+the wrapper semantics."
+
+Standalone, this is a single equation. Its value is enumeration in the
+certificate: future Lane A milestones (address discrimination, reentrant
+callbacks) extend the `EvmEnv` interface, and listing `WrapperCodeBound`
+explicitly forces the certificate to acknowledge the deployed-code
+assumption rather than leaving it implicit.
+-/
+def WrapperCodeBound (eenv : EvmEnv) : Prop :=
+  eenv.wrapperCodeHash = canonicalWrapperCodeHash
+
+/--
+Trivial consequence: under `WrapperCodeBound`, the env's
+`wrapperCodeHash` equals `canonicalWrapperCodeHash` by definition. The
+content is the named assumption, not the math.
+-/
+theorem WrapperCodeBound_eq_canonical
+    (eenv : EvmEnv) (h : WrapperCodeBound eenv) :
+    eenv.wrapperCodeHash = canonicalWrapperCodeHash := h
+
+/--
 Result of `validateIntegratedViaEvmCall`. Mirrors `IntegratedResult` but
 carries an explicit `oracleFailure` failure kind for the case where the
 EVM call returns malformed returndata — the wallet has to dispatch on the

@@ -66,6 +66,10 @@ structure EvmEnv where
   base : Env
   evmCall : Address -> Calldata -> Storage -> CallResult
   wrapperAddress : Address
+  /-- Modeled code hash deployed at `wrapperAddress`. Real EVM
+      `EXTCODEHASH` returns `keccak256(code)`; this is a placeholder
+      identifier that downstream assumptions can reference. -/
+  wrapperCodeHash : UInt256
 
 /--
 Modeled EVM gas counter. A natural number; one "unit" per modeled
