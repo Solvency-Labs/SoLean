@@ -165,19 +165,24 @@ Current v0:
   environment and storage produces the same `IntegratedResult` as
   `AAPQIntegration.validateIntegrated`.
 - `SoLean/AAPQArtifactsMain.lean` emits `source-json`,
-  `source-certificate-json`, and `behavior-summary-json` artifacts naming the
-  assumptions, contracts, integration flow, ordered phase guards (wrapper,
-  key-match, wallet), final wallet-nonce write, theorem references, and
-  explicit out-of-scope items. The source certificate embeds the behavior
-  summary as `expectedBehaviorSummary`.
+  `source-certificate-json`, `behavior-summary-json`, and
+  `full-behavior-summary-json` artifacts naming the assumptions, contracts,
+  integration flow, ordered phase guards (wrapper, key-match, wallet,
+  execute), final wallet writes, theorem references, and explicit
+  out-of-scope items. The source certificate embeds the short behavior
+  summary as `expectedBehaviorSummary`, records named verifier-oracle
+  assumptions in `cryptoAssumptions`, and records a directed
+  `cryptoAssumptionGraph` from each assumption to each theorem it supports.
 - `examples/AAPQIntegration.sol` is a Solidity fixture matching the source
   shape, kept as documentation only.
 - `scripts/check_aapq_source.py` produces a deterministic source-shape audit
-  report (`tests/golden/AAPQ.source.v2.json`) cross-checking the three
+  report (`tests/golden/AAPQ.source.v4.json`) cross-checking the four
   Lean-owned artifacts against each other and against the Solidity sketch,
-  and walks every operand in the behavior summary's structured
-  `Condition`/`ValueExpression` shape to confirm it references a declared
-  parameter or a known storage slot.
+  walks every operand in the short and full behavior summaries to confirm it
+  references a declared parameter or a known storage slot, audits the
+  `cryptoAssumptions`/`proofReferences` loop, audits the directed
+  `cryptoAssumptionGraph`, and checks that the full behavior summary extends
+  the short summary with the execute phase.
 - Real external-call semantics, ABI/calldata, and real PQ cryptography remain
   out of scope.
 
@@ -261,6 +266,10 @@ Each derives from the integrated-level theorem via the
 The certificate's `cryptoAssumptions` field now lists both the
 integrated and lifted theorem for each named predicate via a
 `theoremReferences : List String` field (was singular before).
+`integratedCryptoAssumptionSupportGraph_covers_assumption_references`
+pins the directed support graph to those theorem references by `rfl`, so a
+new oracle-assumption theorem cannot be represented as an untracked floating
+string without breaking the Lean build or the Python audit.
 
 This is the first target that should feel like a serious Ethereum research demo.
 
@@ -303,5 +312,6 @@ the same authenticated tuple, under an abstract verifier-oracle assumption.
 The Solidity-shaped source description in AAPQSource v0 is pinned by
 instantiation theorems to those exact proved programs, and is exported as a
 deterministic source artifact, source certificate, and ordered behavior
-summary with theorem references and out-of-scope items.
+summary with theorem references, a directed crypto-assumption support graph,
+and out-of-scope items.
 ```

@@ -101,6 +101,11 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   `integratedCryptoAssumptions` are exactly the references named by the
   enumerated `OracleAssumptionId`. Build-time drift detection that mirrors
   the Python audit at the proof layer.
+- `SoLean.Examples.AAPQSource.integratedCryptoAssumptionSupportGraph_covers_assumption_references`
+  is a Lean-side support-graph theorem: every named verifier-oracle assumption
+  edge in the exported `cryptoAssumptionGraph` is exactly one
+  assumption-to-theorem reference from `integratedCryptoAssumptions`, with
+  explicit flow/layer labels for the audit boundary.
 - `AAPQIntegration` carries five integrated-flow safety theorems:
   `noBypass_implies_verifier_accepted`, `replay_rejected_after_success`,
   `domain_separation_under_oracle_assumption`,
@@ -163,8 +168,9 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   the behavior summary's structured operands (both short and full) to
   verify each one references a declared parameter or a real storage slot
   in source-json, audits the bidirectional link between `cryptoAssumptions`
-  and the `*_under_oracle_assumption` theorems in `proofReferences`, and
-  verifies the full-behavior-summary contains an `execute` phase with the
+  and the `*_under_oracle_assumption` theorems in `proofReferences`, audits
+  the directed `cryptoAssumptionGraph`, and verifies the
+  full-behavior-summary contains an `execute` phase with the
   expected `lastOpHash` finalWrite and extends the standalone three-phase
   summary. The report is committed as `tests/golden/AAPQ.source.v4.json`
   (reportVersion 4).
@@ -495,8 +501,8 @@ Definition of done:
 
 The previous next steps ("move AA/PQ integration from pure Lean model to a
 Solidity-shaped source model", "generalize the shared modeling vocabulary
-across Counter and AA/PQ", and "add a modeled external-call shim") have landed
-as v0s:
+across Counter and AA/PQ", "add a modeled external-call shim", and "promote
+crypto assumptions into a directed support graph") have landed as v0s:
 
 - `SoLean.Examples.AAPQSource` defines the two-contract source shape and proves
   `walletSource_instantiates_to_existing_model`,
@@ -511,19 +517,21 @@ as v0s:
   vocabulary, and both Counter and AA/PQ artifacts use it.
 - `AAPQIntegration.callVerifierWrapper` and the `ViaCall` variants make the
   wallet-wrapper boundary explicit while staying below real EVM call semantics.
+- `integratedCryptoAssumptionSupportGraph_covers_assumption_references` and
+  the Python audit make the oracle-assumption support boundary graph-shaped
+  instead of a flat list of strings.
 
 The next best qualitative task is:
 
 ```text
-Promote cryptoAssumptions into a directed support graph.
+Render and use the directed support graph as the AA/PQ trust-boundary view.
 ```
 
 Useful candidate moves, in rough priority order:
 
-1. Promote `cryptoAssumptions` from a flat list to a directed graph of
-   assumption-to-theorem-to-flow edges (which assumption supports which
-   theorem at which composition layer), so the audit can render a fuller
-   trust-boundary tree rather than a flat list.
+1. Render `cryptoAssumptionGraph` in the Markdown source-shape report and
+   demo trust-boundary summary, grouped by assumption and flow/layer, so the
+   research demo exposes the graph instead of hiding it in JSON.
 2. Replace the abstract verifier oracle with a more concrete
    non-cryptographic modeled scheme only if it clarifies the contract boundary.
 3. Keep real Solidity parsing, Yul emission, external calls, and real PQ

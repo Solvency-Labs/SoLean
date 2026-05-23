@@ -472,6 +472,74 @@ def check_under_oracle_assumption_theorems_covered(
     )
 
 
+def check_crypto_assumption_support_graph(
+    certificate: dict[str, Any],
+) -> dict[str, str]:
+    assumptions = certificate.get("cryptoAssumptions", [])
+    graph = certificate.get("cryptoAssumptionGraph", [])
+    if not graph:
+        return failed(
+            "cryptoAssumption support graph present",
+            "Lean-owned certificate",
+            "Certificate has no cryptoAssumptionGraph array.",
+        )
+
+    proofs = set(certificate.get("proofReferences", []))
+    refs_by_assumption: dict[str, list[str]] = {
+        entry.get("name", ""): entry.get("theoremReferences", [])
+        for entry in assumptions
+    }
+    expected_pairs = [
+        (entry.get("name", ""), ref)
+        for entry in assumptions
+        for ref in entry.get("theoremReferences", [])
+    ]
+
+    graph_pairs: list[tuple[str, str]] = []
+    problems: list[str] = []
+    for edge in graph:
+        assumption = edge.get("assumption", "")
+        theorem = edge.get("theoremReference", "")
+        graph_pairs.append((assumption, theorem))
+        if edge.get("edge") != "assumptionSupportsTheorem":
+            problems.append(
+                f"{assumption or '?'} -> {theorem or '?'}: unsupported edge kind"
+            )
+        if not edge.get("flow") or not edge.get("layer"):
+            problems.append(
+                f"{assumption or '?'} -> {theorem or '?'}: missing flow/layer"
+            )
+        if assumption not in refs_by_assumption:
+            problems.append(f"{assumption or '?'}: unknown assumption")
+            continue
+        if theorem not in refs_by_assumption[assumption]:
+            problems.append(
+                f"{assumption}: theoremReference {theorem or '?'} not listed on assumption"
+            )
+        if theorem not in proofs:
+            problems.append(
+                f"{assumption}: theoremReference {theorem or '?'} not in proofReferences"
+            )
+
+    if graph_pairs != expected_pairs:
+        problems.append(
+            "graph edges do not exactly match cryptoAssumptions theoremReferences"
+        )
+
+    if problems:
+        return failed(
+            "cryptoAssumption support graph resolves",
+            "Lean-owned certificate",
+            "Broken graph: " + "; ".join(problems),
+        )
+
+    return passed(
+        "cryptoAssumption support graph resolves",
+        "Lean-owned certificate",
+        f"All {len(graph_pairs)} support edges resolve in stable order.",
+    )
+
+
 EXECUTE_PHASE_NAME = "execute"
 EXECUTE_FINAL_WRITE_NAME = "lastOpHash"
 EXECUTE_FINAL_WRITE_SLOT = 4
@@ -595,6 +663,7 @@ def run_audit(
     checks.append(check_behavior_summary_operand_scope(behavior_summary, source))
     checks.append(check_crypto_assumptions_link_to_proofs(certificate))
     checks.append(check_under_oracle_assumption_theorems_covered(certificate))
+    checks.append(check_crypto_assumption_support_graph(certificate))
     checks.append(
         check_full_behavior_summary_includes_execute_phase(full_behavior_summary)
     )

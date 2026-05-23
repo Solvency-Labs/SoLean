@@ -67,7 +67,8 @@ programs by instantiation theorems, and the structured behavior summary is
 pinned to the proved programs by a Lean reflection that reconstructs each
 phase by rfl. The Python audit cross-checks the Lean-owned source,
 certificate, and behavior summary against each other and against the Solidity
-sketch.
+sketch, including the directed `cryptoAssumptionGraph` from each named
+verifier-oracle assumption to each theorem it supports.
 ```
 
 Lean theorems backing the boundary (exact names also surface in the demo's
@@ -94,6 +95,7 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption`
 - `SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption`
 - `SoLean.Examples.AAPQSource.integratedCryptoAssumptions_cover_all_oracle_theorems`
+- `SoLean.Examples.AAPQSource.integratedCryptoAssumptionSupportGraph_covers_assumption_references`
 - `SoLean.Examples.AAWallet.fullFlow_success_implies_validate_success`
 - `SoLean.Examples.AAWallet.fullFlow_success_records_opHash`
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_success_implies_validateIntegrated_success`

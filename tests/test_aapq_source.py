@@ -12,6 +12,7 @@ from scripts.check_aapq_source import (
     artifact_hash,
     check_behavior_summary_operand_scope,
     check_certificate_embeds_behavior_summary,
+    check_crypto_assumption_support_graph,
     check_crypto_assumptions_link_to_proofs,
     check_full_behavior_summary_extends_short_summary,
     check_full_behavior_summary_includes_execute_phase,
@@ -458,6 +459,42 @@ class CryptoAssumptionAuditTests(unittest.TestCase):
         }
         result = check_under_oracle_assumption_theorems_covered(certificate)
         self.assertEqual(result["status"], "passed")
+
+    def test_crypto_assumption_support_graph_real(self) -> None:
+        certificate = cached_artifact("source-certificate-json")
+        result = check_crypto_assumption_support_graph(certificate)
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_crypto_assumption_support_graph_fails_when_missing(self) -> None:
+        certificate = {
+            "cryptoAssumptions": [
+                {"name": "X", "theoremReferences": ["Module.theorem_x"]},
+            ],
+            "proofReferences": ["Module.theorem_x"],
+        }
+        result = check_crypto_assumption_support_graph(certificate)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("no cryptoAssumptionGraph", result["message"])
+
+    def test_crypto_assumption_support_graph_fails_on_dangling_edge(self) -> None:
+        certificate = {
+            "cryptoAssumptions": [
+                {"name": "X", "theoremReferences": ["Module.theorem_x"]},
+            ],
+            "cryptoAssumptionGraph": [
+                {
+                    "assumption": "X",
+                    "edge": "assumptionSupportsTheorem",
+                    "flow": "validateIntegrated",
+                    "layer": "integratedValidation",
+                    "theoremReference": "Module.other",
+                }
+            ],
+            "proofReferences": ["Module.theorem_x"],
+        }
+        result = check_crypto_assumption_support_graph(certificate)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("Module.other", result["message"])
 
 
 class FullBehaviorSummaryAuditTests(unittest.TestCase):

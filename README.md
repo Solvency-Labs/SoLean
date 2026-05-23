@@ -121,6 +121,9 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   oracle-assumption safety theorem, by `rfl`. Adding a new
   `*_under_oracle_assumption` without registering it in both lists breaks
   the build.
+- `integratedCryptoAssumptionSupportGraph_covers_assumption_references` pins a
+  directed support graph from each named crypto assumption to each theorem it
+  supports, including flow/layer labels for the audit report.
 - `AAPQSource.BehaviorReflection` reflects that structured DSL into
   `SoLean.Stmt` semantics and proves that each phase of
   `integratedBehaviorSummary` reconstructs the corresponding proved program:
@@ -149,8 +152,9 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   summary, structural scope of every operand in both the short and full
   behavior summaries, the bidirectional link between `cryptoAssumptions`
   entries and their `*_under_oracle_assumption` theorems in
-  `proofReferences`, and that the full summary includes the expected
-  `execute` phase and extends the short summary's first three phases. The
+  `proofReferences`, the directed `cryptoAssumptionGraph`, and that the full
+  summary includes the expected `execute` phase and extends the short
+  summary's first three phases. The
   report has a committed golden fixture at `tests/golden/AAPQ.source.v4.json`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.

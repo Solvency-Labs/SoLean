@@ -75,6 +75,11 @@ results.
 - Successful integrated validation proves wrapper checks, wallet checks, key
   agreement between wrapper input and wallet storage, and abstract verifier
   acceptance of the shared `(publicKey, opHash, domain, signature)` tuple.
+- The source certificate records named verifier-oracle assumptions in
+  `cryptoAssumptions` and a directed `cryptoAssumptionGraph` that links each
+  assumption to each theorem it supports, including the modeled flow/layer.
+  Lean proves this graph exactly covers the theorem references listed by the
+  assumptions; Python audits that every edge resolves to `proofReferences`.
 - This does not model EVM `CALL`/`STATICCALL`, ABI encoding, returndata,
   calldata, memory, gas, reentrancy, or account-abstraction protocol machinery.
 
@@ -138,14 +143,3 @@ results.
 - The Python emitter, Python parser, Solidity source, and real solc output are
   not yet connected to the Lean compiler by a verified translation. Current
   Python tests provide auditable structural alignment for Counter only.
-
-## Account Abstraction And PQ
-
-- No account-abstraction wallet semantics are implemented yet.
-- No PQ verifier-wrapper contracts are modeled yet.
-- Future AA/PQ models should make the verifier assumption explicit, for
-  example: `Verifier(pk, msg, sig) = true` iff the signature is valid under the
-  selected scheme and parameter set.
-- Until a separate verified crypto model exists, SoLean should not claim PQ
-  cryptographic security. It should only claim properties of the contract logic
-  around verifier use, nonce checks, domain binding, and execution gating.

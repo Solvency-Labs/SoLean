@@ -595,6 +595,16 @@ def cryptoAssumptionJson
     ("theoremReferences", stringsJson entry.theoremReferences)
   ]
 
+def cryptoAssumptionSupportEdgeJson
+    (entry : SoLean.Examples.AAPQSource.CryptoAssumptionSupportEdge) : Json :=
+  .obj [
+    ("assumption", .str entry.assumptionName),
+    ("edge", .str "assumptionSupportsTheorem"),
+    ("flow", .str entry.flow),
+    ("layer", .str entry.layer),
+    ("theoremReference", .str entry.theoremReference)
+  ]
+
 end AAPQBehavior
 
 def aapqSourceJson : String :=
@@ -624,6 +634,9 @@ def aapqSourceCertificate : Json :=
     ("cryptoAssumptions", .arr
       (Examples.AAPQSource.integratedCryptoAssumptions.map
         AAPQBehavior.cryptoAssumptionJson)),
+    ("cryptoAssumptionGraph", .arr
+      (Examples.AAPQSource.integratedCryptoAssumptionSupportGraph.map
+        AAPQBehavior.cryptoAssumptionSupportEdgeJson)),
     ("expectedBehaviorSummary",
       AAPQBehavior.summaryJson Examples.AAPQSource.integratedBehaviorSummary),
     ("integration", .obj [
@@ -656,6 +669,7 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption",
       "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption",
       "SoLean.Examples.AAPQSource.integratedCryptoAssumptions_cover_all_oracle_theorems",
+      "SoLean.Examples.AAPQSource.integratedCryptoAssumptionSupportGraph_covers_assumption_references",
       "SoLean.Examples.AAWallet.fullFlow_success_implies_validate_success",
       "SoLean.Examples.AAWallet.fullFlow_success_records_opHash",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_success_implies_validateIntegrated_success",

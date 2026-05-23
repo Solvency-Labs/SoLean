@@ -191,6 +191,13 @@ structure CryptoAssumption where
   theoremReferences : List String
 deriving Repr, DecidableEq
 
+structure CryptoAssumptionSupportEdge where
+  assumptionName : String
+  theoremReference : String
+  flow : String
+  layer : String
+deriving Repr, DecidableEq
+
 def integratedCryptoAssumptions : List CryptoAssumption :=
   [
     { name := "VerifierDomainSeparation",
@@ -263,6 +270,61 @@ detection that mirrors the Python audit at the proof layer.
 theorem integratedCryptoAssumptions_cover_all_oracle_theorems :
     integratedCryptoAssumptions.map CryptoAssumption.theoremReferences =
       allOracleAssumptions.map OracleAssumptionId.theoremReferences := by
+  rfl
+
+def integratedCryptoAssumptionSupportGraph :
+    List CryptoAssumptionSupportEdge :=
+  [
+    { assumptionName := "VerifierDomainSeparation",
+      theoremReference :=
+        "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption",
+      flow := "validateIntegrated",
+      layer := "integratedValidation" },
+    { assumptionName := "VerifierDomainSeparation",
+      theoremReference :=
+        "SoLean.Examples.AAPQIntegration.validateAndExecute_domain_separation_under_oracle_assumption",
+      flow := "validateAndExecute",
+      layer := "integratedExecution" },
+    { assumptionName := "VerifierSignatureBinding",
+      theoremReference :=
+        "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption",
+      flow := "validateIntegrated",
+      layer := "integratedValidation" },
+    { assumptionName := "VerifierSignatureBinding",
+      theoremReference :=
+        "SoLean.Examples.AAPQIntegration.validateAndExecute_signature_non_malleability_under_oracle_assumption",
+      flow := "validateAndExecute",
+      layer := "integratedExecution" },
+    { assumptionName := "VerifierKeySeparation",
+      theoremReference :=
+        "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption",
+      flow := "validateIntegrated",
+      layer := "integratedValidation" },
+    { assumptionName := "VerifierKeySeparation",
+      theoremReference :=
+        "SoLean.Examples.AAPQIntegration.validateAndExecute_key_separation_under_oracle_assumption",
+      flow := "validateAndExecute",
+      layer := "integratedExecution" }
+  ]
+
+def CryptoAssumption.namedTheoremEdges
+    (entry : CryptoAssumption) : List (String × String) :=
+  entry.theoremReferences.map (fun ref => (entry.name, ref))
+
+def CryptoAssumptionSupportEdge.namedTheoremEdge
+    (entry : CryptoAssumptionSupportEdge) : String × String :=
+  (entry.assumptionName, entry.theoremReference)
+
+/--
+Lean-side graph coverage theorem: every theorem reference named by
+`integratedCryptoAssumptions` has exactly one corresponding support-graph edge,
+in the same stable order.
+-/
+theorem integratedCryptoAssumptionSupportGraph_covers_assumption_references :
+    integratedCryptoAssumptionSupportGraph.map
+        CryptoAssumptionSupportEdge.namedTheoremEdge =
+      integratedCryptoAssumptions.flatMap
+        CryptoAssumption.namedTheoremEdges := by
   rfl
 
 /--
