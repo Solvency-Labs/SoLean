@@ -280,6 +280,19 @@ Two lifted contract-level claims about the full flow:
   these to know the integrated flow does not silently mutate
   wrapper state or wallet configuration (`keyCommitmentSlot`,
   `domainSlot`, `entryPointSlot`).
+- `SoLean.EVM.Call` and `SoLean.Examples.AAPQEvmCall` introduce a
+  first call-shaped boundary for the wallet-to-wrapper interaction:
+  modeled `Calldata`/`Returndata`/`CallResult`, an `EvmEnv` carrying
+  an `evmCall` oracle and `wrapperAddress`, and a
+  `validateIntegratedViaEvmCall` flow that builds calldata, invokes
+  the oracle, and dispatches on the result. Under
+  `WrapperOracleConsistent` (a named cross-contract assumption
+  recorded in the certificate's `evmCallAssumptions` field) the
+  call-shaped flow is proved to agree with `validateIntegrated` on
+  the success path. This is *not* full EVM CALL — no gas, no
+  reentrancy, no code resolution — but it is the first time the AA/PQ
+  pipeline genuinely crosses a calldata boundary instead of pretending
+  the wrapper is a direct subroutine.
 
 The three sibling oracle-assumption theorems are also lifted to the
 full validateAndExecute flow:

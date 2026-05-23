@@ -159,10 +159,20 @@ For the current intuition and next steps, see `docs/roadmap.md` and
 - Solidity examples in `examples/`, including a hand-written
   `AAPQIntegration.sol` sketch matching the Lean AA/PQ source shape as a
   documentation fixture (not a parser target).
-- The source certificate surfaces both `validateIntegrated` and the
-  call-shim variant `validateIntegratedViaCall` as `integrationVariants`,
-  each pointing at its Lean program and the equivalence proof linking
-  variants to the canonical one.
+- The source certificate surfaces `validateIntegrated`, the
+  direct-composition call-shim `validateIntegratedViaCall`, and the new
+  `validateIntegratedViaEvmCall` (real EVM CALL boundary with
+  calldata/returndata/CallResult) as `integrationVariants`, each pointing
+  at its Lean program and the equivalence proof linking variants to the
+  canonical one.
+- `SoLean.EVM.Call` introduces a first-cut EVM CALL boundary
+  (`Calldata`, `Returndata`, `CallResult`, `Address`, `EvmEnv`). The
+  call-shaped flow forces explicit calldata serialization and result
+  dispatch and is proved equivalent to the direct composition under a
+  named `WrapperOracleConsistent` assumption recorded in the
+  certificate's `evmCallAssumptions` field. This is the first
+  previously-out-of-scope non-claim brought into scope; it is not full
+  EVM CALL (no gas, no reentrancy, no code resolution).
 - An AA/PQ source-shape audit script (`scripts/check_aapq_source.py`) that
   loads the four Lean-owned AA/PQ artifacts, parses the restricted Solidity
   sketch, and emits a deterministic JSON or Markdown report cross-checking

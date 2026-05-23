@@ -550,6 +550,18 @@ graph is now visible in the Markdown/demo trust-boundary surface:
   unchanged and only touches the wallet's nonce slot and `lastOpHashSlot`.
   Auditors can rely on this to know the integrated flow does not silently
   mutate `keyCommitmentSlot`, `domainSlot`, or `entryPointSlot`.
+- `SoLean.EVM.Call` brings real EVM CALL semantics into scope for the first
+  time. `Calldata`/`Returndata`/`CallResult` and an `EvmEnv` carrying a
+  pluggable `evmCall` oracle let the wallet-to-wrapper boundary be modeled
+  as an actual call (calldata in, distinguishable success/revert
+  returndata out) rather than direct composition.
+  `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated`
+  proves the call-shaped flow agrees with the canonical direct flow on the
+  success path under the named `WrapperOracleConsistent` assumption
+  (surfaced in the certificate's `evmCallAssumptions` field). This is not
+  full EVM CALL — no gas, no reentrancy, no code resolution, no value
+  transfer — but it is the first non-claim from the original AA/PQ list
+  that has been brought into scope.
 
 Explicit non-claim — *no concrete `DerivedSignatureModel` instance is
 provided in `UInt256`*. By pigeon-hole, no total function `UInt256³ →
@@ -562,21 +574,26 @@ finite sub-domain or moving to a richer codomain (e.g., tuples).
 The next best qualitative task is:
 
 ```text
-Strengthen the wallet-storage isolation story or extend the source-shape
-pipeline to a second integration variant.
+Bring more of the original AA/PQ non-claim list into scope — the EVM CALL
+boundary is now a working precedent, so the natural next moves are gas
+accounting, returndata, or ABI calldata structure.
 ```
 
 Useful candidate moves, in rough priority order:
 
-1. Extend the source-shape pipeline to cover the `callVerifierWrapperViaCall`
-   variant as a second integration option in the certificate, alongside the
-   existing direct composition.
-2. Add a Lean-checked structural property that says
-   `executeUserOp.touchedSlots = [lastOpHashSlot]` (the static slot set
-   written by the execute statement), so the isolation reasoning above is
-   derivable from the program shape rather than from per-slot lemmas.
-3. Keep real Solidity parsing, Yul emission, external calls, and real PQ
-   cryptography out of scope until at least one of the above is done.
+1. Extend `SoLean.EVM.Call` with a returndata-carrying revert path: lift the
+   wrapper's `Failure` into structured `Returndata`, prove the revert path
+   of the via-EVM-call flow matches the canonical flow, and add a contrapositive
+   gate theorem (call boundary reverts iff direct flow reverts).
+2. Add a basic ABI calldata layout: a `Selector` (4-byte function ID) and a
+   structured argument decoder so `parseVerifierCalldata` can distinguish
+   correct from malformed calldata under more than a length check.
+3. Bring gas accounting into scope as a separate non-claim: add a `Gas`
+   counter to `EvmEnv`, decrement on `evmCall`, and model out-of-gas as a
+   distinct revert kind. The first proof would show that under
+   "enough gas" the call-shaped flow still agrees with the canonical.
+4. Keep real PQ cryptography out of scope until at least one of the above
+   is done.
 
 ## Updating This Roadmap
 

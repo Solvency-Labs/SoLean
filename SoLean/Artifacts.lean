@@ -688,7 +688,7 @@ def aapqSourceCertificate : Json :=
     ("assumptions", stringsJson [
       "Two-contract boundary: AAWallet and PQVerifierWrapper have separate storage.",
       "Verifier is an abstract oracle in Env; no PQ cryptographic semantics modeled.",
-      "Wallet-wrapper integration includes a focused external-call shim over a shared input tuple, not EVM CALL or STATICCALL semantics.",
+      "Wallet-wrapper integration includes a focused external-call shim over a shared input tuple, and a calldata/returndata EVM-call boundary parameterized by an EvmEnv oracle. Neither is real EVM CALL/STATICCALL with gas, reentrancy, or code resolution.",
       "Wallet key commitment must equal the wrapper public key for the integrated path to be authorized.",
       "ABI decoding, calldata, memory, gas, events, and reentrancy are not modeled.",
       "Named, non-cryptographic crypto assumptions on Env.verifier are listed under cryptoAssumptions.",
@@ -747,6 +747,27 @@ def aapqSourceCertificate : Json :=
         ("flow", .str "validateAndExecute"),
         ("lean", .str "SoLean.Examples.AAPQIntegration.validateAndExecuteViaCall"),
         ("name", .str "validateAndExecuteViaCall")
+      ],
+      .obj [
+        ("canonical", .num 0),
+        ("equivalenceProof", .str
+          "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated"),
+        ("flow", .str "validateIntegrated"),
+        ("lean", .str "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall"),
+        ("name", .str "validateIntegratedViaEvmCall")
+      ]
+    ]),
+    ("evmCallAssumptions", .arr [
+      .obj [
+        ("leanReference", .str
+          "SoLean.Examples.AAPQEvmCall.WrapperOracleConsistent"),
+        ("name", .str "WrapperOracleConsistent"),
+        ("statement", .str
+          "When the wallet calls the wrapper address with the well-formed verifier calldata layout, the modeled EvmEnv.evmCall oracle returns the same CallResult as directly executing PQVerifierWrapper.verifyProgram on wrapper storage."),
+        ("theoremReferences", stringsJson [
+          "SoLean.Examples.AAPQEvmCall.parse_build_verifier_calldata",
+          "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated"
+        ])
       ]
     ]),
     ("kind", .str "aapqSourceCertificate"),
@@ -793,6 +814,8 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQIntegration.validateAndExecute_reverts_iff_validateIntegrated_reverts",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wrapper_storage",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wallet_configuration",
+      "SoLean.Examples.AAPQEvmCall.parse_build_verifier_calldata",
+      "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation",

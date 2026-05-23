@@ -131,6 +131,8 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_reverts_iff_validateIntegrated_reverts`
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wrapper_storage`
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wallet_configuration`
+- `SoLean.Examples.AAPQEvmCall.parse_build_verifier_calldata`
+- `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation`
@@ -150,8 +152,12 @@ The demo does not claim:
 
 - verified Solidity parsing
 - verified PQ cryptographic security
-- verified external-call semantics between wallet and wrapper
-- ABI decoding, calldata, memory, gas, events, or reentrancy semantics
+- full EVM CALL semantics (no gas accounting, no reentrancy, no code
+  resolution, no value transfer) — a first calldata/returndata CALL
+  boundary exists but is conditional on `WrapperOracleConsistent`
+- full ABI encoding (the calldata model is one word per argument, no
+  selector, no padding)
+- memory, events, or full revert-data propagation
 - semantic equivalence with any real Yul or `solc` output
 - production readiness for AA wallets
 
