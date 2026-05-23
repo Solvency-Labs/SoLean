@@ -540,6 +540,69 @@ def check_crypto_assumption_support_graph(
     )
 
 
+def crypto_assumption_support_graph_view(
+    certificate: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Return a stable human-facing view of the certificate support graph."""
+    graph = certificate.get("cryptoAssumptionGraph", [])
+    by_assumption: dict[str, list[dict[str, str]]] = {}
+    for edge in graph:
+        by_assumption.setdefault(edge.get("assumption", ""), []).append(
+            {
+                "flow": edge.get("flow", ""),
+                "layer": edge.get("layer", ""),
+                "theoremReference": edge.get("theoremReference", ""),
+            }
+        )
+
+    view: list[dict[str, Any]] = []
+    for assumption in certificate.get("cryptoAssumptions", []):
+        name = assumption.get("name", "")
+        view.append(
+            {
+                "assumption": name,
+                "leanReference": assumption.get("leanReference", ""),
+                "statement": assumption.get("statement", ""),
+                "supports": by_assumption.get(name, []),
+            }
+        )
+    return view
+
+
+def format_crypto_assumption_graph_markdown(
+    graph_view: list[dict[str, Any]],
+    *,
+    heading: str = "## Crypto Assumption Support Graph",
+) -> str:
+    lines = [heading, ""]
+    if not graph_view:
+        lines.append("_No crypto assumption support graph is present._")
+        lines.append("")
+        return "\n".join(lines)
+
+    for group in graph_view:
+        lines.append(f"- **{group.get('assumption', '?')}**")
+        statement = group.get("statement")
+        if statement:
+            lines.append(f"  - statement: {statement}")
+        lean_ref = group.get("leanReference")
+        if lean_ref:
+            lines.append(f"  - predicate: `{lean_ref}`")
+        supports = group.get("supports", [])
+        if supports:
+            lines.append("  - supports:")
+            for edge in supports:
+                lines.append(
+                    "    - "
+                    f"`{edge.get('flow', '?')}` / `{edge.get('layer', '?')}` -> "
+                    f"`{edge.get('theoremReference', '?')}`"
+                )
+        else:
+            lines.append("  - supports: _none_")
+    lines.append("")
+    return "\n".join(lines)
+
+
 EXECUTE_PHASE_NAME = "execute"
 EXECUTE_FINAL_WRITE_NAME = "lastOpHash"
 EXECUTE_FINAL_WRITE_SLOT = 4
@@ -691,6 +754,9 @@ def run_audit(
             "sourceHash": artifact_hash(source),
         },
         "checks": checks,
+        "cryptoAssumptionSupportGraph": crypto_assumption_support_graph_view(
+            certificate
+        ),
         "limitations": LIMITATIONS,
         "reportVersion": REPORT_VERSION,
         "solidityContracts": sorted(shape.keys()),
@@ -714,6 +780,12 @@ def format_markdown_report(report: dict[str, Any]) -> str:
             f"- [{icon}] **{check.get('name')}** ({check.get('trust')}): "
             f"{check.get('message')}"
         )
+    lines.append("")
+    lines.append(
+        format_crypto_assumption_graph_markdown(
+            report.get("cryptoAssumptionSupportGraph", [])
+        ).rstrip()
+    )
     lines.append("")
     lines.append("## Limitations")
     lines.append("")

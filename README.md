@@ -154,7 +154,8 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   entries and their `*_under_oracle_assumption` theorems in
   `proofReferences`, the directed `cryptoAssumptionGraph`, and that the full
   summary includes the expected `execute` phase and extends the short
-  summary's first three phases. The
+  summary's first three phases. Markdown reports and the demo render that
+  graph as a grouped trust-boundary view. The
   report has a committed golden fixture at `tests/golden/AAPQ.source.v4.json`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.

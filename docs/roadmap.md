@@ -169,7 +169,8 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   verify each one references a declared parameter or a real storage slot
   in source-json, audits the bidirectional link between `cryptoAssumptions`
   and the `*_under_oracle_assumption` theorems in `proofReferences`, audits
-  the directed `cryptoAssumptionGraph`, and verifies the
+  the directed `cryptoAssumptionGraph`, renders that graph in Markdown reports
+  and demo output, and verifies the
   full-behavior-summary contains an `execute` phase with the
   expected `lastOpHash` finalWrite and extends the standalone three-phase
   summary. The report is committed as `tests/golden/AAPQ.source.v4.json`
@@ -502,7 +503,8 @@ Definition of done:
 The previous next steps ("move AA/PQ integration from pure Lean model to a
 Solidity-shaped source model", "generalize the shared modeling vocabulary
 across Counter and AA/PQ", "add a modeled external-call shim", and "promote
-crypto assumptions into a directed support graph") have landed as v0s:
+crypto assumptions into a directed support graph") have landed as v0s, and the
+graph is now visible in the Markdown/demo trust-boundary surface:
 
 - `SoLean.Examples.AAPQSource` defines the two-contract source shape and proves
   `walletSource_instantiates_to_existing_model`,
@@ -520,20 +522,22 @@ crypto assumptions into a directed support graph") have landed as v0s:
 - `integratedCryptoAssumptionSupportGraph_covers_assumption_references` and
   the Python audit make the oracle-assumption support boundary graph-shaped
   instead of a flat list of strings.
+- The source-shape Markdown report and `scripts/demo_aapq_source.py` render the
+  graph grouped by assumption and flow/layer.
 
 The next best qualitative task is:
 
 ```text
-Render and use the directed support graph as the AA/PQ trust-boundary view.
+Replace the abstract verifier oracle with a tiny concrete verifier-model calibration.
 ```
 
 Useful candidate moves, in rough priority order:
 
-1. Render `cryptoAssumptionGraph` in the Markdown source-shape report and
-   demo trust-boundary summary, grouped by assumption and flow/layer, so the
-   research demo exposes the graph instead of hiding it in JSON.
-2. Replace the abstract verifier oracle with a more concrete
-   non-cryptographic modeled scheme only if it clarifies the contract boundary.
+1. Add a deliberately non-cryptographic verifier model, such as a keyed equality
+   or toy digest predicate over bounded `UInt256` fields, and prove it
+   instantiates the existing verifier-oracle assumptions where appropriate.
+2. Use that model only as a calibration step for assumption discharge, not as a
+   PQ cryptographic claim.
 3. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 

@@ -17,8 +17,14 @@ import shutil
 import subprocess
 import sys
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from scripts.check_aapq_source import (
+    crypto_assumption_support_graph_view,
+    format_crypto_assumption_graph_markdown,
+)
 
 
 def lake_command() -> str:
@@ -103,6 +109,15 @@ def print_trust_boundaries(certificate: dict) -> None:
         for item in unsupported:
             print(f"- {item}")
         print()
+
+    graph_view = crypto_assumption_support_graph_view(certificate)
+    if graph_view:
+        print(
+            format_crypto_assumption_graph_markdown(
+                graph_view,
+                heading="Crypto assumption support graph:",
+            )
+        )
 
     proofs = certificate.get("proofReferences", [])
     if proofs:

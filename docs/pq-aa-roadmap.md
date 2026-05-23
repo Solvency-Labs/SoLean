@@ -181,8 +181,9 @@ Current v0:
   walks every operand in the short and full behavior summaries to confirm it
   references a declared parameter or a known storage slot, audits the
   `cryptoAssumptions`/`proofReferences` loop, audits the directed
-  `cryptoAssumptionGraph`, and checks that the full behavior summary extends
-  the short summary with the execute phase.
+  `cryptoAssumptionGraph`, renders that graph in Markdown reports and the demo
+  trust-boundary summary, and checks that the full behavior summary extends the
+  short summary with the execute phase.
 - Real external-call semantics, ABI/calldata, and real PQ cryptography remain
   out of scope.
 

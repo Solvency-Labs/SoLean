@@ -71,6 +71,11 @@ sketch, including the directed `cryptoAssumptionGraph` from each named
 verifier-oracle assumption to each theorem it supports.
 ```
 
+The Markdown report and demo Trust Boundaries section render that graph grouped
+by assumption, with flow/layer labels, so reviewers can see which assumptions
+support integrated validation theorems versus full `validateAndExecute`
+theorems.
+
 Lean theorems backing the boundary (exact names also surface in the demo's
 Trust Boundaries section):
 

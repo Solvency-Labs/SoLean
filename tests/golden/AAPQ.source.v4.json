@@ -115,6 +115,59 @@
       "trust": "trusted Solidity shape"
     }
   ],
+  "cryptoAssumptionSupportGraph": [
+    {
+      "assumption": "VerifierDomainSeparation",
+      "leanReference": "SoLean.Examples.AAPQIntegration.VerifierDomainSeparation",
+      "statement": "Env.verifier accepts each (publicKey, message, signature) under at most one domain.",
+      "supports": [
+        {
+          "flow": "validateIntegrated",
+          "layer": "integratedValidation",
+          "theoremReference": "SoLean.Examples.AAPQIntegration.domain_separation_under_oracle_assumption"
+        },
+        {
+          "flow": "validateAndExecute",
+          "layer": "integratedExecution",
+          "theoremReference": "SoLean.Examples.AAPQIntegration.validateAndExecute_domain_separation_under_oracle_assumption"
+        }
+      ]
+    },
+    {
+      "assumption": "VerifierSignatureBinding",
+      "leanReference": "SoLean.Examples.AAPQIntegration.VerifierSignatureBinding",
+      "statement": "Env.verifier accepts each (publicKey, message, domain) under at most one signature.",
+      "supports": [
+        {
+          "flow": "validateIntegrated",
+          "layer": "integratedValidation",
+          "theoremReference": "SoLean.Examples.AAPQIntegration.signature_non_malleability_under_oracle_assumption"
+        },
+        {
+          "flow": "validateAndExecute",
+          "layer": "integratedExecution",
+          "theoremReference": "SoLean.Examples.AAPQIntegration.validateAndExecute_signature_non_malleability_under_oracle_assumption"
+        }
+      ]
+    },
+    {
+      "assumption": "VerifierKeySeparation",
+      "leanReference": "SoLean.Examples.AAPQIntegration.VerifierKeySeparation",
+      "statement": "Env.verifier accepts each (message, domain, signature) under at most one publicKey.",
+      "supports": [
+        {
+          "flow": "validateIntegrated",
+          "layer": "integratedValidation",
+          "theoremReference": "SoLean.Examples.AAPQIntegration.key_separation_under_oracle_assumption"
+        },
+        {
+          "flow": "validateAndExecute",
+          "layer": "integratedExecution",
+          "theoremReference": "SoLean.Examples.AAPQIntegration.validateAndExecute_key_separation_under_oracle_assumption"
+        }
+      ]
+    }
+  ],
   "limitations": [
     "AA/PQ source-shape audit only.",
     "Solidity parsing is a narrow restricted shape extractor for the AAPQ sketch.",

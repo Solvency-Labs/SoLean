@@ -19,6 +19,8 @@ from scripts.check_aapq_source import (
     check_phase_proof_references,
     check_source_contracts_match_certificate,
     check_under_oracle_assumption_theorems_covered,
+    crypto_assumption_support_graph_view,
+    format_crypto_assumption_graph_markdown,
     lean_artifact,
     main as check_aapq_source_main,
     parse_solidity_shape,
@@ -195,6 +197,8 @@ class AuditIntegrationTests(unittest.TestCase):
         text = buffer.getvalue()
         self.assertIn("# AA/PQ Source-Shape Report", text)
         self.assertIn("Status: **passed**", text)
+        self.assertIn("## Crypto Assumption Support Graph", text)
+        self.assertIn("VerifierSignatureBinding", text)
 
 
 class StructuredExpressionTests(unittest.TestCase):
@@ -465,6 +469,23 @@ class CryptoAssumptionAuditTests(unittest.TestCase):
         result = check_crypto_assumption_support_graph(certificate)
         self.assertEqual(result["status"], "passed", result)
 
+    def test_crypto_assumption_support_graph_view_real(self) -> None:
+        certificate = cached_artifact("source-certificate-json")
+        graph = crypto_assumption_support_graph_view(certificate)
+        self.assertEqual(
+            [entry["assumption"] for entry in graph],
+            [
+                "VerifierDomainSeparation",
+                "VerifierSignatureBinding",
+                "VerifierKeySeparation",
+            ],
+        )
+        self.assertEqual([len(entry["supports"]) for entry in graph], [2, 2, 2])
+        rendered = format_crypto_assumption_graph_markdown(graph)
+        self.assertIn("## Crypto Assumption Support Graph", rendered)
+        self.assertIn("VerifierDomainSeparation", rendered)
+        self.assertIn("validateAndExecute", rendered)
+
     def test_crypto_assumption_support_graph_fails_when_missing(self) -> None:
         certificate = {
             "cryptoAssumptions": [
@@ -546,6 +567,21 @@ class DemoTests(unittest.TestCase):
     def test_print_trust_boundaries_emits_all_sections(self) -> None:
         certificate = {
             "assumptions": ["assumption A"],
+            "cryptoAssumptions": [
+                {
+                    "name": "VerifierDomainSeparation",
+                    "leanReference": "SoLean.Module.Assumption",
+                    "statement": "Assumption statement.",
+                }
+            ],
+            "cryptoAssumptionGraph": [
+                {
+                    "assumption": "VerifierDomainSeparation",
+                    "flow": "validateIntegrated",
+                    "layer": "integratedValidation",
+                    "theoremReference": "SoLean.Module.theorem",
+                }
+            ],
             "unsupported": ["thing X"],
             "proofReferences": ["SoLean.Module.theorem"],
         }
@@ -555,6 +591,8 @@ class DemoTests(unittest.TestCase):
         text = buffer.getvalue()
         self.assertIn("Trust Boundaries", text)
         self.assertIn("assumption A", text)
+        self.assertIn("Crypto assumption support graph", text)
+        self.assertIn("VerifierDomainSeparation", text)
         self.assertIn("thing X", text)
         self.assertIn("SoLean.Module.theorem", text)
 
@@ -578,6 +616,7 @@ class DemoTests(unittest.TestCase):
         self.assertIn("Lean build: PASS", text)
         self.assertIn("AA/PQ source-shape report: PASS", text)
         self.assertIn("Trust Boundaries", text)
+        self.assertIn("Crypto assumption support graph", text)
 
 
 class GoldenReportTests(unittest.TestCase):
