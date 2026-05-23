@@ -785,6 +785,16 @@ def aapqSourceCertificate : Json :=
       ],
       .obj [
         ("leanReference", .str
+          "SoLean.Examples.AAPQEvmCall.NoCallback"),
+        ("name", .str "NoCallback"),
+        ("statement", .str
+          "The reentrant oracle does not call back into the wallet: callerStorageAfter equals the input wallet storage and result agrees with the non-reentrant evmCall. Lifts the structural no-reentrancy of EvmEnv.evmCall to an explicit named assumption over the richer ReentrantEvmEnv interface."),
+        ("theoremReferences", stringsJson [
+          "SoLean.Examples.AAPQEvmCall.validateIntegratedViaReentrantEvmCall_eq_nonReentrant_under_noCallback"
+        ])
+      ],
+      .obj [
+        ("leanReference", .str
           "SoLean.Examples.AAPQEvmCallGas.EnoughGas"),
         ("name", .str "EnoughGas"),
         ("statement", .str
@@ -849,6 +859,7 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_preserves_wallet_configuration",
       "SoLean.Examples.AAPQEvmCall.WrapperCodeBound_eq_canonical",
       "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_depends_only_on_wrapper_oracle",
+      "SoLean.Examples.AAPQEvmCall.validateIntegratedViaReentrantEvmCall_eq_nonReentrant_under_noCallback",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success",

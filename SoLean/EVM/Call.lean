@@ -112,5 +112,33 @@ def EvmGasEnv.callWithGas
   else
     none
 
+/--
+Result of a reentrant call: a `CallResult` plus the (possibly modified)
+*caller* storage after any reentrant write-back.
+
+Real EVM allows a callee to make further calls (including back into the
+caller). This type makes that possibility explicit by letting the
+oracle's result carry a new caller-side storage. Concrete oracles
+constrained by `NoCallback` leave the caller storage unchanged.
+-/
+structure ReentrantCallResult where
+  result : CallResult
+  callerStorageAfter : Storage
+
+/--
+A richer `EvmEnv` whose oracle can in principle write back into the
+caller's storage. The non-reentrant `EvmEnv.evmCall` is recovered by
+projecting `reentrantEvmCall ... wl |>.result` and discarding the
+returned caller storage.
+
+This type is the substrate for stating reentrancy assumptions explicitly:
+a model that uses `reentrantEvmCall` and then adds `NoCallback` is
+provably no-reentrant by assumption rather than by accident of the
+non-reentrant interface.
+-/
+structure ReentrantEvmEnv extends EvmEnv where
+  reentrantEvmCall :
+    Address -> Calldata -> Storage -> Storage -> ReentrantCallResult
+
 end EVM
 end SoLean

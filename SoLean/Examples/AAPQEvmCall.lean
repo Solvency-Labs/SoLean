@@ -397,6 +397,69 @@ theorem validateIntegratedViaEvmCall_depends_only_on_wrapper_oracle
   unfold validateIntegratedViaEvmCall
   rw [hOracleAtWrapper, hBase]
 
+/--
+The named cross-contract assumption ruling out wrapper reentrancy into
+the wallet: the reentrant oracle's `callerStorageAfter` equals the input
+caller storage (i.e., the wrapper call doesn't write back into the
+wallet) and its `result` equals the non-reentrant `evmCall` result.
+
+Real EVM allows reentrant callbacks; this assumption is the named
+contract that says "the deployed wrapper does not call back into the
+wallet." Future Lane A or Lane C work could relax this and prove
+safety under bounded reentrancy.
+-/
+def NoCallback (reenv : ReentrantEvmEnv) : Prop :=
+  ∀ addr cd ws wl,
+    (reenv.reentrantEvmCall addr cd ws wl).result =
+        reenv.evmCall addr cd ws ∧
+      (reenv.reentrantEvmCall addr cd ws wl).callerStorageAfter = wl
+
+/--
+Reentrant variant of the call-shaped integrated flow. The wrapper call
+goes through `reentrantEvmCall`, so the oracle could in principle
+rewrite the wallet storage; the wallet program then runs on whatever
+storage the oracle returned.
+-/
+def validateIntegratedViaReentrantEvmCall
+    (reenv : ReentrantEvmEnv)
+    (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage : Storage) : EvmCallIntegratedResult :=
+  match (reenv.reentrantEvmCall reenv.wrapperAddress
+      (buildVerifierCalldata input) wrapperStorage walletStorage).result with
+  | .success _ =>
+      match exec reenv.base
+          (AAPQIntegration.walletProgram input)
+          (reenv.reentrantEvmCall reenv.wrapperAddress
+              (buildVerifierCalldata input) wrapperStorage walletStorage).callerStorageAfter with
+      | .success finalWalletStorage =>
+          EvmCallIntegratedResult.success wrapperStorage finalWalletStorage
+      | .revert failure => EvmCallIntegratedResult.walletRevert failure
+  | .revert returndata => EvmCallIntegratedResult.wrapperRevert returndata
+
+/--
+Under `NoCallback`, the reentrant flow agrees with the non-reentrant
+one. The wallet runs on its original storage because
+`callerStorageAfter = wl`, and the `result` matches `evmCall`.
+
+Lifts the structural no-reentrancy from `validateIntegratedViaEvmCall`
+to the richer interface: the reentrancy non-claim is now relaxed
+(the oracle *could* try to call back) and ruled out by an *explicit*
+named assumption surfaced in the certificate.
+-/
+theorem validateIntegratedViaReentrantEvmCall_eq_nonReentrant_under_noCallback
+    (reenv : ReentrantEvmEnv) (hNoCallback : NoCallback reenv)
+    (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage : Storage) :
+    validateIntegratedViaReentrantEvmCall reenv input wrapperStorage
+        walletStorage =
+      validateIntegratedViaEvmCall reenv.toEvmEnv input wrapperStorage
+        walletStorage := by
+  unfold validateIntegratedViaReentrantEvmCall validateIntegratedViaEvmCall
+  obtain ⟨hResult, hStorage⟩ :=
+    hNoCallback reenv.wrapperAddress (buildVerifierCalldata input)
+      wrapperStorage walletStorage
+  rw [hResult, hStorage]
+
 end AAPQEvmCall
 end Examples
 end SoLean

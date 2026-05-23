@@ -2,7 +2,7 @@
   "artifacts": {
     "behaviorSummaryHash": "b5cfd9fe5970806706c94c3988806899ffa5e85baa67379d472fff24e27304d4",
     "fullBehaviorSummaryHash": "ba0e5c7b39e848f763ff16a8b7690eca288836ee98f5ba740c75ab21e4179335",
-    "sourceCertificateHash": "49701700fd4f90c1366d7892bfe8781b2aa126f56905cd405d076a330e3e096d",
+    "sourceCertificateHash": "c46ec4d91e78d8c16496175169210701bc9826ecad6f0c882abebf646fd29485",
     "sourceHash": "9ef06ae57aae9f38b47d9edcf3bbd32861ec8077f21297acda01c746e19f4f81"
   },
   "checks": [
