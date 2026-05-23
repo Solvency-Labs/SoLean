@@ -24,6 +24,8 @@ if str(REPO_ROOT) not in sys.path:
 from scripts.check_aapq_source import (
     crypto_assumption_support_graph_view,
     format_crypto_assumption_graph_markdown,
+    format_verifier_model_calibrations_markdown,
+    verifier_model_calibrations_view,
 )
 
 
@@ -116,6 +118,15 @@ def print_trust_boundaries(certificate: dict) -> None:
             format_crypto_assumption_graph_markdown(
                 graph_view,
                 heading="Crypto assumption support graph:",
+            )
+        )
+
+    calibrations = verifier_model_calibrations_view(certificate)
+    if calibrations:
+        print(
+            format_verifier_model_calibrations_markdown(
+                calibrations,
+                heading="Verifier model calibrations:",
             )
         )
 

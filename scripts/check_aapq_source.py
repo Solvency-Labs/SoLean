@@ -603,6 +603,105 @@ def format_crypto_assumption_graph_markdown(
     return "\n".join(lines)
 
 
+def check_verifier_model_calibrations(
+    certificate: dict[str, Any],
+) -> dict[str, str]:
+    calibrations = certificate.get("verifierModelCalibrations", [])
+    if not calibrations:
+        return failed(
+            "verifier model calibrations present",
+            "Lean-owned certificate",
+            "Certificate has no verifierModelCalibrations array.",
+        )
+
+    assumptions = {entry.get("name", "") for entry in certificate.get("cryptoAssumptions", [])}
+    proofs = set(certificate.get("proofReferences", []))
+    problems: list[str] = []
+    total_proofs = 0
+    total_discharged = 0
+    for calibration in calibrations:
+        name = calibration.get("name", "?")
+        if calibration.get("kind") != "toyVerifierCalibration":
+            problems.append(f"{name}: unsupported calibration kind")
+        if not calibration.get("nonClaim"):
+            problems.append(f"{name}: missing nonClaim")
+        discharged = calibration.get("dischargedAssumptions", [])
+        if not discharged:
+            problems.append(f"{name}: missing dischargedAssumptions")
+        for assumption in discharged:
+            total_discharged += 1
+            if assumption not in assumptions:
+                problems.append(f"{name}: unknown discharged assumption {assumption}")
+        refs = calibration.get("proofReferences", [])
+        if not refs:
+            problems.append(f"{name}: missing proofReferences")
+        for ref in refs:
+            total_proofs += 1
+            if ref not in proofs:
+                problems.append(f"{name}: proofReference {ref} not in proofReferences")
+
+    if problems:
+        return failed(
+            "verifier model calibrations resolve",
+            "Lean-owned certificate",
+            "Broken calibration: " + "; ".join(problems),
+        )
+
+    return passed(
+        "verifier model calibrations resolve",
+        "Lean-owned certificate",
+        f"All {len(calibrations)} verifier calibration(s) resolve {total_proofs} proof references for {total_discharged} discharged assumptions.",
+    )
+
+
+def verifier_model_calibrations_view(
+    certificate: dict[str, Any],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "dischargedAssumptions": calibration.get("dischargedAssumptions", []),
+            "lean": calibration.get("lean", ""),
+            "name": calibration.get("name", ""),
+            "nonClaim": calibration.get("nonClaim", ""),
+            "proofReferences": calibration.get("proofReferences", []),
+        }
+        for calibration in certificate.get("verifierModelCalibrations", [])
+    ]
+
+
+def format_verifier_model_calibrations_markdown(
+    calibrations: list[dict[str, Any]],
+    *,
+    heading: str = "## Verifier Model Calibrations",
+) -> str:
+    lines = [heading, ""]
+    if not calibrations:
+        lines.append("_No verifier model calibrations are present._")
+        lines.append("")
+        return "\n".join(lines)
+
+    for calibration in calibrations:
+        lines.append(f"- **{calibration.get('name', '?')}**")
+        lean = calibration.get("lean")
+        if lean:
+            lines.append(f"  - model: `{lean}`")
+        non_claim = calibration.get("nonClaim")
+        if non_claim:
+            lines.append(f"  - non-claim: {non_claim}")
+        discharged = calibration.get("dischargedAssumptions", [])
+        if discharged:
+            lines.append("  - discharges:")
+            for assumption in discharged:
+                lines.append(f"    - `{assumption}`")
+        refs = calibration.get("proofReferences", [])
+        if refs:
+            lines.append("  - proofs:")
+            for ref in refs:
+                lines.append(f"    - `{ref}`")
+    lines.append("")
+    return "\n".join(lines)
+
+
 EXECUTE_PHASE_NAME = "execute"
 EXECUTE_FINAL_WRITE_NAME = "lastOpHash"
 EXECUTE_FINAL_WRITE_SLOT = 4
@@ -727,6 +826,7 @@ def run_audit(
     checks.append(check_crypto_assumptions_link_to_proofs(certificate))
     checks.append(check_under_oracle_assumption_theorems_covered(certificate))
     checks.append(check_crypto_assumption_support_graph(certificate))
+    checks.append(check_verifier_model_calibrations(certificate))
     checks.append(
         check_full_behavior_summary_includes_execute_phase(full_behavior_summary)
     )
@@ -761,6 +861,7 @@ def run_audit(
         "reportVersion": REPORT_VERSION,
         "solidityContracts": sorted(shape.keys()),
         "status": status,
+        "verifierModelCalibrations": verifier_model_calibrations_view(certificate),
     }
 
 
@@ -784,6 +885,12 @@ def format_markdown_report(report: dict[str, Any]) -> str:
     lines.append(
         format_crypto_assumption_graph_markdown(
             report.get("cryptoAssumptionSupportGraph", [])
+        ).rstrip()
+    )
+    lines.append("")
+    lines.append(
+        format_verifier_model_calibrations_markdown(
+            report.get("verifierModelCalibrations", [])
         ).rstrip()
     )
     lines.append("")

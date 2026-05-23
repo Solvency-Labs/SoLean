@@ -170,7 +170,7 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   in source-json, audits the bidirectional link between `cryptoAssumptions`
   and the `*_under_oracle_assumption` theorems in `proofReferences`, audits
   the directed `cryptoAssumptionGraph`, renders that graph in Markdown reports
-  and demo output, and verifies the
+  and demo output, checks `verifierModelCalibrations`, and verifies the
   full-behavior-summary contains an `execute` phase with the
   expected `lastOpHash` finalWrite and extends the standalone three-phase
   summary. The report is committed as `tests/golden/AAPQ.source.v4.json`
@@ -524,20 +524,26 @@ graph is now visible in the Markdown/demo trust-boundary surface:
   instead of a flat list of strings.
 - The source-shape Markdown report and `scripts/demo_aapq_source.py` render the
   graph grouped by assumption and flow/layer.
+- `SoLean.Examples.ToyVerifier.allFieldsEqualVerifier` is the first concrete
+  verifier-model calibration. It is intentionally non-cryptographic, but Lean
+  proves it satisfies the three named verifier-oracle assumptions and the
+  source certificate exposes those proof links under
+  `verifierModelCalibrations`.
 
 The next best qualitative task is:
 
 ```text
-Replace the abstract verifier oracle with a tiny concrete verifier-model calibration.
+Move from the toy verifier calibration toward a useful verifier relation.
 ```
 
 Useful candidate moves, in rough priority order:
 
-1. Add a deliberately non-cryptographic verifier model, such as a keyed equality
-   or toy digest predicate over bounded `UInt256` fields, and prove it
-   instantiates the existing verifier-oracle assumptions where appropriate.
-2. Use that model only as a calibration step for assumption discharge, not as a
-   PQ cryptographic claim.
+1. Replace or complement `allFieldsEqualVerifier` with a small relation that is
+   closer to verifier-wrapper reality, for example a modeled public-key,
+   message, domain, and signature binding relation with explicit uniqueness
+   hypotheses.
+2. Keep the same certificate/audit shape: concrete model, discharged
+   assumptions, proof references, and loud non-claim text.
 3. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 

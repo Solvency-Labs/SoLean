@@ -8,5 +8,6 @@ import SoLean.Examples.AAWallet
 import SoLean.Examples.AAPQIntegration
 import SoLean.Examples.AAPQSource
 import SoLean.Examples.PQVerifierWrapper
+import SoLean.Examples.ToyVerifier
 import SoLean.Examples.SimpleVault
 import SoLean.Artifacts

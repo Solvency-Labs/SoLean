@@ -80,6 +80,11 @@ results.
   assumption to each theorem it supports, including the modeled flow/layer.
   Lean proves this graph exactly covers the theorem references listed by the
   assumptions; Python audits that every edge resolves to `proofReferences`.
+- `SoLean.Examples.ToyVerifier` defines `allFieldsEqualVerifier`, a
+  deliberately non-cryptographic verifier calibration that accepts only when
+  all modeled verifier fields are equal. Lean proves this toy model satisfies
+  the three named verifier-oracle assumption predicates. This demonstrates the
+  assumption-discharge pattern; it is not a PQ security claim.
 - This does not model EVM `CALL`/`STATICCALL`, ABI encoding, returndata,
   calldata, memory, gas, reentrancy, or account-abstraction protocol machinery.
 

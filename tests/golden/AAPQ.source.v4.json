@@ -2,7 +2,7 @@
   "artifacts": {
     "behaviorSummaryHash": "b5cfd9fe5970806706c94c3988806899ffa5e85baa67379d472fff24e27304d4",
     "fullBehaviorSummaryHash": "ba0e5c7b39e848f763ff16a8b7690eca288836ee98f5ba740c75ab21e4179335",
-    "sourceCertificateHash": "5097e279c23feb585ed4d2ca0e29b0b04c1a67d169fc57399baf386b4e438b45",
+    "sourceCertificateHash": "d38749d0f08928a0f15d7c1aa458ec4dbd6ff978f7277f3af5a9a45c8068f6b1",
     "sourceHash": "9ef06ae57aae9f38b47d9edcf3bbd32861ec8077f21297acda01c746e19f4f81"
   },
   "checks": [
@@ -45,6 +45,12 @@
     {
       "message": "All 6 support edges resolve in stable order.",
       "name": "cryptoAssumption support graph resolves",
+      "status": "passed",
+      "trust": "Lean-owned certificate"
+    },
+    {
+      "message": "All 1 verifier calibration(s) resolve 4 proof references for 3 discharged assumptions.",
+      "name": "verifier model calibrations resolve",
       "status": "passed",
       "trust": "Lean-owned certificate"
     },
@@ -181,5 +187,23 @@
     "AAWallet",
     "PQVerifierWrapper"
   ],
-  "status": "passed"
+  "status": "passed",
+  "verifierModelCalibrations": [
+    {
+      "dischargedAssumptions": [
+        "VerifierDomainSeparation",
+        "VerifierSignatureBinding",
+        "VerifierKeySeparation"
+      ],
+      "lean": "SoLean.Examples.ToyVerifier.allFieldsEqualVerifier",
+      "name": "AllFieldsEqualToyVerifier",
+      "nonClaim": "Deliberately non-cryptographic verifier model for assumption-discharge calibration only.",
+      "proofReferences": [
+        "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation",
+        "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding",
+        "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation",
+        "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_satisfies_oracle_assumptions"
+      ]
+    }
+  ]
 }

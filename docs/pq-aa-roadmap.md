@@ -182,8 +182,12 @@ Current v0:
   references a declared parameter or a known storage slot, audits the
   `cryptoAssumptions`/`proofReferences` loop, audits the directed
   `cryptoAssumptionGraph`, renders that graph in Markdown reports and the demo
-  trust-boundary summary, and checks that the full behavior summary extends the
-  short summary with the execute phase.
+  trust-boundary summary, checks `verifierModelCalibrations`, and checks that
+  the full behavior summary extends the short summary with the execute phase.
+- `SoLean.Examples.ToyVerifier` provides the first assumption-discharge
+  calibration: `allFieldsEqualVerifier` is deliberately non-cryptographic, but
+  Lean proves it satisfies `VerifierDomainSeparation`,
+  `VerifierSignatureBinding`, and `VerifierKeySeparation`.
 - Real external-call semantics, ABI/calldata, and real PQ cryptography remain
   out of scope.
 

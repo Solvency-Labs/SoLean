@@ -1,6 +1,7 @@
 import SoLean.Bridge
 import SoLean.Examples.AAPQSource
 import SoLean.Examples.CounterCompiler
+import SoLean.Examples.ToyVerifier
 import SoLean.Source.Shape
 
 namespace SoLean
@@ -605,6 +606,26 @@ def cryptoAssumptionSupportEdgeJson
     ("theoremReference", .str entry.theoremReference)
   ]
 
+def toyVerifierCalibrationJson : Json :=
+  .obj [
+    ("dischargedAssumptions", stringsJson [
+      "VerifierDomainSeparation",
+      "VerifierSignatureBinding",
+      "VerifierKeySeparation"
+    ]),
+    ("kind", .str "toyVerifierCalibration"),
+    ("lean", .str "SoLean.Examples.ToyVerifier.allFieldsEqualVerifier"),
+    ("name", .str "AllFieldsEqualToyVerifier"),
+    ("nonClaim", .str
+      "Deliberately non-cryptographic verifier model for assumption-discharge calibration only."),
+    ("proofReferences", stringsJson [
+      "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation",
+      "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding",
+      "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation",
+      "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_satisfies_oracle_assumptions"
+    ])
+  ]
+
 end AAPQBehavior
 
 def aapqSourceJson : String :=
@@ -625,7 +646,8 @@ def aapqSourceCertificate : Json :=
       "Wallet-wrapper integration includes a focused external-call shim over a shared input tuple, not EVM CALL or STATICCALL semantics.",
       "Wallet key commitment must equal the wrapper public key for the integrated path to be authorized.",
       "ABI decoding, calldata, memory, gas, events, and reentrancy are not modeled.",
-      "Named, non-cryptographic crypto assumptions on Env.verifier are listed under cryptoAssumptions."
+      "Named, non-cryptographic crypto assumptions on Env.verifier are listed under cryptoAssumptions.",
+      "AllFieldsEqualToyVerifier is a deliberately non-cryptographic verifier model used only to calibrate assumption discharge."
     ]),
     ("contracts", .arr [
       AAPQ.contractJson Examples.AAPQSource.walletContract,
@@ -637,6 +659,9 @@ def aapqSourceCertificate : Json :=
     ("cryptoAssumptionGraph", .arr
       (Examples.AAPQSource.integratedCryptoAssumptionSupportGraph.map
         AAPQBehavior.cryptoAssumptionSupportEdgeJson)),
+    ("verifierModelCalibrations", .arr [
+      AAPQBehavior.toyVerifierCalibrationJson
+    ]),
     ("expectedBehaviorSummary",
       AAPQBehavior.summaryJson Examples.AAPQSource.integratedBehaviorSummary),
     ("integration", .obj [
@@ -684,7 +709,11 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQIntegration.validateAndExecute_replay_rejected",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_domain_separation_under_oracle_assumption",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_signature_non_malleability_under_oracle_assumption",
-      "SoLean.Examples.AAPQIntegration.validateAndExecute_key_separation_under_oracle_assumption"
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_key_separation_under_oracle_assumption",
+      "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation",
+      "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding",
+      "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation",
+      "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_satisfies_oracle_assumptions"
     ]),
     ("unsupported", stringsJson [
       "real PQ cryptographic security",

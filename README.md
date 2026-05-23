@@ -124,6 +124,10 @@ For the current intuition and next steps, see `docs/roadmap.md` and
 - `integratedCryptoAssumptionSupportGraph_covers_assumption_references` pins a
   directed support graph from each named crypto assumption to each theorem it
   supports, including flow/layer labels for the audit report.
+- `ToyVerifier.allFieldsEqualVerifier` is a deliberately non-cryptographic
+  concrete verifier calibration. Lean proves it satisfies the three named
+  verifier-oracle assumptions, and the source certificate exposes those proofs
+  under `verifierModelCalibrations`.
 - `AAPQSource.BehaviorReflection` reflects that structured DSL into
   `SoLean.Stmt` semantics and proves that each phase of
   `integratedBehaviorSummary` reconstructs the corresponding proved program:
@@ -155,7 +159,8 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   `proofReferences`, the directed `cryptoAssumptionGraph`, and that the full
   summary includes the expected `execute` phase and extends the short
   summary's first three phases. Markdown reports and the demo render that
-  graph as a grouped trust-boundary view. The
+  graph as a grouped trust-boundary view. The same audit checks
+  `verifierModelCalibrations` proof references and non-claim text. The
   report has a committed golden fixture at `tests/golden/AAPQ.source.v4.json`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.

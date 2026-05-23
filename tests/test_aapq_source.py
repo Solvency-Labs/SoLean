@@ -20,7 +20,9 @@ from scripts.check_aapq_source import (
     check_source_contracts_match_certificate,
     check_under_oracle_assumption_theorems_covered,
     crypto_assumption_support_graph_view,
+    check_verifier_model_calibrations,
     format_crypto_assumption_graph_markdown,
+    format_verifier_model_calibrations_markdown,
     lean_artifact,
     main as check_aapq_source_main,
     parse_solidity_shape,
@@ -30,6 +32,7 @@ from scripts.check_aapq_source import (
     stable_json,
     walk_operands_in_condition,
     walk_operands_in_value,
+    verifier_model_calibrations_view,
 )
 from scripts.demo_aapq_source import (
     main as demo_aapq_source_main,
@@ -199,6 +202,8 @@ class AuditIntegrationTests(unittest.TestCase):
         self.assertIn("Status: **passed**", text)
         self.assertIn("## Crypto Assumption Support Graph", text)
         self.assertIn("VerifierSignatureBinding", text)
+        self.assertIn("## Verifier Model Calibrations", text)
+        self.assertIn("AllFieldsEqualToyVerifier", text)
 
 
 class StructuredExpressionTests(unittest.TestCase):
@@ -563,6 +568,54 @@ class FullBehaviorSummaryAuditTests(unittest.TestCase):
         self.assertEqual(result["status"], "failed")
 
 
+class VerifierModelCalibrationTests(unittest.TestCase):
+    def test_verifier_model_calibrations_real(self) -> None:
+        certificate = cached_artifact("source-certificate-json")
+        result = check_verifier_model_calibrations(certificate)
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_verifier_model_calibrations_view_real(self) -> None:
+        certificate = cached_artifact("source-certificate-json")
+        calibrations = verifier_model_calibrations_view(certificate)
+        self.assertEqual(len(calibrations), 1)
+        self.assertEqual(calibrations[0]["name"], "AllFieldsEqualToyVerifier")
+        self.assertEqual(
+            calibrations[0]["dischargedAssumptions"],
+            [
+                "VerifierDomainSeparation",
+                "VerifierSignatureBinding",
+                "VerifierKeySeparation",
+            ],
+        )
+        rendered = format_verifier_model_calibrations_markdown(calibrations)
+        self.assertIn("## Verifier Model Calibrations", rendered)
+        self.assertIn("AllFieldsEqualToyVerifier", rendered)
+        self.assertIn("non-cryptographic", rendered)
+
+    def test_verifier_model_calibrations_fail_when_missing(self) -> None:
+        result = check_verifier_model_calibrations({})
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("no verifierModelCalibrations", result["message"])
+
+    def test_verifier_model_calibrations_fail_on_dangling_proof(self) -> None:
+        certificate = {
+            "cryptoAssumptions": [{"name": "VerifierDomainSeparation"}],
+            "proofReferences": [],
+            "verifierModelCalibrations": [
+                {
+                    "name": "Toy",
+                    "kind": "toyVerifierCalibration",
+                    "nonClaim": "No crypto claim.",
+                    "dischargedAssumptions": ["VerifierDomainSeparation"],
+                    "proofReferences": ["Module.missing"],
+                }
+            ],
+        }
+        result = check_verifier_model_calibrations(certificate)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("Module.missing", result["message"])
+
+
 class DemoTests(unittest.TestCase):
     def test_print_trust_boundaries_emits_all_sections(self) -> None:
         certificate = {
@@ -582,6 +635,15 @@ class DemoTests(unittest.TestCase):
                     "theoremReference": "SoLean.Module.theorem",
                 }
             ],
+            "verifierModelCalibrations": [
+                {
+                    "name": "AllFieldsEqualToyVerifier",
+                    "lean": "SoLean.Module.toy",
+                    "nonClaim": "No crypto claim.",
+                    "dischargedAssumptions": ["VerifierDomainSeparation"],
+                    "proofReferences": ["SoLean.Module.theorem"],
+                }
+            ],
             "unsupported": ["thing X"],
             "proofReferences": ["SoLean.Module.theorem"],
         }
@@ -593,6 +655,8 @@ class DemoTests(unittest.TestCase):
         self.assertIn("assumption A", text)
         self.assertIn("Crypto assumption support graph", text)
         self.assertIn("VerifierDomainSeparation", text)
+        self.assertIn("Verifier model calibrations", text)
+        self.assertIn("AllFieldsEqualToyVerifier", text)
         self.assertIn("thing X", text)
         self.assertIn("SoLean.Module.theorem", text)
 
@@ -617,6 +681,7 @@ class DemoTests(unittest.TestCase):
         self.assertIn("AA/PQ source-shape report: PASS", text)
         self.assertIn("Trust Boundaries", text)
         self.assertIn("Crypto assumption support graph", text)
+        self.assertIn("Verifier model calibrations", text)
 
 
 class GoldenReportTests(unittest.TestCase):
