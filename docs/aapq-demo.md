@@ -76,9 +76,11 @@ by assumption, with flow/layer labels, so reviewers can see which assumptions
 support integrated validation theorems versus full `validateAndExecute`
 theorems.
 
-The certificate also includes `verifierModelCalibrations`. The current
-calibration is `AllFieldsEqualToyVerifier`, a deliberately non-cryptographic
-model that Lean proves satisfies the three named verifier-oracle assumptions.
+The certificate also includes `verifierModelCalibrations`. Two calibrations
+are listed today: `AllFieldsEqualToyVerifier` (4-way collapse) and
+`KeyDomainBindingToyVerifier` (paired sig↔key, msg↔domain), both deliberately
+non-cryptographic models that Lean proves satisfy the three named
+verifier-oracle assumptions.
 It is included to demonstrate assumption discharge, not to claim PQ security.
 
 Lean theorems backing the boundary (exact names also surface in the demo's
@@ -125,6 +127,10 @@ Trust Boundaries section):
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_satisfies_oracle_assumptions`
+- `SoLean.Examples.ToyVerifier.keyDomainBindingEnv_domain_separation`
+- `SoLean.Examples.ToyVerifier.keyDomainBindingEnv_signature_binding`
+- `SoLean.Examples.ToyVerifier.keyDomainBindingEnv_key_separation`
+- `SoLean.Examples.ToyVerifier.keyDomainBindingEnv_satisfies_oracle_assumptions`
 
 ## Non-Claims
 

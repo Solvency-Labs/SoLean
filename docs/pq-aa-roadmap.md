@@ -184,10 +184,13 @@ Current v0:
   `cryptoAssumptionGraph`, renders that graph in Markdown reports and the demo
   trust-boundary summary, checks `verifierModelCalibrations`, and checks that
   the full behavior summary extends the short summary with the execute phase.
-- `SoLean.Examples.ToyVerifier` provides the first assumption-discharge
-  calibration: `allFieldsEqualVerifier` is deliberately non-cryptographic, but
-  Lean proves it satisfies `VerifierDomainSeparation`,
-  `VerifierSignatureBinding`, and `VerifierKeySeparation`.
+- `SoLean.Examples.ToyVerifier` provides two assumption-discharge
+  calibrations: `allFieldsEqualVerifier` (4-way collapse) and
+  `keyDomainBindingVerifier` (paired sig↔key, msg↔domain). Both are
+  deliberately non-cryptographic, but Lean proves each satisfies
+  `VerifierDomainSeparation`, `VerifierSignatureBinding`, and
+  `VerifierKeySeparation`. The two models exercise different
+  binding shapes through the same certificate slot.
 - Real external-call semantics, ABI/calldata, and real PQ cryptography remain
   out of scope.
 

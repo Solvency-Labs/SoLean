@@ -577,19 +577,23 @@ class VerifierModelCalibrationTests(unittest.TestCase):
     def test_verifier_model_calibrations_view_real(self) -> None:
         certificate = cached_artifact("source-certificate-json")
         calibrations = verifier_model_calibrations_view(certificate)
-        self.assertEqual(len(calibrations), 1)
-        self.assertEqual(calibrations[0]["name"], "AllFieldsEqualToyVerifier")
-        self.assertEqual(
-            calibrations[0]["dischargedAssumptions"],
-            [
-                "VerifierDomainSeparation",
-                "VerifierSignatureBinding",
-                "VerifierKeySeparation",
-            ],
-        )
+        self.assertEqual(len(calibrations), 2)
+        names = [entry["name"] for entry in calibrations]
+        self.assertIn("AllFieldsEqualToyVerifier", names)
+        self.assertIn("KeyDomainBindingToyVerifier", names)
+        for entry in calibrations:
+            self.assertEqual(
+                entry["dischargedAssumptions"],
+                [
+                    "VerifierDomainSeparation",
+                    "VerifierSignatureBinding",
+                    "VerifierKeySeparation",
+                ],
+            )
         rendered = format_verifier_model_calibrations_markdown(calibrations)
         self.assertIn("## Verifier Model Calibrations", rendered)
         self.assertIn("AllFieldsEqualToyVerifier", rendered)
+        self.assertIn("KeyDomainBindingToyVerifier", rendered)
         self.assertIn("non-cryptographic", rendered)
 
     def test_verifier_model_calibrations_fail_when_missing(self) -> None:

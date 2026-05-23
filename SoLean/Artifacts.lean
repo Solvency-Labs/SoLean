@@ -626,6 +626,26 @@ def toyVerifierCalibrationJson : Json :=
     ])
   ]
 
+def keyDomainBindingCalibrationJson : Json :=
+  .obj [
+    ("dischargedAssumptions", stringsJson [
+      "VerifierDomainSeparation",
+      "VerifierSignatureBinding",
+      "VerifierKeySeparation"
+    ]),
+    ("kind", .str "toyVerifierCalibration"),
+    ("lean", .str "SoLean.Examples.ToyVerifier.keyDomainBindingVerifier"),
+    ("name", .str "KeyDomainBindingToyVerifier"),
+    ("nonClaim", .str
+      "Deliberately non-cryptographic two-pair binding model (signature ↔ key, message ↔ domain) for assumption-discharge calibration only."),
+    ("proofReferences", stringsJson [
+      "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_domain_separation",
+      "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_signature_binding",
+      "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_key_separation",
+      "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_satisfies_oracle_assumptions"
+    ])
+  ]
+
 end AAPQBehavior
 
 def aapqSourceJson : String :=
@@ -647,7 +667,7 @@ def aapqSourceCertificate : Json :=
       "Wallet key commitment must equal the wrapper public key for the integrated path to be authorized.",
       "ABI decoding, calldata, memory, gas, events, and reentrancy are not modeled.",
       "Named, non-cryptographic crypto assumptions on Env.verifier are listed under cryptoAssumptions.",
-      "AllFieldsEqualToyVerifier is a deliberately non-cryptographic verifier model used only to calibrate assumption discharge."
+      "Listed verifierModelCalibrations entries are deliberately non-cryptographic verifier models used only to calibrate assumption discharge."
     ]),
     ("contracts", .arr [
       AAPQ.contractJson Examples.AAPQSource.walletContract,
@@ -660,7 +680,8 @@ def aapqSourceCertificate : Json :=
       (Examples.AAPQSource.integratedCryptoAssumptionSupportGraph.map
         AAPQBehavior.cryptoAssumptionSupportEdgeJson)),
     ("verifierModelCalibrations", .arr [
-      AAPQBehavior.toyVerifierCalibrationJson
+      AAPQBehavior.toyVerifierCalibrationJson,
+      AAPQBehavior.keyDomainBindingCalibrationJson
     ]),
     ("expectedBehaviorSummary",
       AAPQBehavior.summaryJson Examples.AAPQSource.integratedBehaviorSummary),
@@ -713,7 +734,11 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation",
-      "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_satisfies_oracle_assumptions"
+      "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_satisfies_oracle_assumptions",
+      "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_domain_separation",
+      "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_signature_binding",
+      "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_key_separation",
+      "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_satisfies_oracle_assumptions"
     ]),
     ("unsupported", stringsJson [
       "real PQ cryptographic security",

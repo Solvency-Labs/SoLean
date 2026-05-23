@@ -524,26 +524,33 @@ graph is now visible in the Markdown/demo trust-boundary surface:
   instead of a flat list of strings.
 - The source-shape Markdown report and `scripts/demo_aapq_source.py` render the
   graph grouped by assumption and flow/layer.
-- `SoLean.Examples.ToyVerifier.allFieldsEqualVerifier` is the first concrete
-  verifier-model calibration. It is intentionally non-cryptographic, but Lean
-  proves it satisfies the three named verifier-oracle assumptions and the
-  source certificate exposes those proof links under
-  `verifierModelCalibrations`.
+- `SoLean.Examples.ToyVerifier.allFieldsEqualVerifier` and
+  `SoLean.Examples.ToyVerifier.keyDomainBindingVerifier` are two concrete
+  verifier-model calibrations with structurally different binding shapes
+  (4-way collapse vs. paired sig↔key / msg↔domain). Both are intentionally
+  non-cryptographic, but Lean proves each satisfies the three named
+  verifier-oracle assumptions and the source certificate exposes their proof
+  links under `verifierModelCalibrations`.
 
 The next best qualitative task is:
 
 ```text
-Move from the toy verifier calibration toward a useful verifier relation.
+Move from concrete toy-binding calibrations to a parametric calibration that
+states the uniqueness hypotheses explicitly.
 ```
 
 Useful candidate moves, in rough priority order:
 
-1. Replace or complement `allFieldsEqualVerifier` with a small relation that is
-   closer to verifier-wrapper reality, for example a modeled public-key,
-   message, domain, and signature binding relation with explicit uniqueness
-   hypotheses.
-2. Keep the same certificate/audit shape: concrete model, discharged
-   assumptions, proof references, and loud non-claim text.
+1. Introduce a parametric `DerivedSignatureModel` structure that bundles
+   `derive : UInt256 → UInt256 → UInt256 → UInt256` with explicit
+   injectivity hypotheses on key and domain, and prove the three named
+   verifier-oracle assumptions hold for any such model. Then surface the
+   parametric calibration in `verifierModelCalibrations` so the audit
+   captures both concrete and parametric calibrations.
+2. Lift the verifier model selection out of the certificate's free-text
+   assumption into a typed kind enum (`toyVerifierCalibration` vs.
+   `parametricVerifierCalibration`), and update the Python audit to
+   accept the kind set rather than hardcoding one string.
 3. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 

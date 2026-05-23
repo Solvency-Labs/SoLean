@@ -124,10 +124,13 @@ For the current intuition and next steps, see `docs/roadmap.md` and
 - `integratedCryptoAssumptionSupportGraph_covers_assumption_references` pins a
   directed support graph from each named crypto assumption to each theorem it
   supports, including flow/layer labels for the audit report.
-- `ToyVerifier.allFieldsEqualVerifier` is a deliberately non-cryptographic
-  concrete verifier calibration. Lean proves it satisfies the three named
-  verifier-oracle assumptions, and the source certificate exposes those proofs
-  under `verifierModelCalibrations`.
+- `ToyVerifier.allFieldsEqualVerifier` and
+  `ToyVerifier.keyDomainBindingVerifier` are two deliberately
+  non-cryptographic concrete verifier calibrations with structurally
+  different binding shapes (4-way collapse vs. paired sig↔key /
+  msg↔domain). Lean proves both satisfy the three named verifier-oracle
+  assumptions, and the source certificate exposes those proofs under
+  `verifierModelCalibrations`.
 - `AAPQSource.BehaviorReflection` reflects that structured DSL into
   `SoLean.Stmt` semantics and proves that each phase of
   `integratedBehaviorSummary` reconstructs the corresponding proved program:
