@@ -238,6 +238,11 @@ Two lifted contract-level claims about the full flow:
   was verifier-accepted under the wallet's stored keyCommitment.
   External observers reading lastOpHashSlot learn the recorded value
   was authorized.
+- `validateAndExecute_replay_rejected`: re-running validateAndExecute
+  on the post-state cannot succeed. The first call advanced the
+  wallet nonce; the execute step writes to a different slot, so the
+  replay storage retains the post-advance nonce and the validation's
+  nonce check fails.
 
 This is the first target that should feel like a serious Ethereum research demo.
 

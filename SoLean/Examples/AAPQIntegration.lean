@@ -575,6 +575,34 @@ theorem validateAndExecute_implies_verifier_accepted
       env input wrapperStorage walletStorage finalWrapper postWallet hValidate
 
 /--
+Structural decomposition of a successful `validateAndExecute`: the validation
+phase produced some `postWallet`, and the final wallet storage is exactly the
+post-validation storage with `lastOpHashSlot` written to `input.opHash`.
+
+This is the bridge between the gate theorem (which only gives the existence
+of `postWallet`) and any claim that needs to know how `finalWallet` relates
+to `postWallet` — including the replay-rejection theorem below.
+-/
+theorem validateAndExecute_success_structure
+    (env : Env) (input : IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateAndExecute env input wrapperStorage walletStorage =
+        IntegratedFullResult.success finalWrapper finalWallet) :
+    ∃ postWallet,
+      validateIntegrated env input wrapperStorage walletStorage =
+          IntegratedResult.success finalWrapper postWallet ∧
+        finalWallet =
+          Storage.write postWallet AAWallet.lastOpHashSlot input.opHash := by
+  obtain ⟨postWallet, hValidate⟩ :=
+    validateAndExecute_success_implies_validateIntegrated_success
+      env input wrapperStorage walletStorage finalWrapper finalWallet h
+  refine ⟨postWallet, hValidate, ?_⟩
+  simp only [validateAndExecute_step, hValidate, executeUserOp_step] at h
+  injection h with _ hWallet
+  simpa [toUserOp] using hWallet.symm
+
+/--
 After a successful `validateAndExecute`, the wallet's `lastOpHashSlot` records
 an *authenticated* `opHash` — both equal to `input.opHash` and accepted by
 the abstract verifier under the wallet's stored `keyCommitment`. An external
@@ -604,6 +632,78 @@ theorem validateAndExecute_records_authorized_opHash
       (validateIntegrated_success_properties
           env wrapperStorage walletStorage finalWrapper postWallet input
           hValidate).2.2.2.2
+
+/--
+Replay rejection at the integrated-and-executed level: after a successful
+`validateAndExecute`, re-running it on the post-state cannot succeed.
+
+The first call advanced the wallet nonce through checked arithmetic, and the
+execute step writes to `lastOpHashSlot` (a different slot from `nonceSlot`),
+so the replay storage retains the post-advance nonce. The replay's wallet
+validation sees a different nonce and reverts.
+-/
+theorem validateAndExecute_replay_rejected
+    (env : Env)
+    (input : IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (replayWrapper replayWallet : Storage)
+    (h :
+      validateAndExecute env input wrapperStorage walletStorage =
+        IntegratedFullResult.success finalWrapper finalWallet) :
+    validateAndExecute env input finalWrapper finalWallet ≠
+      IntegratedFullResult.success replayWrapper replayWallet := by
+  intro hReplay
+  obtain ⟨postWallet, hValidateFirst, hFinalWalletEq⟩ :=
+    validateAndExecute_success_structure
+      env input wrapperStorage walletStorage finalWrapper finalWallet h
+  obtain ⟨postWalletReplay, hValidateReplay, _⟩ :=
+    validateAndExecute_success_structure
+      env input finalWrapper finalWallet replayWrapper replayWallet hReplay
+  have hFirst :=
+    validateIntegrated_success_properties
+      env wrapperStorage walletStorage finalWrapper postWallet input
+      hValidateFirst
+  have hSecond :=
+    validateIntegrated_success_properties
+      env finalWrapper finalWallet replayWrapper postWalletReplay input
+      hValidateReplay
+  rcases hFirst with ⟨_, hFirstWallet, _, _, _⟩
+  rcases hSecond with ⟨_, hSecondWallet, _, _, _⟩
+  rcases hFirstWallet with
+    ⟨_, hFirstNonce, _, _, hFirstNonceAdd, _, _, _⟩
+  rcases hSecondWallet with
+    ⟨_, hSecondNonce, _, _, _, _, _, _⟩
+  have hAdvanced :
+      (postWallet.read AAWallet.nonceSlot).toNat =
+        (walletStorage.read AAWallet.nonceSlot).toNat + 1 := by
+    have hAddNat :
+        (postWallet.read AAWallet.nonceSlot).toNat =
+          (walletStorage.read AAWallet.nonceSlot).toNat + UInt256.one.toNat :=
+      UInt256.checkedAdd_toNat hFirstNonceAdd
+    simpa using hAddNat
+  have hFinalNonceEq :
+      finalWallet.read AAWallet.nonceSlot =
+        postWallet.read AAWallet.nonceSlot := by
+    rw [hFinalWalletEq]
+    exact
+      Storage.read_write_other postWallet input.opHash
+        (by decide : Not (AAWallet.nonceSlot = AAWallet.lastOpHashSlot))
+  have hFirstEq :
+      (toUserOp input).nonce =
+        walletStorage.read AAWallet.nonceSlot := hFirstNonce
+  have hReplayEq :
+      (toUserOp input).nonce =
+        finalWallet.read AAWallet.nonceSlot := hSecondNonce
+  have hSame :
+      walletStorage.read AAWallet.nonceSlot =
+        finalWallet.read AAWallet.nonceSlot := by
+    rw [← hFirstEq, hReplayEq]
+  have hSameNat :
+      (walletStorage.read AAWallet.nonceSlot).toNat =
+        (postWallet.read AAWallet.nonceSlot).toNat := by
+    rw [hSame, hFinalNonceEq]
+  rw [hAdvanced] at hSameNat
+  exact absurd hSameNat (Nat.ne_of_lt (Nat.lt_succ_self _))
 
 end AAPQIntegration
 end Examples

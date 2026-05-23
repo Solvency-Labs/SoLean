@@ -646,7 +646,9 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQSource.BehaviorReflection.integratedFullBehaviorSummary_reflects_validateAndExecuteFlow",
       "SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateAndExecute_eq_validateAndExecute",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_implies_verifier_accepted",
-      "SoLean.Examples.AAPQIntegration.validateAndExecute_records_authorized_opHash"
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_records_authorized_opHash",
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_success_structure",
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_replay_rejected"
     ]),
     ("unsupported", stringsJson [
       "real PQ cryptographic security",
