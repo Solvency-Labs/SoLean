@@ -45,6 +45,11 @@ ROLE_TO_SOURCE_KEY: dict[str, str] = {
 
 # Required Solidity-side shape. Each entry is (contract name, required storage
 # slot names, required external function names).
+CALIBRATION_KINDS: set[str] = {
+    "toyVerifierCalibration",
+    "parametricVerifierCalibration",
+}
+
 REQUIRED_CONTRACTS: list[tuple[str, list[str], list[str]]] = [
     (
         "PQVerifierWrapper",
@@ -621,7 +626,7 @@ def check_verifier_model_calibrations(
     total_discharged = 0
     for calibration in calibrations:
         name = calibration.get("name", "?")
-        if calibration.get("kind") != "toyVerifierCalibration":
+        if calibration.get("kind") not in CALIBRATION_KINDS:
             problems.append(f"{name}: unsupported calibration kind")
         if not calibration.get("nonClaim"):
             problems.append(f"{name}: missing nonClaim")

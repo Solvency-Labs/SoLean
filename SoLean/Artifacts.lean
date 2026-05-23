@@ -626,6 +626,31 @@ def toyVerifierCalibrationJson : Json :=
     ])
   ]
 
+def derivedSignatureCalibrationJson : Json :=
+  .obj [
+    ("dischargedAssumptions", stringsJson [
+      "VerifierDomainSeparation",
+      "VerifierSignatureBinding",
+      "VerifierKeySeparation"
+    ]),
+    ("kind", .str "parametricVerifierCalibration"),
+    ("lean", .str "SoLean.Examples.ToyVerifier.DerivedSignatureModel"),
+    ("name", .str "DerivedSignatureModel"),
+    ("nonClaim", .str
+      "Parametric model: signature = derive(key, message, domain) for any derive function with explicit injectivity-in-key and injectivity-in-domain hypotheses. No concrete derive instance is committed; this is a shape, not a scheme."),
+    ("parameters", stringsJson [
+      "derive : UInt256 -> UInt256 -> UInt256 -> UInt256",
+      "injectiveKey : forall key1 key2 message domain, derive key1 message domain = derive key2 message domain -> key1 = key2",
+      "injectiveDomain : forall key message domain1 domain2, derive key message domain1 = derive key message domain2 -> domain1 = domain2"
+    ]),
+    ("proofReferences", stringsJson [
+      "SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_domain_separation",
+      "SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_signature_binding",
+      "SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_key_separation",
+      "SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_satisfies_oracle_assumptions"
+    ])
+  ]
+
 def keyDomainBindingCalibrationJson : Json :=
   .obj [
     ("dischargedAssumptions", stringsJson [
@@ -681,7 +706,8 @@ def aapqSourceCertificate : Json :=
         AAPQBehavior.cryptoAssumptionSupportEdgeJson)),
     ("verifierModelCalibrations", .arr [
       AAPQBehavior.toyVerifierCalibrationJson,
-      AAPQBehavior.keyDomainBindingCalibrationJson
+      AAPQBehavior.keyDomainBindingCalibrationJson,
+      AAPQBehavior.derivedSignatureCalibrationJson
     ]),
     ("expectedBehaviorSummary",
       AAPQBehavior.summaryJson Examples.AAPQSource.integratedBehaviorSummary),
@@ -738,7 +764,11 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_domain_separation",
       "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_signature_binding",
       "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_key_separation",
-      "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_satisfies_oracle_assumptions"
+      "SoLean.Examples.ToyVerifier.keyDomainBindingEnv_satisfies_oracle_assumptions",
+      "SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_domain_separation",
+      "SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_signature_binding",
+      "SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_key_separation",
+      "SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_satisfies_oracle_assumptions"
     ]),
     ("unsupported", stringsJson [
       "real PQ cryptographic security",

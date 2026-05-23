@@ -184,13 +184,17 @@ Current v0:
   `cryptoAssumptionGraph`, renders that graph in Markdown reports and the demo
   trust-boundary summary, checks `verifierModelCalibrations`, and checks that
   the full behavior summary extends the short summary with the execute phase.
-- `SoLean.Examples.ToyVerifier` provides two assumption-discharge
+- `SoLean.Examples.ToyVerifier` provides three assumption-discharge
   calibrations: `allFieldsEqualVerifier` (4-way collapse) and
-  `keyDomainBindingVerifier` (paired sig↔key, msg↔domain). Both are
-  deliberately non-cryptographic, but Lean proves each satisfies
-  `VerifierDomainSeparation`, `VerifierSignatureBinding`, and
-  `VerifierKeySeparation`. The two models exercise different
-  binding shapes through the same certificate slot.
+  `keyDomainBindingVerifier` (paired sig↔key, msg↔domain) are
+  concrete `toyVerifierCalibration` entries; `DerivedSignatureModel`
+  is a `parametricVerifierCalibration` that bundles an abstract
+  `derive : UInt256 → UInt256 → UInt256 → UInt256` with explicit
+  injectivity-in-key and injectivity-in-domain hypotheses, and proves
+  the three named oracle assumptions hold for any such model. The
+  parametric entry shows what shape a useful verifier-wrapper
+  relation has without committing to a specific cryptographic
+  function.
 - Real external-call semantics, ABI/calldata, and real PQ cryptography remain
   out of scope.
 

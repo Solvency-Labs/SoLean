@@ -128,9 +128,13 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   `ToyVerifier.keyDomainBindingVerifier` are two deliberately
   non-cryptographic concrete verifier calibrations with structurally
   different binding shapes (4-way collapse vs. paired sig↔key /
-  msg↔domain). Lean proves both satisfy the three named verifier-oracle
-  assumptions, and the source certificate exposes those proofs under
-  `verifierModelCalibrations`.
+  msg↔domain). `ToyVerifier.DerivedSignatureModel` is a parametric
+  calibration that bundles an abstract signature-derivation function
+  with explicit injectivity-in-key and injectivity-in-domain
+  hypotheses. Lean proves all three calibrations satisfy the three
+  named verifier-oracle assumptions, and the source certificate
+  exposes those proofs under `verifierModelCalibrations` with kinds
+  `toyVerifierCalibration` and `parametricVerifierCalibration`.
 - `AAPQSource.BehaviorReflection` reflects that structured DSL into
   `SoLean.Stmt` semantics and proves that each phase of
   `integratedBehaviorSummary` reconstructs the corresponding proved program:

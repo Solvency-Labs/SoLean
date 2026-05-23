@@ -529,28 +529,36 @@ graph is now visible in the Markdown/demo trust-boundary surface:
   verifier-model calibrations with structurally different binding shapes
   (4-way collapse vs. paired sig↔key / msg↔domain). Both are intentionally
   non-cryptographic, but Lean proves each satisfies the three named
-  verifier-oracle assumptions and the source certificate exposes their proof
-  links under `verifierModelCalibrations`.
+  verifier-oracle assumptions.
+- `SoLean.Examples.ToyVerifier.DerivedSignatureModel` is a parametric
+  calibration bundling an abstract `derive : UInt256 → UInt256 → UInt256
+  → UInt256` with explicit injectivity-in-key and injectivity-in-domain
+  hypotheses. The same three named oracle assumptions are proved for any
+  such model. The certificate distinguishes concrete vs. parametric
+  calibrations via the typed `kind` field (`toyVerifierCalibration` vs.
+  `parametricVerifierCalibration`), and the Python audit's
+  `CALIBRATION_KINDS` set is the single source of truth for accepted
+  kinds.
 
 The next best qualitative task is:
 
 ```text
-Move from concrete toy-binding calibrations to a parametric calibration that
-states the uniqueness hypotheses explicitly.
+Either provide a concrete instance of DerivedSignatureModel proven over a
+small UInt256-level derivation, or move beyond verifier-model calibration to
+strengthen the AA flow itself (e.g., a multi-call integration).
 ```
 
 Useful candidate moves, in rough priority order:
 
-1. Introduce a parametric `DerivedSignatureModel` structure that bundles
-   `derive : UInt256 → UInt256 → UInt256 → UInt256` with explicit
-   injectivity hypotheses on key and domain, and prove the three named
-   verifier-oracle assumptions hold for any such model. Then surface the
-   parametric calibration in `verifierModelCalibrations` so the audit
-   captures both concrete and parametric calibrations.
-2. Lift the verifier model selection out of the certificate's free-text
-   assumption into a typed kind enum (`toyVerifierCalibration` vs.
-   `parametricVerifierCalibration`), and update the Python audit to
-   accept the kind set rather than hardcoding one string.
+1. Provide a concrete `DerivedSignatureModel` instance — even a trivial one
+   — and prove its injectivity hypotheses. The current parametric
+   calibration documents the *shape* but ships no witness in `UInt256`.
+   A trivial witness would close that gap.
+2. Add a "no-execute-without-validation" Lean theorem at the integrated
+   level that states the contrapositive of the gate: `validateIntegrated`
+   reverts ⇒ no `validateAndExecute` writes to `lastOpHashSlot` (the slot
+   value is unchanged). This is a small follow-on to the existing
+   `validateAndExecute_success_*` theorems.
 3. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 

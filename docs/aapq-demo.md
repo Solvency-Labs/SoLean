@@ -76,11 +76,15 @@ by assumption, with flow/layer labels, so reviewers can see which assumptions
 support integrated validation theorems versus full `validateAndExecute`
 theorems.
 
-The certificate also includes `verifierModelCalibrations`. Two calibrations
-are listed today: `AllFieldsEqualToyVerifier` (4-way collapse) and
-`KeyDomainBindingToyVerifier` (paired sig↔key, msg↔domain), both deliberately
-non-cryptographic models that Lean proves satisfy the three named
-verifier-oracle assumptions.
+The certificate also includes `verifierModelCalibrations`. Three calibrations
+are listed today: `AllFieldsEqualToyVerifier` (4-way collapse),
+`KeyDomainBindingToyVerifier` (paired sig↔key, msg↔domain), and
+`DerivedSignatureModel` (parametric: `signature = derive(key, message, domain)`
+under explicit injectivity hypotheses on `derive`). All three are
+deliberately non-cryptographic; Lean proves each satisfies the three named
+verifier-oracle assumptions. The first two carry kind
+`toyVerifierCalibration`; the parametric one carries kind
+`parametricVerifierCalibration`.
 It is included to demonstrate assumption discharge, not to claim PQ security.
 
 Lean theorems backing the boundary (exact names also surface in the demo's
@@ -131,6 +135,10 @@ Trust Boundaries section):
 - `SoLean.Examples.ToyVerifier.keyDomainBindingEnv_signature_binding`
 - `SoLean.Examples.ToyVerifier.keyDomainBindingEnv_key_separation`
 - `SoLean.Examples.ToyVerifier.keyDomainBindingEnv_satisfies_oracle_assumptions`
+- `SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_domain_separation`
+- `SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_signature_binding`
+- `SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_key_separation`
+- `SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_satisfies_oracle_assumptions`
 
 ## Non-Claims
 
