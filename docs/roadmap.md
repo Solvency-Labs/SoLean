@@ -607,19 +607,57 @@ boundary is now a working precedent, so the natural next moves are gas
 accounting, returndata, or ABI calldata structure.
 ```
 
-Useful candidate moves, in rough priority order:
+Work is organized into two named lanes. Lane A is in-flight; Lane B is
+queued for the next session.
 
-1. Add a Code-Resolution layer: a `wrapperCodeHash : UInt256` field on
-   `EvmEnv`, plus a `WrapperCodeBound` assumption saying the oracle's
-   behavior on `wrapperAddress` is consistent with the declared hash.
-   First step toward "this address really hosts the verifier wrapper."
-2. Refine the gas model toward EIP-150's 63/64 forwarding rule: when the
-   wallet calls the wrapper, only forward (63/64) * remainingGas.
-3. Generalize the calldata layer: lift the `[selector, args]` list into a
-   structured `CalldataABI` type that distinguishes head/tail and supports
-   multiple selectors.
-4. Keep real PQ cryptography out of scope until at least one of the above
-   is done.
+### Lane A — Deepen the EVM CALL boundary (in flight)
+
+1. **M21 — Code resolution.** Add `wrapperCodeHash : UInt256` to `EvmEnv`
+   and a `WrapperCodeBound` assumption: the oracle's behavior on
+   `wrapperAddress` is consistent with the declared code hash. Surfaces as
+   a new structured entry in `evmCallAssumptions`.
+2. **M22 — Address-discrimination theorem.** Prove the call-shaped flow's
+   outcome depends only on the oracle's behavior at `wrapperAddress`, not
+   at any other address. Captures inter-contract isolation.
+3. **M23 — Cross-contract reentrant callbacks.** Make the oracle
+   interface richer (so a malicious oracle could *try* to call back) and
+   add a named `NoCallback` assumption ruling it out. Lifts no-reentrancy
+   from a structural fact to an explicit assumption that can be relaxed.
+4. **M24 — EIP-150 63/64 gas forwarding.** Refine the gas model so the
+   wallet only forwards `(63/64) * gasBudget` to the wrapper.
+5. **M25 — Richer ABI calldata.** Lift `[selector, args]` into a
+   structured `CalldataABI` type with head/tail and multi-selector
+   dispatch.
+
+### Lane B — Structured PQ verifier shape (queued for next session)
+
+The verifier oracle is still `UInt256⁴ → Bool`. These slices bring PQ
+cryptography into scope *structurally* without committing to a specific
+proven scheme.
+
+1. **M21' — Structured PQ verifier interface.** Replace `Env.verifier`
+   with a `StructuredVerifier` record exposing intermediate fields the
+   wallet can reason about (signature decomposition, key components).
+   Prove the existing oracle-assumption discharges lift to the new shape
+   under a `StructureRespectsBool` correspondence assumption.
+2. **M22' — Lattice-shaped public-key model.** Model `publicKey` as
+   `List UInt256` (polynomial coefficients, no semantics yet) and add a
+   `PublicKeyShape` predicate. First time the project says anything
+   specific about what a PQ public key *is*, not just that it's a word.
+3. **M23' — Scheme parameterization stub.** Named parameter records for
+   Falcon-512 / ML-DSA-44 / etc., bridging to standards docs without
+   modeling the actual schemes.
+
+After M21'–M23', a meaningful M24' would attempt the first concrete
+verifier-side proof (e.g., "polynomial structure forces uniqueness in some
+coordinate"), which is genuinely cryptographic work and would benefit from
+a clean session start.
+
+### Out of scope until at least one lane completes
+
+- real PQ cryptographic security (M21'–M23' approach the shape, not the
+  security proof)
+- production-readiness for AA wallets
 
 ## Updating This Roadmap
 

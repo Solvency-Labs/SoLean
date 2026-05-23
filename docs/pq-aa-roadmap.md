@@ -361,6 +361,40 @@ Solidity subset
 Do not silently support new Solidity, Yul, ABI, memory, or call features. Add
 each feature only with a named assumption, test, artifact, or proof.
 
+## Phase 5: Structured PQ Verifier Shape
+
+Goal: bring PQ cryptography into scope *structurally* without yet committing
+to a specific scheme's security proof. The verifier remains an oracle in
+the sense that its acceptance set is given by hypotheses, but the oracle's
+*signature shape* becomes a record with named fields that the wallet and
+wrapper can reason about.
+
+Sequencing (each is one bounded slice):
+
+1. **Structured verifier interface.** Replace `Env.verifier : UInt256⁴ →
+   Bool` with a `StructuredVerifier` record exposing intermediate fields
+   (e.g., the signature's modeled components, the public key's modeled
+   shape). Add a `StructureRespectsBool` correspondence assumption tying
+   the new shape to the existing `Bool`-valued oracle so existing proofs
+   lift mechanically.
+2. **Lattice-shaped public-key model.** Model `publicKey` as `List UInt256`
+   (polynomial coefficients with no semantics yet), add a `PublicKeyShape`
+   predicate, and prove the existing verifier-oracle assumptions hold
+   under specific shape hypotheses. First Lean statement about the
+   *form* of a PQ public key.
+3. **Scheme parameterization stub.** Named parameter records for Falcon-512
+   and ML-DSA-44 (degree, modulus, signature byte length), surfaced in the
+   certificate's `verifierModelCalibrations` as a third calibration kind
+   (`schemeParameterCalibration`). Bridges to standards docs without
+   modeling actual signing or verification.
+
+After Phase 5 the verifier-oracle assumptions still discharge the same
+contract-level claims, but the wallet/wrapper code is starting to talk
+about real PQ artifacts (polynomial coefficients, scheme parameters)
+instead of opaque words. Phase 6 would attempt the first concrete
+verifier-side proof, e.g., "polynomial structure forces uniqueness in some
+coordinate", which is genuinely cryptographic work.
+
 ## Non-Claims
 
 SoLean does not currently claim:
