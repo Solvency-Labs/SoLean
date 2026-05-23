@@ -1,5 +1,6 @@
 import SoLean.Basic
 import SoLean.Bridge
+import SoLean.Source.Shape
 import SoLean.Examples.Counter
 import SoLean.Examples.CounterCompiler
 import SoLean.Examples.CounterYul

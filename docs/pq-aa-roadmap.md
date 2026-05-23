@@ -149,7 +149,9 @@ Current v0:
 - `SoLean.Examples.AAPQSource` defines the Solidity-shaped two-contract source
   description (`walletContract`, `wrapperContract`, `integratedContract`) and
   proves that wallet, wrapper, and integrated bodies instantiate to the
-  existing proved programs. The sub-namespace `BehaviorReflection` reflects
+  existing proved programs. The basic contract/parameter/storage vocabulary is
+  shared through `SoLean.Source.Shape`; the AA/PQ-specific behavior summary
+  remains in `AAPQSource`. The sub-namespace `BehaviorReflection` reflects
   the behavior summary's structured `Operand`/`Condition`/`ValueExpression`
   DSL back into `SoLean.Stmt` and proves that each phase of
   `integratedBehaviorSummary` reconstructs the corresponding proved program

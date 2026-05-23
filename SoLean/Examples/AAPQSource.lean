@@ -1,41 +1,14 @@
 import SoLean.Examples.AAPQIntegration
+import SoLean.Source.Shape
 
 namespace SoLean
 namespace Examples
 namespace AAPQSource
 
-/--
-Solidity-shaped storage slot description.
-
-This is documentation/audit data, not a verified parser output. It pins the
-slot layout that the Lean models assume so the bridge artifact can name the
-trusted shape explicitly.
--/
-structure StorageSlot where
-  name : String
-  slot : Slot
-  typeName : String
-deriving Repr, DecidableEq
-
-/-- Solidity-shaped function parameter description. -/
-structure Param where
-  name : String
-  typeName : String
-deriving Repr, DecidableEq
-
-/--
-Solidity-shaped single-contract description.
-
-The body of the function is not stored here. The instantiation theorems below
-pin each contract's accepted source shape to the existing proved program.
--/
-structure Contract where
-  name : String
-  pragma : String
-  storage : List StorageSlot
-  functionName : String
-  params : List Param
-deriving Repr, DecidableEq
+abbrev StorageSlot := SoLean.Source.Shape.StorageSlot
+abbrev Param := SoLean.Source.Shape.Param
+abbrev Contract := SoLean.Source.Shape.Contract
+abbrev IntegratedContract := SoLean.Source.Shape.IntegratedContract
 
 def walletContract : Contract :=
   { name := "AAWallet",
@@ -98,22 +71,6 @@ def wrapperBody (input : PQVerifierWrapper.WrapperInput) : Stmt :=
 theorem wrapperSource_instantiates_to_existing_model
     (input : PQVerifierWrapper.WrapperInput) :
     wrapperBody input = PQVerifierWrapper.verifyProgram input := rfl
-
-/--
-Solidity-shaped two-contract integration description.
-
-The wallet and wrapper are two contracts with separate storage. The integration
-flow runs the wrapper first, then a key-match guard, then the wallet validation
-body. This mirrors the proved composition in `AAPQIntegration.validateIntegrated`.
--/
-structure IntegratedContract where
-  name : String
-  pragma : String
-  wallet : Contract
-  wrapper : Contract
-  integrationName : String
-  params : List Param
-deriving Repr, DecidableEq
 
 def integratedContract : IntegratedContract :=
   { name := "AAPQIntegration",

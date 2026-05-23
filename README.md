@@ -112,6 +112,9 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   final-write values are structured `Condition` / `ValueExpression` nodes
   over a small `Operand` DSL (param / slot / msgSender / const) instead of
   English condition strings.
+- A shared `SoLean.Source.Shape` vocabulary for source-shape audit metadata
+  (`Param`, `StorageSlot`, `Contract`, and `IntegratedContract`) used by both
+  Counter and AA/PQ artifacts.
 - `integratedCryptoAssumptions_cover_all_oracle_theorems` is a Lean-side
   coverage theorem: the `theoremReference`s in `integratedCryptoAssumptions`
   match the enumerated `OracleAssumptionId.theoremReference` for every
@@ -231,6 +234,7 @@ still a restricted Solidity subset rather than an EVM semantics.
 │   ├── pq-aa-roadmap.md
 │   ├── roadmap.md
 │   ├── simple-vault.md
+│   ├── source-shape.md
 │   └── yul-subset.md
 ├── SoLean.lean
 ├── SoLean/
@@ -244,6 +248,8 @@ still a restricted Solidity subset rather than an EVM semantics.
 │   ├── Artifacts.lean
 │   ├── CounterArtifactsMain.lean
 │   ├── AAPQArtifactsMain.lean
+│   ├── Source/
+│   │   └── Shape.lean
 │   └── Examples/
 │       ├── AAPQIntegration.lean
 │       ├── AAPQSource.lean

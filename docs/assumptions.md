@@ -78,6 +78,9 @@ results.
 
 ## Solidity And Yul
 
+- `SoLean.Source.Shape` defines shared source-shape audit metadata used by
+  Counter and AA/PQ artifacts. It is not a parser and does not add supported
+  Solidity syntax.
 - Solidity parsing and generation of SoLean models are not implemented beyond
   an explicit restricted Counter-subset parser.
 - Yul parsing is limited to the restricted subset in `docs/yul-subset.md`.

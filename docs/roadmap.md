@@ -115,6 +115,9 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   source description of the AA/PQ two-contract layout and proves that the
   wallet, wrapper, and integrated bodies instantiate to the existing proved
   programs.
+- `SoLean.Source.Shape` provides shared `Param`, `StorageSlot`, `Contract`,
+  and `IntegratedContract` vocabulary used by both Counter and AA/PQ source
+  artifacts.
 - `SoLean.Examples.AAPQSource.integratedBehaviorSummary` is the Lean-owned
   ordered behavior summary of the integrated AA/PQ flow: structured
   `Condition`/`ValueExpression` nodes over a small `Operand` DSL (param,
@@ -486,8 +489,9 @@ Definition of done:
 
 ## Current Highest-Value Next Step
 
-The previous next step ("move AA/PQ integration from pure Lean model to a
-Solidity-shaped source model") has landed as a v0:
+The previous next steps ("move AA/PQ integration from pure Lean model to a
+Solidity-shaped source model" and "generalize the shared modeling vocabulary
+across Counter and AA/PQ") have landed as v0s:
 
 - `SoLean.Examples.AAPQSource` defines the two-contract source shape and proves
   `walletSource_instantiates_to_existing_model`,
@@ -498,28 +502,26 @@ Solidity-shaped source model") has landed as a v0:
   out-of-scope items.
 - `examples/AAPQIntegration.sol` is a hand-written Solidity fixture matching
   the source shape; it is not parsed or compared to Lean.
+- `SoLean.Source.Shape` now owns the shared Solidity-shaped source metadata
+  vocabulary, and both Counter and AA/PQ artifacts use it.
 
 The next best qualitative task is:
 
 ```text
-Decide whether to deepen the AA/PQ source-shape audit chain or generalize the
-shared modeling vocabulary across Counter and AA/PQ.
+Add a modeled external-call shim between wallet and verifier wrapper.
 ```
 
 Useful candidate moves, in rough priority order:
 
-1. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
-   of `AAPQSource` into a shared `SoLean.Source.Shape` module and use it from
-   the Counter source artifact too, reducing per-case-study duplication.
-2. Apply the AAPQSource pattern to a non-claim: an external-call shim
+1. Apply the AAPQSource pattern to a non-claim: an external-call shim
    (verified low-level call between wallet and wrapper), or replacing the
    abstract verifier oracle with a more concrete (still non-cryptographic)
    modeled scheme.
-3. Promote `cryptoAssumptions` from a flat list to a directed graph of
+2. Promote `cryptoAssumptions` from a flat list to a directed graph of
    assumption-to-theorem-to-flow edges (which assumption supports which
    theorem at which composition layer), so the audit can render a fuller
    trust-boundary tree rather than a flat list.
-4. Keep real Solidity parsing, Yul emission, external calls, and real PQ
+3. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 
 ## Updating This Roadmap

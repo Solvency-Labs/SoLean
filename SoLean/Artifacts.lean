@@ -1,6 +1,7 @@
 import SoLean.Bridge
 import SoLean.Examples.AAPQSource
 import SoLean.Examples.CounterCompiler
+import SoLean.Source.Shape
 
 namespace SoLean
 namespace Artifacts
@@ -58,6 +59,19 @@ def stringsJson (values : List String) : Json :=
 
 namespace Source
 
+def counterParam : SoLean.Source.Shape.Param :=
+  { name := "amount", typeName := "uint256" }
+
+def counterStorageSlot : SoLean.Source.Shape.StorageSlot :=
+  { name := "x", slot := Examples.Counter.xSlot, typeName := "uint256" }
+
+def counterContract : SoLean.Source.Shape.Contract :=
+  { name := "Counter",
+    pragma := "0.8.35",
+    storage := [counterStorageSlot],
+    functionName := "inc",
+    params := [counterParam] }
+
 def valueJson (paramName : String) : SoLean.Source.ValueExpr -> Json
   | .const value => .obj [("const", .num value.toNat)]
   | .param => .obj [("param", .str paramName)]
@@ -91,25 +105,25 @@ partial def stmtJson (paramName : String) : SoLean.Source.Stmt -> Json
 def functionJson (function : SoLean.Source.Function) : Json :=
   .obj [
     ("contract", .obj [
-      ("name", .str "Counter"),
-      ("pragma", .str "0.8.35")
+      ("name", .str counterContract.name),
+      ("pragma", .str counterContract.pragma)
     ]),
     ("function", .obj [
       ("body", .obj [
         ("seq", .arr ((flattenSeq function.body).map (stmtJson function.paramName)))
       ]),
-      ("name", .str "inc"),
+      ("name", .str counterContract.functionName),
       ("param", .obj [
-        ("name", .str function.paramName),
-        ("type", .str "uint256")
+        ("name", .str counterParam.name),
+        ("type", .str counterParam.typeName)
       ])
     ]),
     ("kind", .str "sourceFunction"),
     ("lean", .str "SoLean.Examples.CounterCompiler.counterFunction"),
     ("storage", .obj [
       ("x", .obj [
-        ("slot", .num Examples.Counter.xSlot),
-        ("type", .str "uint256"),
+        ("slot", .num counterStorageSlot.slot),
+        ("type", .str counterStorageSlot.typeName),
         ("visibility", .str "public")
       ])
     ])
@@ -450,20 +464,20 @@ def counterBridgeManifestJson : String :=
 
 namespace AAPQ
 
-def paramJson (param : SoLean.Examples.AAPQSource.Param) : Json :=
+def paramJson (param : SoLean.Source.Shape.Param) : Json :=
   .obj [
     ("name", .str param.name),
     ("type", .str param.typeName)
   ]
 
-def storageSlotJson (entry : SoLean.Examples.AAPQSource.StorageSlot) : Json :=
+def storageSlotJson (entry : SoLean.Source.Shape.StorageSlot) : Json :=
   .obj [
     ("name", .str entry.name),
     ("slot", .num entry.slot),
     ("type", .str entry.typeName)
   ]
 
-def contractJson (contract : SoLean.Examples.AAPQSource.Contract) : Json :=
+def contractJson (contract : SoLean.Source.Shape.Contract) : Json :=
   .obj [
     ("function", .obj [
       ("name", .str contract.functionName),
@@ -482,7 +496,7 @@ def integratedFlow : Json :=
   ]
 
 def integratedContractJson
-    (contract : SoLean.Examples.AAPQSource.IntegratedContract) : Json :=
+    (contract : SoLean.Source.Shape.IntegratedContract) : Json :=
   .obj [
     ("integration", .obj [
       ("flow", integratedFlow),
