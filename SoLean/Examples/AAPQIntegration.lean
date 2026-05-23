@@ -909,6 +909,72 @@ theorem validateAndExecute_key_separation_under_oracle_assumption
       hOpHash hDomain hSignature hValidate1 hValidate2
 
 /--
+Wrapper-storage isolation: a successful `validateAndExecute` leaves the
+wrapper's storage unchanged. The integrated flow does not touch the
+verifier-wrapper contract's storage. Follows from
+`PQVerifierWrapper.VerificationPost`'s final clause that
+`finalStorage = storage`, lifted through `validateAndExecute_success_structure`.
+-/
+theorem validateAndExecute_preserves_wrapper_storage
+    (env : Env) (input : IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateAndExecute env input wrapperStorage walletStorage =
+        IntegratedFullResult.success finalWrapper finalWallet) :
+    finalWrapper = wrapperStorage := by
+  obtain ⟨postWallet, hValidate, _⟩ :=
+    validateAndExecute_success_structure
+      env input wrapperStorage walletStorage finalWrapper finalWallet h
+  have hPost :=
+    validateIntegrated_success_properties
+      env wrapperStorage walletStorage finalWrapper postWallet input hValidate
+  exact hPost.1.2.2.2.2
+
+/--
+Wallet-storage isolation: a successful `validateAndExecute` only touches the
+nonce slot and `lastOpHashSlot`. The wallet's `keyCommitmentSlot`,
+`domainSlot`, and `entryPointSlot` are unchanged. Auditors can rely on this
+to know that the integrated flow does not silently mutate wallet
+configuration.
+-/
+theorem validateAndExecute_preserves_wallet_configuration
+    (env : Env) (input : IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateAndExecute env input wrapperStorage walletStorage =
+        IntegratedFullResult.success finalWrapper finalWallet) :
+    finalWallet.read AAWallet.keyCommitmentSlot =
+        walletStorage.read AAWallet.keyCommitmentSlot ∧
+      finalWallet.read AAWallet.domainSlot =
+          walletStorage.read AAWallet.domainSlot ∧
+        finalWallet.read AAWallet.entryPointSlot =
+          walletStorage.read AAWallet.entryPointSlot := by
+  obtain ⟨postWallet, hValidate, hFinalWalletEq⟩ :=
+    validateAndExecute_success_structure
+      env input wrapperStorage walletStorage finalWrapper finalWallet h
+  have hPost :=
+    validateIntegrated_success_properties
+      env wrapperStorage walletStorage finalWrapper postWallet input hValidate
+  rcases hPost.2.1 with
+    ⟨_, _, _, _, _, hKeyUnchanged, hDomainUnchanged, hEntryUnchanged⟩
+  have hLastOpNeKey :
+      Not (AAWallet.keyCommitmentSlot = AAWallet.lastOpHashSlot) := by decide
+  have hLastOpNeDomain :
+      Not (AAWallet.domainSlot = AAWallet.lastOpHashSlot) := by decide
+  have hLastOpNeEntry :
+      Not (AAWallet.entryPointSlot = AAWallet.lastOpHashSlot) := by decide
+  refine ⟨?_, ?_, ?_⟩
+  · rw [hFinalWalletEq,
+        Storage.read_write_other postWallet input.opHash hLastOpNeKey,
+        hKeyUnchanged]
+  · rw [hFinalWalletEq,
+        Storage.read_write_other postWallet input.opHash hLastOpNeDomain,
+        hDomainUnchanged]
+  · rw [hFinalWalletEq,
+        Storage.read_write_other postWallet input.opHash hLastOpNeEntry,
+        hEntryUnchanged]
+
+/--
 Contrapositive gate theorem: when `validateIntegrated` reverts,
 `validateAndExecute` reverts with the same `Failure` value. The execute step
 is `.assign lastOpHashSlot (.const op.opHash)`, which cannot itself revert

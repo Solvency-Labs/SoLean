@@ -544,6 +544,12 @@ graph is now visible in the Markdown/demo trust-boundary surface:
   existing success-side gate theorems. They state that the modeled execute
   side-effect happens exactly when the integrated validation accepts; revert
   failures propagate unchanged through the execute composition.
+- `validateAndExecute_preserves_wrapper_storage` and
+  `validateAndExecute_preserves_wallet_configuration` formalize
+  storage-isolation: successful integrated flow leaves wrapper storage
+  unchanged and only touches the wallet's nonce slot and `lastOpHashSlot`.
+  Auditors can rely on this to know the integrated flow does not silently
+  mutate `keyCommitmentSlot`, `domainSlot`, or `entryPointSlot`.
 
 Explicit non-claim — *no concrete `DerivedSignatureModel` instance is
 provided in `UInt256`*. By pigeon-hole, no total function `UInt256³ →
@@ -562,14 +568,13 @@ pipeline to a second integration variant.
 
 Useful candidate moves, in rough priority order:
 
-1. Add a "wallet-storage isolation" theorem: a successful `validateAndExecute`
-   only writes to `lastOpHashSlot` and `nonceSlot`; all other wallet slots
-   (`keyCommitmentSlot`, `domainSlot`, `entryPointSlot`) are unchanged.
-   This formalizes the implicit assumption that the integrated flow doesn't
-   silently touch wallet configuration.
-2. Extend the source-shape pipeline to cover the `callVerifierWrapperViaCall`
+1. Extend the source-shape pipeline to cover the `callVerifierWrapperViaCall`
    variant as a second integration option in the certificate, alongside the
    existing direct composition.
+2. Add a Lean-checked structural property that says
+   `executeUserOp.touchedSlots = [lastOpHashSlot]` (the static slot set
+   written by the execute statement), so the isolation reasoning above is
+   derivable from the program shape rather than from per-slot lemmas.
 3. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 

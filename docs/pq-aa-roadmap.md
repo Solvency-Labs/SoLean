@@ -272,6 +272,14 @@ Two lifted contract-level claims about the full flow:
   when the underlying validateIntegrated reverts with the same F.
   The execute step (`.assign` over `.const`) cannot itself revert,
   so the only source of revert is the integrated validation.
+- `validateAndExecute_preserves_wrapper_storage` and
+  `validateAndExecute_preserves_wallet_configuration` are
+  storage-isolation theorems: a successful integrated flow leaves
+  the wrapper's storage entirely unchanged and only touches the
+  wallet's nonce slot and `lastOpHashSlot`. Auditors can rely on
+  these to know the integrated flow does not silently mutate
+  wrapper state or wallet configuration (`keyCommitmentSlot`,
+  `domainSlot`, `entryPointSlot`).
 
 The three sibling oracle-assumption theorems are also lifted to the
 full validateAndExecute flow:
