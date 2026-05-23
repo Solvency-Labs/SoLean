@@ -174,10 +174,13 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   `SoLean.Examples.AAPQEvmCall` uses a selector-prefixed calldata
   layout and proves `parseVerifierCalldata` rejects wrong-selector and
   wrong-length inputs. `SoLean.Examples.AAPQEvmCallGas` adds a
-  gas-aware variant with an `EnoughGas` predicate. Three non-claims
+  gas-aware variant with an `EnoughGas` predicate. Four non-claims
   from the original AA/PQ list — real external calls, gas accounting,
-  and ABI calldata shape — are now partially in scope; not full EVM
-  CALL (no per-opcode gas schedule, no reentrancy, no code resolution).
+  ABI calldata shape, and structural no-reentrancy on the wallet side
+  (`validateIntegratedViaEvmCall_wallet_step_isolated_from_oracle` +
+  `_preserves_wallet_configuration`) — are now partially in scope;
+  not full EVM CALL (no per-opcode gas schedule, no code resolution,
+  no cross-contract reentrant callbacks).
 - An AA/PQ source-shape audit script (`scripts/check_aapq_source.py`) that
   loads the four Lean-owned AA/PQ artifacts, parses the restricted Solidity
   sketch, and emits a deterministic JSON or Markdown report cross-checking

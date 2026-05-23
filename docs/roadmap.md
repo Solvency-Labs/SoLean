@@ -565,6 +565,13 @@ graph is now visible in the Markdown/demo trust-boundary surface:
   full EVM CALL — no gas, no reentrancy, no code resolution, no value
   transfer — but it is the first non-claim from the original AA/PQ list
   that has been brought into scope.
+- `validateIntegratedViaEvmCall_wallet_step_isolated_from_oracle` and
+  `validateIntegratedViaEvmCall_preserves_wallet_configuration` formalize
+  structural no-reentrancy: the wrapper call's oracle takes only
+  `wrapperStorage` (by `EvmEnv.evmCall`'s signature), so wallet storage
+  cannot be observed or modified during the wrapper call, and
+  `keyCommitmentSlot`/`domainSlot`/`entryPointSlot` are preserved end-to-end
+  in the call-shaped flow. Fourth real-EVM non-claim partially in scope.
 - `SoLean.Examples.AAPQEvmCall` now uses a selector-prefixed calldata
   layout. `verifySelector` is the modeled function ID;
   `parseVerifierCalldata` rejects wrong-selector and wrong-length
@@ -602,16 +609,15 @@ accounting, returndata, or ABI calldata structure.
 
 Useful candidate moves, in rough priority order:
 
-1. Bring a tiny reentrancy boundary into scope: model that the wrapper
-   itself cannot call back into the wallet via `evmCall` (the simplest
-   form is a "no-reentrant-callbacks" assumption on the oracle); prove
-   the wallet's nonce slot is preserved across the wrapper call.
-2. Add a Code-Resolution layer: model that `wrapperAddress` actually
-   resolves to a known wrapper program (not arbitrary code) — a named
-   `WrapperCodeResolution` assumption that the oracle's behavior on
-   `wrapperAddress` is bounded by some declared code hash.
-3. Refine the gas model toward EIP-150's 63/64 forwarding rule: when the
+1. Add a Code-Resolution layer: a `wrapperCodeHash : UInt256` field on
+   `EvmEnv`, plus a `WrapperCodeBound` assumption saying the oracle's
+   behavior on `wrapperAddress` is consistent with the declared hash.
+   First step toward "this address really hosts the verifier wrapper."
+2. Refine the gas model toward EIP-150's 63/64 forwarding rule: when the
    wallet calls the wrapper, only forward (63/64) * remainingGas.
+3. Generalize the calldata layer: lift the `[selector, args]` list into a
+   structured `CalldataABI` type that distinguishes head/tail and supports
+   multiple selectors.
 4. Keep real PQ cryptography out of scope until at least one of the above
    is done.
 

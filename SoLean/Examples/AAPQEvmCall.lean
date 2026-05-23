@@ -265,6 +265,76 @@ theorem validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_succes
       validateIntegratedViaEvmCall_success_matches_validateIntegrated
         eenv hConsistent input wrapperStorage walletStorage fw fwa hDirect
 
+/--
+Structural no-reentrancy on the wallet side: a successful
+`validateIntegratedViaEvmCall` ran the wallet program on the caller's
+`walletStorage` — *not* on anything the wrapper call's oracle produced.
+
+This is forced by the type signature of `EvmEnv.evmCall`, which takes only
+the *callee's* storage (wrapperStorage). The wallet's storage flows through
+the call-shaped flow without ever passing through the oracle, so even a
+malicious oracle cannot reach into wallet storage during the wrapper call.
+-/
+theorem validateIntegratedViaEvmCall_wallet_step_isolated_from_oracle
+    (eenv : EvmEnv) (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateIntegratedViaEvmCall eenv input wrapperStorage walletStorage =
+        EvmCallIntegratedResult.success finalWrapper finalWallet) :
+    exec eenv.base (AAPQIntegration.walletProgram input) walletStorage =
+      ExecResult.success finalWallet := by
+  unfold validateIntegratedViaEvmCall at h
+  generalize hCall :
+      eenv.evmCall eenv.wrapperAddress
+        (buildVerifierCalldata input) wrapperStorage = callResult at h
+  cases callResult with
+  | success _ =>
+      generalize hWalletExec :
+          exec eenv.base (AAPQIntegration.walletProgram input) walletStorage =
+            walletResult at h
+      cases walletResult with
+      | success postWallet =>
+          injection h with _ hWalletEq
+          rw [hWalletEq]
+      | revert _ =>
+          cases h
+  | revert _ =>
+      cases h
+
+/--
+Wallet-configuration isolation for the call-shaped flow: a successful
+`validateIntegratedViaEvmCall` leaves the wallet's `keyCommitmentSlot`,
+`domainSlot`, and `entryPointSlot` unchanged. Mirrors the canonical-flow
+isolation theorem and follows from
+`validateIntegratedViaEvmCall_wallet_step_isolated_from_oracle` plus
+`AAWallet.ValidationPost`'s unchanged-slot clauses.
+
+Together with the structural no-reentrancy theorem above, this shows the
+call-shaped boundary doesn't open new ways for the wrapper to mutate wallet
+configuration.
+-/
+theorem validateIntegratedViaEvmCall_preserves_wallet_configuration
+    (eenv : EvmEnv) (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateIntegratedViaEvmCall eenv input wrapperStorage walletStorage =
+        EvmCallIntegratedResult.success finalWrapper finalWallet) :
+    finalWallet.read AAWallet.keyCommitmentSlot =
+        walletStorage.read AAWallet.keyCommitmentSlot ∧
+      finalWallet.read AAWallet.domainSlot =
+          walletStorage.read AAWallet.domainSlot ∧
+        finalWallet.read AAWallet.entryPointSlot =
+          walletStorage.read AAWallet.entryPointSlot := by
+  have hWalletExec :=
+    validateIntegratedViaEvmCall_wallet_step_isolated_from_oracle
+      eenv input wrapperStorage walletStorage finalWrapper finalWallet h
+  have hWalletProps :=
+    AAPQIntegration.wallet_program_success_properties
+      eenv.base walletStorage finalWallet input hWalletExec
+  rcases hWalletProps with
+    ⟨_, _, _, _, _, _, hKeyUnchanged, hDomainUnchanged, hEntryUnchanged⟩
+  exact ⟨hKeyUnchanged, hDomainUnchanged, hEntryUnchanged⟩
+
 end AAPQEvmCall
 end Examples
 end SoLean

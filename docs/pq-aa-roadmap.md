@@ -293,6 +293,16 @@ Two lifted contract-level claims about the full flow:
   `validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success`
   lifts that to a two-sided equivalence: the call-shaped flow succeeds
   iff the canonical flow succeeds.
+- `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_wallet_step_isolated_from_oracle`
+  and `validateIntegratedViaEvmCall_preserves_wallet_configuration`
+  formalize structural no-reentrancy on the wallet side: the wrapper
+  call's oracle takes only `wrapperStorage` (by the `EvmEnv.evmCall`
+  signature), so the wallet's storage flows through the call-shaped
+  flow untouched. Even a malicious oracle cannot reach into wallet
+  storage during the wrapper call; `keyCommitmentSlot`, `domainSlot`,
+  and `entryPointSlot` are preserved across the entire call-shaped
+  flow. Brings reentrancy into scope as a *structural* property
+  rather than an ambient assumption.
 - `SoLean.Examples.AAPQEvmCall` now uses a selector-prefixed calldata
   layout: `buildVerifierCalldata` prepends a modeled `verifySelector`,
   and `parseVerifierCalldata` rejects calldata with the wrong selector
