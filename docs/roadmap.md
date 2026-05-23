@@ -150,14 +150,17 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   `expectedBehaviorSummary` field.
 - A hand-written Solidity sketch lives at `examples/AAPQIntegration.sol` as
   documentation/audit fixture only; it is not parsed or compared to Lean.
-- `scripts/check_aapq_source.py` cross-checks the three Lean-owned AA/PQ
+- `scripts/check_aapq_source.py` cross-checks the four Lean-owned AA/PQ
   artifacts against the Solidity sketch and against each other (certificate's
   `expectedBehaviorSummary` vs. the standalone behavior summary), walks
-  the behavior summary's structured operands to verify each one references a
-  declared parameter or a real storage slot in source-json, and audits the
-  bidirectional link between `cryptoAssumptions` and the
-  `*_under_oracle_assumption` theorems in `proofReferences`. The report is
-  committed as `tests/golden/AAPQ.source.v3.json` (reportVersion 3).
+  the behavior summary's structured operands (both short and full) to
+  verify each one references a declared parameter or a real storage slot
+  in source-json, audits the bidirectional link between `cryptoAssumptions`
+  and the `*_under_oracle_assumption` theorems in `proofReferences`, and
+  verifies the full-behavior-summary contains an `execute` phase with the
+  expected `lastOpHash` finalWrite and extends the standalone three-phase
+  summary. The report is committed as `tests/golden/AAPQ.source.v4.json`
+  (reportVersion 4).
 - `scripts/demo_aapq_source.py` is a one-command research demo that runs
   `lake build`, the AA/PQ-focused Python tests, the three artifact smokes,
   the markdown source-shape report, and a Trust Boundaries summary sourced
@@ -508,14 +511,13 @@ Useful candidate moves, in rough priority order:
 1. Extract the Solidity-shaped `Contract`/`Param`/`StorageSlot` vocabulary out
    of `AAPQSource` into a shared `SoLean.Source.Shape` module and use it from
    the Counter source artifact too, reducing per-case-study duplication.
-2. Surface the full-flow behavior summary in `scripts/check_aapq_source.py`
-   as a checked artifact: load `full-behavior-summary-json`, verify it
-   includes an `"execute"` phase with a single `finalWrite` to
-   `AAWallet.lastOpHashSlot`, and that its operand scope still passes.
-3. Apply the AAPQSource pattern to a non-claim: an external-call shim
+2. Apply the AAPQSource pattern to a non-claim: an external-call shim
    (verified low-level call between wallet and wrapper), or replacing the
    abstract verifier oracle with a more concrete (still non-cryptographic)
    modeled scheme.
+3. Add a Lean-side proof of `validateAndExecute` no-bypass over the full
+   flow (lift `noBypass_implies_verifier_accepted` to the full flow:
+   successful validateAndExecute ⇒ verifier accepted the tuple).
 4. Keep real Solidity parsing, Yul emission, external calls, and real PQ
    cryptography out of scope until at least one of the above is done.
 

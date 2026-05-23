@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-REPORT_VERSION = 3
+REPORT_VERSION = 4
 
 LIMITATIONS = [
     "AA/PQ source-shape audit only.",
@@ -466,6 +466,89 @@ def check_under_oracle_assumption_theorems_covered(
     )
 
 
+EXECUTE_PHASE_NAME = "execute"
+EXECUTE_FINAL_WRITE_NAME = "lastOpHash"
+EXECUTE_FINAL_WRITE_SLOT = 4
+
+
+def check_full_behavior_summary_includes_execute_phase(
+    full_summary: dict[str, Any],
+) -> dict[str, str]:
+    """The full behavior summary must include an 'execute' phase with a single
+    finalWrite to AAWallet.lastOpHashSlot (slot 4)."""
+    phases = full_summary.get("phases", [])
+    execute_phases = [p for p in phases if p.get("name") == EXECUTE_PHASE_NAME]
+    if len(execute_phases) != 1:
+        return failed(
+            "full-behavior-summary execute phase",
+            "Lean-owned full behavior summary",
+            f"Expected exactly one 'execute' phase, found {len(execute_phases)}.",
+        )
+    phase = execute_phases[0]
+    if phase.get("guards"):
+        return failed(
+            "full-behavior-summary execute phase",
+            "Lean-owned full behavior summary",
+            "Execute phase must have zero guards.",
+        )
+    writes = phase.get("finalWrites", [])
+    if len(writes) != 1:
+        return failed(
+            "full-behavior-summary execute phase",
+            "Lean-owned full behavior summary",
+            f"Execute phase must have exactly one finalWrite, found {len(writes)}.",
+        )
+    write = writes[0]
+    if write.get("name") != EXECUTE_FINAL_WRITE_NAME:
+        return failed(
+            "full-behavior-summary execute phase",
+            "Lean-owned full behavior summary",
+            f"Execute finalWrite name expected {EXECUTE_FINAL_WRITE_NAME!r}, "
+            f"got {write.get('name')!r}.",
+        )
+    if write.get("slot") != EXECUTE_FINAL_WRITE_SLOT:
+        return failed(
+            "full-behavior-summary execute phase",
+            "Lean-owned full behavior summary",
+            f"Execute finalWrite slot expected {EXECUTE_FINAL_WRITE_SLOT}, "
+            f"got {write.get('slot')!r}.",
+        )
+    return passed(
+        "full-behavior-summary execute phase",
+        "Lean-owned full behavior summary",
+        f"Execute phase has the expected finalWrite to slot {EXECUTE_FINAL_WRITE_SLOT}.",
+    )
+
+
+def check_full_behavior_summary_extends_short_summary(
+    full_summary: dict[str, Any],
+    short_summary: dict[str, Any],
+) -> dict[str, str]:
+    """The full summary's first N phases must equal the short summary's N
+    phases (where N = len(short_summary.phases))."""
+    short_phases = short_summary.get("phases", [])
+    full_phases = full_summary.get("phases", [])
+    if len(full_phases) < len(short_phases):
+        return failed(
+            "full-behavior-summary extends short summary",
+            "Lean-owned full behavior summary",
+            f"Full summary has fewer phases ({len(full_phases)}) than the short "
+            f"summary ({len(short_phases)}).",
+        )
+    if full_phases[: len(short_phases)] != short_phases:
+        return failed(
+            "full-behavior-summary extends short summary",
+            "Lean-owned full behavior summary",
+            "Full summary's first phases diverge from the short summary.",
+        )
+    return passed(
+        "full-behavior-summary extends short summary",
+        "Lean-owned full behavior summary",
+        f"Full summary extends the {len(short_phases)}-phase short summary "
+        f"with {len(full_phases) - len(short_phases)} additional phase(s).",
+    )
+
+
 def check_phase_proof_references(behavior_summary: dict[str, Any]) -> dict[str, str]:
     phases = behavior_summary.get("phases", [])
     if not phases:
@@ -492,6 +575,7 @@ def run_audit(
     source: dict[str, Any],
     certificate: dict[str, Any],
     behavior_summary: dict[str, Any],
+    full_behavior_summary: dict[str, Any],
     solidity_text: str,
 ) -> dict[str, Any]:
     shape = parse_solidity_shape(solidity_text)
@@ -505,6 +589,17 @@ def run_audit(
     checks.append(check_behavior_summary_operand_scope(behavior_summary, source))
     checks.append(check_crypto_assumptions_link_to_proofs(certificate))
     checks.append(check_under_oracle_assumption_theorems_covered(certificate))
+    checks.append(
+        check_full_behavior_summary_includes_execute_phase(full_behavior_summary)
+    )
+    checks.append(
+        check_full_behavior_summary_extends_short_summary(
+            full_behavior_summary, behavior_summary
+        )
+    )
+    checks.append(
+        check_behavior_summary_operand_scope(full_behavior_summary, source)
+    )
     for contract, storage, functions in REQUIRED_CONTRACTS:
         checks.append(check_solidity_contract_present(shape, contract))
         if storage:
@@ -516,6 +611,7 @@ def run_audit(
     return {
         "artifacts": {
             "behaviorSummaryHash": artifact_hash(behavior_summary),
+            "fullBehaviorSummaryHash": artifact_hash(full_behavior_summary),
             "sourceCertificateHash": artifact_hash(certificate),
             "sourceHash": artifact_hash(source),
         },
@@ -576,6 +672,11 @@ def main(argv: list[str] | None = None) -> int:
         "Defaults to invoking lake.",
     )
     parser.add_argument(
+        "--full-behavior-summary-json",
+        help="Path to a precomputed aapq full-behavior-summary-json artifact. "
+        "Defaults to invoking lake.",
+    )
+    parser.add_argument(
         "--solidity",
         default="examples/AAPQIntegration.sol",
         help="Path to the AA/PQ Solidity sketch.",
@@ -595,9 +696,14 @@ def main(argv: list[str] | None = None) -> int:
     behavior_summary = load_json_arg(
         args.behavior_summary_json, "behavior-summary-json"
     )
+    full_behavior_summary = load_json_arg(
+        args.full_behavior_summary_json, "full-behavior-summary-json"
+    )
     solidity_text = Path(args.solidity).read_text()
 
-    report = run_audit(source, certificate, behavior_summary, solidity_text)
+    report = run_audit(
+        source, certificate, behavior_summary, full_behavior_summary, solidity_text
+    )
 
     if args.format == "markdown":
         sys.stdout.write(format_markdown_report(report))

@@ -13,6 +13,8 @@ from scripts.check_aapq_source import (
     check_behavior_summary_operand_scope,
     check_certificate_embeds_behavior_summary,
     check_crypto_assumptions_link_to_proofs,
+    check_full_behavior_summary_extends_short_summary,
+    check_full_behavior_summary_includes_execute_phase,
     check_phase_proof_references,
     check_source_contracts_match_certificate,
     check_under_oracle_assumption_theorems_covered,
@@ -34,7 +36,7 @@ from scripts.demo_aapq_source import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOLIDITY_PATH = REPO_ROOT / "examples" / "AAPQIntegration.sol"
-GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v3.json"
+GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v4.json"
 
 
 @lru_cache(maxsize=None)
@@ -130,9 +132,10 @@ class AuditIntegrationTests(unittest.TestCase):
         source = cached_artifact("source-json")
         certificate = cached_artifact("source-certificate-json")
         summary = cached_artifact("behavior-summary-json")
+        full_summary = cached_artifact("full-behavior-summary-json")
         solidity = SOLIDITY_PATH.read_text()
 
-        report = run_audit(source, certificate, summary, solidity)
+        report = run_audit(source, certificate, summary, full_summary, solidity)
         self.assertEqual(report["status"], "passed", report)
         self.assertEqual(report["reportVersion"], REPORT_VERSION)
         self.assertEqual(
@@ -144,6 +147,7 @@ class AuditIntegrationTests(unittest.TestCase):
         source = cached_artifact("source-json")
         certificate = copied_json(cached_artifact("source-certificate-json"))
         summary = copied_json(cached_artifact("behavior-summary-json"))
+        full_summary = cached_artifact("full-behavior-summary-json")
         summary["phases"][0]["guards"].append(
             {
                 "condition": {
@@ -158,7 +162,7 @@ class AuditIntegrationTests(unittest.TestCase):
         )
         solidity = SOLIDITY_PATH.read_text()
 
-        report = run_audit(source, certificate, summary, solidity)
+        report = run_audit(source, certificate, summary, full_summary, solidity)
         self.assertEqual(report["status"], "failed")
         failing = [check for check in report["checks"] if check["status"] == "failed"]
         self.assertTrue(any("expectedBehaviorSummary" in c["name"] for c in failing))
@@ -167,11 +171,12 @@ class AuditIntegrationTests(unittest.TestCase):
         source = cached_artifact("source-json")
         certificate = cached_artifact("source-certificate-json")
         summary = cached_artifact("behavior-summary-json")
+        full_summary = cached_artifact("full-behavior-summary-json")
         solidity = SOLIDITY_PATH.read_text().replace(
             "contract AAWallet", "contract _RenamedAAWallet"
         )
 
-        report = run_audit(source, certificate, summary, solidity)
+        report = run_audit(source, certificate, summary, full_summary, solidity)
         self.assertEqual(report["status"], "failed")
 
     def test_main_emits_stable_json_and_zero_exit(self) -> None:
@@ -438,6 +443,51 @@ class CryptoAssumptionAuditTests(unittest.TestCase):
         self.assertEqual(result["status"], "passed")
 
 
+class FullBehaviorSummaryAuditTests(unittest.TestCase):
+    def test_includes_execute_phase_real_artifact(self) -> None:
+        full_summary = cached_artifact("full-behavior-summary-json")
+        result = check_full_behavior_summary_includes_execute_phase(full_summary)
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_includes_execute_phase_fails_when_missing(self) -> None:
+        full = {"phases": [{"name": "wrapper", "guards": [], "finalWrites": []}]}
+        result = check_full_behavior_summary_includes_execute_phase(full)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("Expected exactly one", result["message"])
+
+    def test_includes_execute_phase_fails_on_wrong_slot(self) -> None:
+        full = {
+            "phases": [
+                {
+                    "name": "execute",
+                    "guards": [],
+                    "finalWrites": [{"name": "lastOpHash", "slot": 99}],
+                }
+            ]
+        }
+        result = check_full_behavior_summary_includes_execute_phase(full)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("slot expected 4", result["message"])
+
+    def test_extends_short_summary_real_artifacts(self) -> None:
+        full = cached_artifact("full-behavior-summary-json")
+        short = cached_artifact("behavior-summary-json")
+        result = check_full_behavior_summary_extends_short_summary(full, short)
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_extends_short_summary_fails_when_diverge(self) -> None:
+        short = {"phases": [{"name": "wrapper", "guards": [], "finalWrites": []}]}
+        full = {"phases": [{"name": "other", "guards": [], "finalWrites": []}]}
+        result = check_full_behavior_summary_extends_short_summary(full, short)
+        self.assertEqual(result["status"], "failed")
+
+    def test_extends_short_summary_fails_when_full_too_short(self) -> None:
+        short = {"phases": [{"name": "wrapper"}, {"name": "wallet"}]}
+        full = {"phases": [{"name": "wrapper"}]}
+        result = check_full_behavior_summary_extends_short_summary(full, short)
+        self.assertEqual(result["status"], "failed")
+
+
 class DemoTests(unittest.TestCase):
     def test_print_trust_boundaries_emits_all_sections(self) -> None:
         certificate = {
@@ -481,9 +531,10 @@ class GoldenReportTests(unittest.TestCase):
         source = cached_artifact("source-json")
         certificate = cached_artifact("source-certificate-json")
         summary = cached_artifact("behavior-summary-json")
+        full_summary = cached_artifact("full-behavior-summary-json")
         solidity = SOLIDITY_PATH.read_text()
 
-        report = run_audit(source, certificate, summary, solidity)
+        report = run_audit(source, certificate, summary, full_summary, solidity)
         observed = stable_json(report)
         expected = GOLDEN_PATH.read_text()
         self.assertEqual(observed, expected)
