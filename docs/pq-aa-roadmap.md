@@ -289,10 +289,13 @@ Two lifted contract-level claims about the full flow:
   `WrapperOracleConsistent` (a named cross-contract assumption
   recorded in the certificate's `evmCallAssumptions` field) the
   call-shaped flow is proved to agree with `validateIntegrated` on
-  the success path. This is *not* full EVM CALL — no gas, no
-  reentrancy, no code resolution — but it is the first time the AA/PQ
-  pipeline genuinely crosses a calldata boundary instead of pretending
-  the wrapper is a direct subroutine.
+  the success path, and
+  `validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success`
+  lifts that to a two-sided equivalence: the call-shaped flow succeeds
+  iff the canonical flow succeeds. This is *not* full EVM CALL — no
+  gas, no reentrancy, no code resolution — but it is the first time
+  the AA/PQ pipeline genuinely crosses a calldata boundary instead of
+  pretending the wrapper is a direct subroutine.
 
 The three sibling oracle-assumption theorems are also lifted to the
 full validateAndExecute flow:

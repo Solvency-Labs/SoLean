@@ -766,7 +766,8 @@ def aapqSourceCertificate : Json :=
           "When the wallet calls the wrapper address with the well-formed verifier calldata layout, the modeled EvmEnv.evmCall oracle returns the same CallResult as directly executing PQVerifierWrapper.verifyProgram on wrapper storage."),
         ("theoremReferences", stringsJson [
           "SoLean.Examples.AAPQEvmCall.parse_build_verifier_calldata",
-          "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated"
+          "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated",
+          "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success"
         ])
       ]
     ]),
@@ -816,6 +817,7 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wallet_configuration",
       "SoLean.Examples.AAPQEvmCall.parse_build_verifier_calldata",
       "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated",
+      "SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding",
       "SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation",

@@ -557,7 +557,10 @@ graph is now visible in the Markdown/demo trust-boundary surface:
   returndata out) rather than direct composition.
   `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated`
   proves the call-shaped flow agrees with the canonical direct flow on the
-  success path under the named `WrapperOracleConsistent` assumption
+  success path, and
+  `validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success`
+  lifts that to a two-sided equivalence, under the named
+  `WrapperOracleConsistent` assumption
   (surfaced in the certificate's `evmCallAssumptions` field). This is not
   full EVM CALL — no gas, no reentrancy, no code resolution, no value
   transfer — but it is the first non-claim from the original AA/PQ list

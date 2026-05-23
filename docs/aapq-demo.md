@@ -133,6 +133,7 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wallet_configuration`
 - `SoLean.Examples.AAPQEvmCall.parse_build_verifier_calldata`
 - `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_success_matches_validateIntegrated`
+- `SoLean.Examples.AAPQEvmCall.validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_domain_separation`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_signature_binding`
 - `SoLean.Examples.ToyVerifier.allFieldsEqualEnv_key_separation`

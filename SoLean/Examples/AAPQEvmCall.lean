@@ -167,6 +167,56 @@ theorem validateIntegratedViaEvmCall_success_matches_validateIntegrated
   | revert _ =>
       cases h
 
+/--
+The call-shaped flow's success is mapped one-to-one with the canonical
+flow's success under `WrapperOracleConsistent`. The backward direction
+re-uses the existing success-matches theorem; the forward direction unfolds
+the call-shaped flow, uses the oracle assumption to relate `evmCall`'s
+result to direct wrapper execution, observes that `liftWrapperResult`
+returns `CallResult.success` only on `ExecResult.success`, and then
+recovers the canonical `IntegratedResult.success` from the wallet exec.
+-/
+theorem validateIntegratedViaEvmCall_is_success_iff_validateIntegrated_is_success
+    (eenv : EvmEnv) (hConsistent : WrapperOracleConsistent eenv)
+    (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage : Storage) :
+    (∃ fw fwa,
+      validateIntegratedViaEvmCall eenv input wrapperStorage walletStorage =
+        EvmCallIntegratedResult.success fw fwa) ↔
+    (∃ fw fwa,
+      AAPQIntegration.validateIntegrated eenv.base input wrapperStorage walletStorage =
+        AAPQIntegration.IntegratedResult.success fw fwa) := by
+  refine ⟨?_, ?_⟩
+  · rintro ⟨fw, fwa, hCall⟩
+    unfold validateIntegratedViaEvmCall at hCall
+    rw [hConsistent input wrapperStorage] at hCall
+    generalize hWrapperExec :
+        exec eenv.base
+            (PQVerifierWrapper.verifyProgram
+              (AAPQIntegration.toWrapperInput input))
+            wrapperStorage = wrapperResult at hCall
+    cases wrapperResult with
+    | success postWrapper =>
+        simp only [liftWrapperResult] at hCall
+        generalize hWalletExec :
+            exec eenv.base (AAPQIntegration.walletProgram input)
+                walletStorage = walletResult at hCall
+        cases walletResult with
+        | success postWallet =>
+            refine ⟨postWrapper, postWallet, ?_⟩
+            simp only [AAPQIntegration.validateIntegrated, hWrapperExec,
+              hWalletExec]
+        | revert _ =>
+            cases hCall
+    | revert _ =>
+        simp only [liftWrapperResult] at hCall
+        cases hCall
+  · rintro ⟨fw, fwa, hDirect⟩
+    refine ⟨wrapperStorage, fwa, ?_⟩
+    exact
+      validateIntegratedViaEvmCall_success_matches_validateIntegrated
+        eenv hConsistent input wrapperStorage walletStorage fw fwa hDirect
+
 end AAPQEvmCall
 end Examples
 end SoLean
