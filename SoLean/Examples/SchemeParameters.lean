@@ -1,4 +1,5 @@
 import SoLean.Examples.LatticePublicKey
+import SoLean.Examples.PQVerifierWrapper
 
 namespace SoLean
 namespace Examples
@@ -75,6 +76,144 @@ calldata sized for the other scheme.
 theorem falcon512_publicKey_size_ne_mlDsa44_publicKey_size :
     falcon512.publicKeyByteLength ≠ mlDsa44.publicKeyByteLength := by
   decide
+
+/--
+Lift a scheme's `signatureByteLength` (a `Nat`) into the `UInt256` slot
+used by `PQVerifierWrapper.WrapperInput.signatureLength`. For values
+within range (all NIST PQ signature sizes fit easily) this produces the
+matching `UInt256`; out-of-range values fall back to `UInt256.zero`.
+-/
+def SchemeParameters.signatureByteLengthUInt256
+    (sp : SchemeParameters) : UInt256 :=
+  (UInt256.ofNat? sp.signatureByteLength).getD UInt256.zero
+
+/--
+Lift a scheme's `publicKeyByteLength` to `UInt256`, parallel to the
+signature variant.
+-/
+def SchemeParameters.publicKeyByteLengthUInt256
+    (sp : SchemeParameters) : UInt256 :=
+  (UInt256.ofNat? sp.publicKeyByteLength).getD UInt256.zero
+
+private theorem falcon512_sig_le_max : 666 <= UInt256.maxValue := by decide
+private theorem mlDsa44_sig_le_max : 2420 <= UInt256.maxValue := by decide
+private theorem falcon512_pk_le_max : 897 <= UInt256.maxValue := by decide
+private theorem mlDsa44_pk_le_max : 1312 <= UInt256.maxValue := by decide
+
+private theorem falcon512_sigUInt256_toNat :
+    falcon512.signatureByteLengthUInt256.toNat = 666 := by
+  unfold SchemeParameters.signatureByteLengthUInt256
+  rw [show falcon512.signatureByteLength = 666 from rfl,
+      UInt256.ofNat?, dif_pos falcon512_sig_le_max]
+  rfl
+
+private theorem mlDsa44_sigUInt256_toNat :
+    mlDsa44.signatureByteLengthUInt256.toNat = 2420 := by
+  unfold SchemeParameters.signatureByteLengthUInt256
+  rw [show mlDsa44.signatureByteLength = 2420 from rfl,
+      UInt256.ofNat?, dif_pos mlDsa44_sig_le_max]
+  rfl
+
+private theorem falcon512_pkUInt256_toNat :
+    falcon512.publicKeyByteLengthUInt256.toNat = 897 := by
+  unfold SchemeParameters.publicKeyByteLengthUInt256
+  rw [show falcon512.publicKeyByteLength = 897 from rfl,
+      UInt256.ofNat?, dif_pos falcon512_pk_le_max]
+  rfl
+
+private theorem mlDsa44_pkUInt256_toNat :
+    mlDsa44.publicKeyByteLengthUInt256.toNat = 1312 := by
+  unfold SchemeParameters.publicKeyByteLengthUInt256
+  rw [show mlDsa44.publicKeyByteLength = 1312 from rfl,
+      UInt256.ofNat?, dif_pos mlDsa44_pk_le_max]
+  rfl
+
+/--
+Falcon-512 and ML-DSA-44 carry distinct signature-byte-length `UInt256`s
+(666 vs 2420). A wrapper calibrated for one cannot silently accept the
+other under a `signatureLength` length check.
+-/
+theorem falcon512_sigUInt256_ne_mlDsa44_sigUInt256 :
+    falcon512.signatureByteLengthUInt256 ≠
+      mlDsa44.signatureByteLengthUInt256 := by
+  intro h
+  have hNat := congrArg UInt256.toNat h
+  rw [falcon512_sigUInt256_toNat, mlDsa44_sigUInt256_toNat] at hNat
+  omega
+
+/--
+Same distinctness, for public-key byte length (897 vs 1312).
+-/
+theorem falcon512_pkUInt256_ne_mlDsa44_pkUInt256 :
+    falcon512.publicKeyByteLengthUInt256 ≠
+      mlDsa44.publicKeyByteLengthUInt256 := by
+  intro h
+  have hNat := congrArg UInt256.toNat h
+  rw [falcon512_pkUInt256_toNat, mlDsa44_pkUInt256_toNat] at hNat
+  omega
+
+/--
+A wrapper whose `expectedSignatureLengthSlot` is calibrated to one scheme
+cannot succeed on an input whose `signatureLength` matches a different
+scheme — provided the two schemes' `signatureByteLengthUInt256` values
+differ.
+
+The proof is the contrapositive of `PQVerifierWrapper.verify_success_
+properties`: a successful verification forces `input.signatureLength`
+to equal the stored expected length; if the input claims a different
+scheme's length, equality fails and verification cannot succeed.
+
+This is the first Lane C theorem — concrete cryptographic-shape
+discrimination at the wrapper layer.
+-/
+theorem wrapper_calibrated_for_one_scheme_rejects_other_signature_length
+    (env : Env)
+    (wrapperStorage : Storage)
+    (input : PQVerifierWrapper.WrapperInput)
+    (calibrated rejected : SchemeParameters)
+    (hCalibratedSig :
+      wrapperStorage.read PQVerifierWrapper.expectedSignatureLengthSlot =
+        calibrated.signatureByteLengthUInt256)
+    (hRejectedSig :
+      input.signatureLength = rejected.signatureByteLengthUInt256)
+    (hSchemesDiffer :
+      calibrated.signatureByteLengthUInt256 ≠
+        rejected.signatureByteLengthUInt256) :
+    ∀ finalStorage,
+      exec env (PQVerifierWrapper.verifyProgram input) wrapperStorage ≠
+        ExecResult.success finalStorage := by
+  intro finalStorage hSuccess
+  have hPost := PQVerifierWrapper.verify_success_properties env wrapperStorage
+    finalStorage input hSuccess
+  have hSigEq : input.signatureLength =
+      wrapperStorage.read PQVerifierWrapper.expectedSignatureLengthSlot :=
+    hPost.2.1
+  rw [hCalibratedSig] at hSigEq
+  rw [hRejectedSig] at hSigEq
+  exact hSchemesDiffer hSigEq.symm
+
+/--
+Concrete corollary: a Falcon-512-calibrated wrapper rejects calldata sized
+for ML-DSA-44 signatures (2420 bytes vs Falcon's 666). Auditors can read
+this as: a wrapper deployed for one scheme cannot accept the other under
+the simple length check, even if every other field aligns.
+-/
+theorem falcon512_calibrated_wrapper_rejects_mlDsa44_signature_length
+    (env : Env)
+    (wrapperStorage : Storage)
+    (input : PQVerifierWrapper.WrapperInput)
+    (hFalconCalibrated :
+      wrapperStorage.read PQVerifierWrapper.expectedSignatureLengthSlot =
+        falcon512.signatureByteLengthUInt256)
+    (hMlDsaSig :
+      input.signatureLength = mlDsa44.signatureByteLengthUInt256) :
+    ∀ finalStorage,
+      exec env (PQVerifierWrapper.verifyProgram input) wrapperStorage ≠
+        ExecResult.success finalStorage :=
+  wrapper_calibrated_for_one_scheme_rejects_other_signature_length
+    env wrapperStorage input falcon512 mlDsa44
+    hFalconCalibrated hMlDsaSig
+    falcon512_sigUInt256_ne_mlDsa44_sigUInt256
 
 end SchemeParameters
 end Examples

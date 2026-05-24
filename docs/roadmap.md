@@ -648,21 +648,25 @@ All three planned slices landed:
    `schemeParameterCalibration` (third calibration kind) in the
    certificate.
 
-### Lane C — Concrete verifier properties (Phase 6, queued)
+### Lane C — Concrete verifier properties (Phase 6, in flight)
 
-Next session candidates, each a tight slice:
-
-1. **M21'' — Byte-length-check theorem.** Extend
-   `PQVerifierWrapper.verifyProgram` to compare `signatureLength`
-   against the declared `SchemeParameters.signatureByteLength`. Prove
-   the contrapositive: a wrapper calibrated for Falcon-512 rejects
-   inputs sized for ML-DSA-44.
-2. **M22'' — Witness determinism.** Under a named
+1. **M21'' — Byte-length scheme discrimination** *(landed)* —
+   `SchemeParameters.signatureByteLengthUInt256` and
+   `publicKeyByteLengthUInt256` lift the documented constants into
+   the `UInt256` slot used by the wrapper. Generic theorem
+   `wrapper_calibrated_for_one_scheme_rejects_other_signature_length`
+   shows that under different `signatureByteLengthUInt256` values a
+   wrapper calibrated for one scheme cannot succeed on an input sized
+   for another. Concrete corollary
+   `falcon512_calibrated_wrapper_rejects_mlDsa44_signature_length`
+   pins this for the Falcon-512 / ML-DSA-44 case. Surfaced as
+   `wrapperGuardTheorems` in the schemeParameterCalibration.
+2. **M22'' — Witness determinism** *(queued)* — under a named
    `WitnessDeterministic` assumption on `StructuredVerifier`, two
    accepting verifications of the same tuple produce the same
    `VerifierWitness`. First non-trivial uniqueness claim about the
    structured verifier.
-3. **M23'' — Coordinate uniqueness.** Under a specific
+3. **M23'' — Coordinate uniqueness** *(queued)* — under a specific
    `LatticeShapeBound` plus a (stronger) compression hypothesis, two
    `LatticePublicKey`s with the same compression agree on a named
    coordinate. First Lean statement that the lattice structure
