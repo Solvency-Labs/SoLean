@@ -715,6 +715,17 @@ def aapqSourceCertificate : Json :=
           "SoLean.Examples.StructuredVerifier.toBool_eq_under_respectsBool",
           "SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool"
         ])
+      ],
+      .obj [
+        ("leanReference", .str
+          "SoLean.Examples.LatticePublicKey.LatticePublicKey.satisfiesShape"),
+        ("name", .str "LatticeShapeBound"),
+        ("statement", .str
+          "A lattice-style public key (polynomial coefficient list + declared degree) satisfies a scheme-specific LatticeShapeBound when its degree and coefficient-count match the bound. Lifts the verifier's publicKey input from an opaque UInt256 to a structured polynomial without ring arithmetic. Concrete schemes (Falcon-512, ML-DSA-44) refine the bound."),
+        ("theoremReferences", stringsJson [
+          "SoLean.Examples.LatticePublicKey.compress_cons",
+          "SoLean.Examples.LatticePublicKey.compress_degree_independent"
+        ])
       ]
     ]),
     ("verifierModelCalibrations", .arr [
@@ -881,6 +892,8 @@ def aapqSourceCertificate : Json :=
       "SoLean.EVM.decode_encode_calldataABI",
       "SoLean.Examples.StructuredVerifier.toBool_eq_under_respectsBool",
       "SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool",
+      "SoLean.Examples.LatticePublicKey.compress_cons",
+      "SoLean.Examples.LatticePublicKey.compress_degree_independent",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success",
