@@ -116,6 +116,47 @@ theorem allFieldsEqualStructuredVerifier_respects_bool :
   · simp [h]
   · simp [h]
 
+/--
+Witness extraction from the `Bool` projection: if `sv.toBool` returned
+`true`, then `sv.decide` returned `some witness` for the same input —
+the structured information is recoverable from the boolean fact.
+-/
+theorem decide_isSome_of_toBool
+    (sv : StructuredVerifier)
+    (key message domain signature : UInt256)
+    (h : sv.toBool key message domain signature = true) :
+    ∃ witness,
+      sv.decide key message domain signature = some witness := by
+  unfold StructuredVerifier.toBool at h
+  cases hDec : sv.decide key message domain signature with
+  | some w => exact ⟨w, rfl⟩
+  | none =>
+      rw [hDec] at h
+      simp [Option.isSome] at h
+
+/--
+Bridge theorem: under `StructureRespectsBool`, any acceptance fact about
+the existing `Bool`-valued verifier lifts to witness extraction on the
+structured verifier. Downstream code that holds an
+`Env.verifier ... = true` fact can use this to obtain the `VerifierWitness`
+without weakening any existing AAPQ-side proof.
+
+This is the value of `StructureRespectsBool` made explicit: Bool-level
+oracle assumptions discharge contract-level safety theorems, AND when
+the same boolean fact holds, structural detail can be peeled out.
+-/
+theorem witness_extractable_under_respectsBool
+    {sv : StructuredVerifier}
+    {bv : UInt256 -> UInt256 -> UInt256 -> UInt256 -> Bool}
+    (hRespects : StructureRespectsBool sv bv)
+    {key message domain signature : UInt256}
+    (h : bv key message domain signature = true) :
+    ∃ witness,
+      sv.decide key message domain signature = some witness := by
+  apply decide_isSome_of_toBool
+  rw [toBool_eq_under_respectsBool sv bv hRespects]
+  exact h
+
 end StructuredVerifier
 end Examples
 end SoLean

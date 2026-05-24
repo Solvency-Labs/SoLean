@@ -756,7 +756,9 @@ def aapqSourceCertificate : Json :=
           "A StructuredVerifier sv and a Bool-valued Env.verifier bv agree on every input: sv.decide.isSome equals bv. Under this correspondence, oracle-level assumptions on bv (DomainSeparation, SignatureBinding, KeySeparation) lift to sv.toBool without re-proof. First step toward letting downstream proofs reference scheme-specific signature/key shape."),
         ("theoremReferences", stringsJson [
           "SoLean.Examples.StructuredVerifier.toBool_eq_under_respectsBool",
-          "SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool"
+          "SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool",
+          "SoLean.Examples.StructuredVerifier.decide_isSome_of_toBool",
+          "SoLean.Examples.StructuredVerifier.witness_extractable_under_respectsBool"
         ])
       ],
       .obj [
@@ -767,7 +769,9 @@ def aapqSourceCertificate : Json :=
           "A lattice-style public key (polynomial coefficient list + declared degree) satisfies a scheme-specific LatticeShapeBound when its degree and coefficient-count match the bound. Lifts the verifier's publicKey input from an opaque UInt256 to a structured polynomial without ring arithmetic. Concrete schemes (Falcon-512, ML-DSA-44) refine the bound."),
         ("theoremReferences", stringsJson [
           "SoLean.Examples.LatticePublicKey.compress_cons",
-          "SoLean.Examples.LatticePublicKey.compress_degree_independent"
+          "SoLean.Examples.LatticePublicKey.compress_degree_independent",
+          "SoLean.Examples.LatticePublicKey.compress_injectiveOnHead",
+          "SoLean.Examples.LatticePublicKey.coordinate_uniqueness_under_compressionInjective"
         ])
       ]
     ]),
@@ -936,8 +940,12 @@ def aapqSourceCertificate : Json :=
       "SoLean.EVM.decode_encode_calldataABI",
       "SoLean.Examples.StructuredVerifier.toBool_eq_under_respectsBool",
       "SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool",
+      "SoLean.Examples.StructuredVerifier.decide_isSome_of_toBool",
+      "SoLean.Examples.StructuredVerifier.witness_extractable_under_respectsBool",
       "SoLean.Examples.LatticePublicKey.compress_cons",
       "SoLean.Examples.LatticePublicKey.compress_degree_independent",
+      "SoLean.Examples.LatticePublicKey.compress_injectiveOnHead",
+      "SoLean.Examples.LatticePublicKey.coordinate_uniqueness_under_compressionInjective",
       "SoLean.Examples.SchemeParameters.falcon512_ne_mlDsa44",
       "SoLean.Examples.SchemeParameters.falcon512_publicKey_size_ne_mlDsa44_publicKey_size",
       "SoLean.Examples.SchemeParameters.falcon512_sigUInt256_ne_mlDsa44_sigUInt256",

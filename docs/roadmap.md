@@ -661,17 +661,25 @@ All three planned slices landed:
    `falcon512_calibrated_wrapper_rejects_mlDsa44_signature_length`
    pins this for the Falcon-512 / ML-DSA-44 case. Surfaced as
    `wrapperGuardTheorems` in the schemeParameterCalibration.
-2. **M22'' — Witness determinism** *(queued)* — under a named
-   `WitnessDeterministic` assumption on `StructuredVerifier`, two
-   accepting verifications of the same tuple produce the same
-   `VerifierWitness`. First non-trivial uniqueness claim about the
-   structured verifier.
-3. **M23'' — Coordinate uniqueness** *(queued)* — under a specific
-   `LatticeShapeBound` plus a (stronger) compression hypothesis, two
-   `LatticePublicKey`s with the same compression agree on a named
-   coordinate. First Lean statement that the lattice structure
-   constrains the public key — a step away from the current
-   head-or-zero placeholder.
+2. **M22'' — Witness extraction** *(landed)* — reframed from the
+   originally-planned "witness determinism" (trivially true for
+   `Option`-valued functions). The deliverable:
+   `decide_isSome_of_toBool` extracts a `VerifierWitness` from any
+   Bool-level acceptance, and
+   `witness_extractable_under_respectsBool` lifts that to the
+   `StructureRespectsBool` bridge — downstream code holding an
+   `Env.verifier ... = true` fact can pull out the structured
+   witness without weakening any existing AAPQ proof.
+3. **M23'' — Coordinate uniqueness** *(landed)* — under a named
+   `CompressionInjectiveOnHead` assumption, two non-empty
+   `LatticePublicKey`s that compress to the same `UInt256` share
+   their head coordinate. The placeholder `compress` function
+   discharges the assumption via `compress_injectiveOnHead`.
+   First Lean statement that the lattice structure constrains the
+   public key beyond the opaque-word interface; a future replacement
+   of the placeholder compression with a real hash can keep the
+   coordinate-uniqueness lemma and discharge the named assumption
+   against the hash's collision resistance.
 
 ### Out of scope until at least one lane completes
 

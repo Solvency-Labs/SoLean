@@ -146,8 +146,12 @@ Trust Boundaries section):
 - `SoLean.EVM.decode_encode_calldataABI`
 - `SoLean.Examples.StructuredVerifier.toBool_eq_under_respectsBool`
 - `SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool`
+- `SoLean.Examples.StructuredVerifier.decide_isSome_of_toBool`
+- `SoLean.Examples.StructuredVerifier.witness_extractable_under_respectsBool`
 - `SoLean.Examples.LatticePublicKey.compress_cons`
 - `SoLean.Examples.LatticePublicKey.compress_degree_independent`
+- `SoLean.Examples.LatticePublicKey.compress_injectiveOnHead`
+- `SoLean.Examples.LatticePublicKey.coordinate_uniqueness_under_compressionInjective`
 - `SoLean.Examples.SchemeParameters.falcon512_ne_mlDsa44`
 - `SoLean.Examples.SchemeParameters.falcon512_publicKey_size_ne_mlDsa44_publicKey_size`
 - `SoLean.Examples.SchemeParameters.falcon512_sigUInt256_ne_mlDsa44_sigUInt256`

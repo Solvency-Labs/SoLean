@@ -85,6 +85,60 @@ theorem compress_degree_independent
   | nil => rfl
   | cons _ _ => rfl
 
+/--
+Named compression-injectivity assumption: a compression function maps
+distinct head coefficients to distinct compressed values.
+
+The current `LatticePublicKey.compress` is a placeholder (head-or-zero)
+that's trivially injective on the head coordinate when keys carry at
+least one coefficient. Future Lane C work can replace `compress` with a
+real hash and discharge this assumption against the hash's collision
+resistance.
+-/
+def CompressionInjectiveOnHead
+    (compress : LatticePublicKey -> UInt256) : Prop :=
+  ∀ (head1 head2 : UInt256) (rest1 rest2 : List UInt256)
+    (degree1 degree2 : Nat),
+    compress { coefficients := head1 :: rest1, degree := degree1 } =
+        compress { coefficients := head2 :: rest2, degree := degree2 } ->
+      head1 = head2
+
+/--
+`LatticePublicKey.compress` (the placeholder head-or-zero compression)
+satisfies `CompressionInjectiveOnHead`. This is the first concrete
+discharge of a Lane C verifier-shape assumption — auditors can rely on
+"under this compression, two keys with the same compressed value share
+the head coefficient."
+-/
+theorem compress_injectiveOnHead :
+    CompressionInjectiveOnHead LatticePublicKey.compress := by
+  intro head1 head2 rest1 rest2 degree1 degree2 h
+  rw [compress_cons head1 rest1 degree1,
+      compress_cons head2 rest2 degree2] at h
+  exact h
+
+/--
+Coordinate uniqueness: under `CompressionInjectiveOnHead`, two
+non-empty `LatticePublicKey`s that compress to the same `UInt256`
+share their head coordinate.
+
+First Lane C statement that the lattice structure constrains the
+public key beyond the opaque-word interface. A scheme that uses
+this lemma can extract head-coordinate facts from any compression
+equality, opening the door to per-coordinate reasoning.
+-/
+theorem coordinate_uniqueness_under_compressionInjective
+    (compress : LatticePublicKey -> UInt256)
+    (hInjective : CompressionInjectiveOnHead compress)
+    (head1 head2 : UInt256)
+    (rest1 rest2 : List UInt256)
+    (degree1 degree2 : Nat)
+    (h :
+      compress { coefficients := head1 :: rest1, degree := degree1 } =
+        compress { coefficients := head2 :: rest2, degree := degree2 }) :
+    head1 = head2 :=
+  hInjective head1 head2 rest1 rest2 degree1 degree2 h
+
 end LatticePublicKey
 end Examples
 end SoLean
