@@ -704,6 +704,19 @@ def aapqSourceCertificate : Json :=
     ("cryptoAssumptionGraph", .arr
       (Examples.AAPQSource.integratedCryptoAssumptionSupportGraph.map
         AAPQBehavior.cryptoAssumptionSupportEdgeJson)),
+    ("verifierShapeAssumptions", .arr [
+      .obj [
+        ("leanReference", .str
+          "SoLean.Examples.StructuredVerifier.StructureRespectsBool"),
+        ("name", .str "StructureRespectsBool"),
+        ("statement", .str
+          "A StructuredVerifier sv and a Bool-valued Env.verifier bv agree on every input: sv.decide.isSome equals bv. Under this correspondence, oracle-level assumptions on bv (DomainSeparation, SignatureBinding, KeySeparation) lift to sv.toBool without re-proof. First step toward letting downstream proofs reference scheme-specific signature/key shape."),
+        ("theoremReferences", stringsJson [
+          "SoLean.Examples.StructuredVerifier.toBool_eq_under_respectsBool",
+          "SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool"
+        ])
+      ]
+    ]),
     ("verifierModelCalibrations", .arr [
       AAPQBehavior.toyVerifierCalibrationJson,
       AAPQBehavior.keyDomainBindingCalibrationJson,
@@ -866,6 +879,8 @@ def aapqSourceCertificate : Json :=
       "SoLean.EVM.encode_length",
       "SoLean.EVM.encode_head_is_selector",
       "SoLean.EVM.decode_encode_calldataABI",
+      "SoLean.Examples.StructuredVerifier.toBool_eq_under_respectsBool",
+      "SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success",

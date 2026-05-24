@@ -144,6 +144,8 @@ Trust Boundaries section):
 - `SoLean.EVM.encode_length`
 - `SoLean.EVM.encode_head_is_selector`
 - `SoLean.EVM.decode_encode_calldataABI`
+- `SoLean.Examples.StructuredVerifier.toBool_eq_under_respectsBool`
+- `SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success`
