@@ -2,7 +2,7 @@
   "artifacts": {
     "behaviorSummaryHash": "b5cfd9fe5970806706c94c3988806899ffa5e85baa67379d472fff24e27304d4",
     "fullBehaviorSummaryHash": "ba0e5c7b39e848f763ff16a8b7690eca288836ee98f5ba740c75ab21e4179335",
-    "sourceCertificateHash": "35e1e6ca874d49e4886e7077a41cc6369d672ec725a5c31358b62a505f152c0f",
+    "sourceCertificateHash": "faf522012f926e88bf4afca53ca6b30d8950bfae4a28deefcd43999477732468",
     "sourceHash": "9ef06ae57aae9f38b47d9edcf3bbd32861ec8077f21297acda01c746e19f4f81"
   },
   "checks": [
@@ -49,7 +49,7 @@
       "trust": "Lean-owned certificate"
     },
     {
-      "message": "All 3 verifier calibration(s) resolve 12 proof references for 9 discharged assumptions.",
+      "message": "All 4 verifier calibration(s) resolve 14 proof references for 10 discharged assumptions.",
       "name": "verifier model calibrations resolve",
       "status": "passed",
       "trust": "Lean-owned certificate"
@@ -241,6 +241,18 @@
         "SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_signature_binding",
         "SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_key_separation",
         "SoLean.Examples.ToyVerifier.DerivedSignatureModel.toEnv_satisfies_oracle_assumptions"
+      ]
+    },
+    {
+      "dischargedAssumptions": [
+        "LatticeShapeBound"
+      ],
+      "lean": "SoLean.Examples.SchemeParameters",
+      "name": "PQSchemeParameters",
+      "nonClaim": "Parameter records for NIST-standardized PQ schemes (Falcon-512, ML-DSA-44). Carries documented constants (key/signature byte lengths, security category, polynomial degree) sourced from the standards docs. No cryptographic claim attached; these are calibration data for the LatticeShapeBound verifier-shape assumption.",
+      "proofReferences": [
+        "SoLean.Examples.SchemeParameters.falcon512_ne_mlDsa44",
+        "SoLean.Examples.SchemeParameters.falcon512_publicKey_size_ne_mlDsa44_publicKey_size"
       ]
     }
   ]

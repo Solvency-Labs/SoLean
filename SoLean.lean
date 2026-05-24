@@ -11,6 +11,7 @@ import SoLean.Examples.AAPQEvmCallGas
 import SoLean.Examples.AAPQSource
 import SoLean.Examples.PQVerifierWrapper
 import SoLean.Examples.LatticePublicKey
+import SoLean.Examples.SchemeParameters
 import SoLean.Examples.StructuredVerifier
 import SoLean.Examples.ToyVerifier
 import SoLean.Examples.SimpleVault

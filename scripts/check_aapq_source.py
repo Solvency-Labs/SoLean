@@ -48,6 +48,7 @@ ROLE_TO_SOURCE_KEY: dict[str, str] = {
 CALIBRATION_KINDS: set[str] = {
     "toyVerifierCalibration",
     "parametricVerifierCalibration",
+    "schemeParameterCalibration",
 }
 
 REQUIRED_CONTRACTS: list[tuple[str, list[str], list[str]]] = [
@@ -688,6 +689,10 @@ def check_verifier_model_calibrations(
         )
 
     assumptions = {entry.get("name", "") for entry in certificate.get("cryptoAssumptions", [])}
+    assumptions |= {
+        entry.get("name", "")
+        for entry in certificate.get("verifierShapeAssumptions", [])
+    }
     proofs = set(certificate.get("proofReferences", []))
     problems: list[str] = []
     total_proofs = 0

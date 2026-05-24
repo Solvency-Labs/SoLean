@@ -148,6 +148,8 @@ Trust Boundaries section):
 - `SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool`
 - `SoLean.Examples.LatticePublicKey.compress_cons`
 - `SoLean.Examples.LatticePublicKey.compress_degree_independent`
+- `SoLean.Examples.SchemeParameters.falcon512_ne_mlDsa44`
+- `SoLean.Examples.SchemeParameters.falcon512_publicKey_size_ne_mlDsa44_publicKey_size`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success`

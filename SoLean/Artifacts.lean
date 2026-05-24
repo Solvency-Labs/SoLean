@@ -1,6 +1,8 @@
 import SoLean.Bridge
 import SoLean.Examples.AAPQSource
 import SoLean.Examples.CounterCompiler
+import SoLean.Examples.SchemeParameters
+import SoLean.Examples.StructuredVerifier
 import SoLean.Examples.ToyVerifier
 import SoLean.Source.Shape
 
@@ -626,6 +628,39 @@ def toyVerifierCalibrationJson : Json :=
     ])
   ]
 
+def schemeParametersToJson (sp : SoLean.Examples.SchemeParameters.SchemeParameters) : Json :=
+  .obj [
+    ("name", .str sp.name),
+    ("publicKeyByteLength", .num sp.publicKeyByteLength),
+    ("signatureByteLength", .num sp.signatureByteLength),
+    ("securityCategory", .num sp.securityCategory),
+    ("publicKeyShape", .obj [
+      ("expectedDegree", .num sp.publicKeyShape.expectedDegree),
+      ("expectedCoefficientCount",
+        .num sp.publicKeyShape.expectedCoefficientCount)
+    ])
+  ]
+
+def schemeParameterCalibrationJson : Json :=
+  .obj [
+    ("dischargedAssumptions", stringsJson [
+      "LatticeShapeBound"
+    ]),
+    ("kind", .str "schemeParameterCalibration"),
+    ("lean", .str "SoLean.Examples.SchemeParameters"),
+    ("name", .str "PQSchemeParameters"),
+    ("nonClaim", .str
+      "Parameter records for NIST-standardized PQ schemes (Falcon-512, ML-DSA-44). Carries documented constants (key/signature byte lengths, security category, polynomial degree) sourced from the standards docs. No cryptographic claim attached; these are calibration data for the LatticeShapeBound verifier-shape assumption."),
+    ("schemes", .arr [
+      schemeParametersToJson SoLean.Examples.SchemeParameters.falcon512,
+      schemeParametersToJson SoLean.Examples.SchemeParameters.mlDsa44
+    ]),
+    ("proofReferences", stringsJson [
+      "SoLean.Examples.SchemeParameters.falcon512_ne_mlDsa44",
+      "SoLean.Examples.SchemeParameters.falcon512_publicKey_size_ne_mlDsa44_publicKey_size"
+    ])
+  ]
+
 def derivedSignatureCalibrationJson : Json :=
   .obj [
     ("dischargedAssumptions", stringsJson [
@@ -731,7 +766,8 @@ def aapqSourceCertificate : Json :=
     ("verifierModelCalibrations", .arr [
       AAPQBehavior.toyVerifierCalibrationJson,
       AAPQBehavior.keyDomainBindingCalibrationJson,
-      AAPQBehavior.derivedSignatureCalibrationJson
+      AAPQBehavior.derivedSignatureCalibrationJson,
+      AAPQBehavior.schemeParameterCalibrationJson
     ]),
     ("expectedBehaviorSummary",
       AAPQBehavior.summaryJson Examples.AAPQSource.integratedBehaviorSummary),
@@ -894,6 +930,8 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool",
       "SoLean.Examples.LatticePublicKey.compress_cons",
       "SoLean.Examples.LatticePublicKey.compress_degree_independent",
+      "SoLean.Examples.SchemeParameters.falcon512_ne_mlDsa44",
+      "SoLean.Examples.SchemeParameters.falcon512_publicKey_size_ne_mlDsa44_publicKey_size",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success",

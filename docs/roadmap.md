@@ -629,29 +629,45 @@ queued for the next session.
    structured `CalldataABI` type with head/tail and multi-selector
    dispatch.
 
-### Lane B — Structured PQ verifier shape (queued for next session)
+### Lane B — Structured PQ verifier shape (complete)
 
-The verifier oracle is still `UInt256⁴ → Bool`. These slices bring PQ
-cryptography into scope *structurally* without committing to a specific
-proven scheme.
+All three planned slices landed:
 
-1. **M21' — Structured PQ verifier interface.** Replace `Env.verifier`
-   with a `StructuredVerifier` record exposing intermediate fields the
-   wallet can reason about (signature decomposition, key components).
-   Prove the existing oracle-assumption discharges lift to the new shape
-   under a `StructureRespectsBool` correspondence assumption.
-2. **M22' — Lattice-shaped public-key model.** Model `publicKey` as
-   `List UInt256` (polynomial coefficients, no semantics yet) and add a
-   `PublicKeyShape` predicate. First time the project says anything
-   specific about what a PQ public key *is*, not just that it's a word.
-3. **M23' — Scheme parameterization stub.** Named parameter records for
-   Falcon-512 / ML-DSA-44 / etc., bridging to standards docs without
-   modeling the actual schemes.
+1. **M21' — Structured PQ verifier interface** —
+   `SoLean.Examples.StructuredVerifier`: `VerifierWitness` exposing
+   signature/key components, `StructuredVerifier.toBool` projection,
+   `StructureRespectsBool` correspondence assumption,
+   `toBool_eq_under_respectsBool` discharge.
+2. **M22' — Lattice-shaped public-key model** —
+   `SoLean.Examples.LatticePublicKey`: polynomial coefficient list +
+   degree, `LatticeShapeBound`, `LatticePublicKey.compress`,
+   degree-independence theorem.
+3. **M23' — Scheme parameterization** —
+   `SoLean.Examples.SchemeParameters`: `falcon512`, `mlDsa44`
+   records with documented NIST constants; surfaced as
+   `schemeParameterCalibration` (third calibration kind) in the
+   certificate.
 
-After M21'–M23', a meaningful M24' would attempt the first concrete
-verifier-side proof (e.g., "polynomial structure forces uniqueness in some
-coordinate"), which is genuinely cryptographic work and would benefit from
-a clean session start.
+### Lane C — Concrete verifier properties (Phase 6, queued)
+
+Next session candidates, each a tight slice:
+
+1. **M21'' — Byte-length-check theorem.** Extend
+   `PQVerifierWrapper.verifyProgram` to compare `signatureLength`
+   against the declared `SchemeParameters.signatureByteLength`. Prove
+   the contrapositive: a wrapper calibrated for Falcon-512 rejects
+   inputs sized for ML-DSA-44.
+2. **M22'' — Witness determinism.** Under a named
+   `WitnessDeterministic` assumption on `StructuredVerifier`, two
+   accepting verifications of the same tuple produce the same
+   `VerifierWitness`. First non-trivial uniqueness claim about the
+   structured verifier.
+3. **M23'' — Coordinate uniqueness.** Under a specific
+   `LatticeShapeBound` plus a (stronger) compression hypothesis, two
+   `LatticePublicKey`s with the same compression agree on a named
+   coordinate. First Lean statement that the lattice structure
+   constrains the public key — a step away from the current
+   head-or-zero placeholder.
 
 ### Out of scope until at least one lane completes
 

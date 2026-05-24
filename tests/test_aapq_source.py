@@ -578,12 +578,19 @@ class VerifierModelCalibrationTests(unittest.TestCase):
     def test_verifier_model_calibrations_view_real(self) -> None:
         certificate = cached_artifact("source-certificate-json")
         calibrations = verifier_model_calibrations_view(certificate)
-        self.assertEqual(len(calibrations), 3)
+        self.assertEqual(len(calibrations), 4)
         names = [entry["name"] for entry in calibrations]
         self.assertIn("AllFieldsEqualToyVerifier", names)
         self.assertIn("KeyDomainBindingToyVerifier", names)
         self.assertIn("DerivedSignatureModel", names)
-        for entry in calibrations:
+        self.assertIn("PQSchemeParameters", names)
+        # Verifier-shape calibrations have varying dischargedAssumptions lists;
+        # the toy/parametric ones still discharge the three oracle assumptions.
+        toy_calibrations = [
+            entry for entry in calibrations
+            if entry["name"] != "PQSchemeParameters"
+        ]
+        for entry in toy_calibrations:
             self.assertEqual(
                 entry["dischargedAssumptions"],
                 [
