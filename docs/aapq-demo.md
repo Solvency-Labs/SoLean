@@ -143,6 +143,7 @@ Trust Boundaries section):
 - `SoLean.Examples.AAPQEvmCall.validateIntegratedViaReentrantEvmCall_eq_nonReentrant_under_noCallback`
 - `SoLean.EVM.encode_length`
 - `SoLean.EVM.encode_head_is_selector`
+- `SoLean.EVM.decode_encode_calldataABI`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success`

@@ -53,7 +53,7 @@ def decodeCalldataABI (headLen : Nat) (calldata : List UInt256) :
   match calldata with
   | [] => none
   | selector :: rest =>
-      if h : headLen <= rest.length then
+      if _h : headLen <= rest.length then
         some
           { selector := selector,
             head := rest.take headLen,
@@ -78,6 +78,23 @@ theorem encode_head_is_selector (c : CalldataABI) :
   refine ⟨c.head ++ c.tail, ?_⟩
   unfold CalldataABI.encode
   rfl
+
+/--
+Round-trip: encoding a `CalldataABI` and decoding back with the right
+head length recovers the original. The previous attempt failed because
+Lean's universe inference for the `Calldata` abbrev didn't reduce match
+patterns; now that `decodeCalldataABI` takes a `List UInt256` directly,
+the proof goes through with explicit structural cases.
+-/
+theorem decode_encode_calldataABI (c : CalldataABI) :
+    decodeCalldataABI c.head.length (CalldataABI.encode c) = some c := by
+  cases c with
+  | mk selector head tail =>
+      show decodeCalldataABI head.length (selector :: (head ++ tail)) = _
+      unfold decodeCalldataABI
+      have hLen : head.length <= (head ++ tail).length := by
+        rw [List.length_append]; omega
+      simp only [dif_pos hLen, List.take_left, List.drop_left]
 
 /--
 Modeled calldata as a sequence of `UInt256` words.
