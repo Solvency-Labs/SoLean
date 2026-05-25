@@ -657,7 +657,8 @@ def schemeParameterCalibrationJson : Json :=
     ]),
     ("wrapperGuardTheorems", stringsJson [
       "SoLean.Examples.SchemeParameters.wrapper_calibrated_for_one_scheme_rejects_other_signature_length",
-      "SoLean.Examples.SchemeParameters.falcon512_calibrated_wrapper_rejects_mlDsa44_signature_length"
+      "SoLean.Examples.SchemeParameters.falcon512_calibrated_wrapper_rejects_mlDsa44_signature_length",
+      "SoLean.Examples.SchemeParameters.validateAndExecute_falcon512_calibrated_rejects_mlDsa44_signature_length"
     ]),
     ("proofReferences", stringsJson [
       "SoLean.Examples.SchemeParameters.falcon512_ne_mlDsa44",
@@ -958,6 +959,7 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.SchemeParameters.falcon512_pkUInt256_ne_mlDsa44_pkUInt256",
       "SoLean.Examples.SchemeParameters.wrapper_calibrated_for_one_scheme_rejects_other_signature_length",
       "SoLean.Examples.SchemeParameters.falcon512_calibrated_wrapper_rejects_mlDsa44_signature_length",
+      "SoLean.Examples.SchemeParameters.validateAndExecute_falcon512_calibrated_rejects_mlDsa44_signature_length",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success",

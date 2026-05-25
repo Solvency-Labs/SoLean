@@ -1,3 +1,4 @@
+import SoLean.Examples.AAPQIntegration
 import SoLean.Examples.LatticePublicKey
 import SoLean.Examples.PQVerifierWrapper
 
@@ -214,6 +215,64 @@ theorem falcon512_calibrated_wrapper_rejects_mlDsa44_signature_length
     env wrapperStorage input falcon512 mlDsa44
     hFalconCalibrated hMlDsaSig
     falcon512_sigUInt256_ne_mlDsa44_sigUInt256
+
+/--
+Cross-scheme replay impossibility at the integrated level: a Falcon-512-
+calibrated wrapper inside `validateAndExecute` cannot succeed on an
+`IntegratedInput` whose `signatureLength` matches ML-DSA-44. The wrapper
+revert from `falcon512_calibrated_wrapper_rejects_mlDsa44_signature_length`
+propagates through `validateIntegrated` and then through
+`validateAndExecute`.
+
+Concrete content: an attacker who holds a valid Falcon-512 signed
+operation cannot re-submit its calldata (same opHash, same domain) sized
+for ML-DSA-44 against an ML-DSA-44-calibrated wrapper and expect the
+length check to pass — the wrapper's stored expected length forces a
+revert before any verifier oracle is consulted.
+-/
+theorem validateAndExecute_falcon512_calibrated_rejects_mlDsa44_signature_length
+    (env : Env)
+    (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage : Storage)
+    (hFalconCalibrated :
+      wrapperStorage.read PQVerifierWrapper.expectedSignatureLengthSlot =
+        falcon512.signatureByteLengthUInt256)
+    (hMlDsaSig :
+      input.signatureLength = mlDsa44.signatureByteLengthUInt256) :
+    ∀ finalWrapper finalWallet,
+      AAPQIntegration.validateAndExecute env input
+          wrapperStorage walletStorage ≠
+        AAPQIntegration.IntegratedFullResult.success finalWrapper
+          finalWallet := by
+  intro finalWrapper finalWallet hSuccess
+  -- Pull validateIntegrated success out of the validateAndExecute success.
+  obtain ⟨postWallet, hValidate⟩ :=
+    AAPQIntegration.validateAndExecute_success_implies_validateIntegrated_success
+      env input wrapperStorage walletStorage finalWrapper finalWallet hSuccess
+  -- Translate the integrated input's signatureLength into the wrapper
+  -- input's signatureLength (toWrapperInput preserves it).
+  have hMlDsaSig' :
+      (AAPQIntegration.toWrapperInput input).signatureLength =
+        mlDsa44.signatureByteLengthUInt256 :=
+    hMlDsaSig
+  -- validateIntegrated unfolds to a match on `exec wrapper ws`. In the
+  -- success branch we get the wrapper exec result; in the revert branch
+  -- the unfolded hValidate becomes `revert _ = success _`, contradiction.
+  cases hExec :
+      exec env
+        (PQVerifierWrapper.verifyProgram
+          (AAPQIntegration.toWrapperInput input))
+        wrapperStorage with
+  | success postWrapper =>
+      -- The wrapper exec succeeded with `postWrapper`, but
+      -- falcon512_calibrated_wrapper_rejects... says it cannot return
+      -- success on this calibration + input.
+      exact
+        falcon512_calibrated_wrapper_rejects_mlDsa44_signature_length env
+          wrapperStorage (AAPQIntegration.toWrapperInput input)
+          hFalconCalibrated hMlDsaSig' postWrapper hExec
+  | revert failure =>
+      simp [AAPQIntegration.validateIntegrated, hExec] at hValidate
 
 end SchemeParameters
 end Examples
