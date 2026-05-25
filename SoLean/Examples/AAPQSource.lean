@@ -40,13 +40,19 @@ def wrapperAddressStorageSlot : StorageSlot :=
     slot := AAWallet.wrapperAddressSlot,
     typeName := "address" }
 
+def lastOpHashStorageSlot : StorageSlot :=
+  { name := "lastOpHash",
+    slot := AAWallet.lastOpHashSlot,
+    typeName := "uint256" }
+
 def expectedWrapperAddressParam : Param :=
   { name := "expectedWrapperAddress", typeName := "address" }
 
 def falconSimpleWalletV1Contract : Contract :=
   { name := "FalconSimpleWallet",
     pragma := "0.8.35",
-    storage := walletContract.storage ++ [wrapperAddressStorageSlot],
+    storage :=
+      walletContract.storage ++ [lastOpHashStorageSlot, wrapperAddressStorageSlot],
     functionName := "validateUserOp",
     params := walletContract.params ++ [expectedWrapperAddressParam] }
 

@@ -483,18 +483,36 @@ Make the source-shape side catch up with the v1 behavior summary:
    parsing.
 4. Kept real Yul/solc generation out of this AA/PQ milestone.
 
-## Next Milestone: FalconSimpleWallet v2.5 Solidity sketch parity
+## FalconSimpleWallet v2.5 Solidity sketch parity *(landed)*
 
 Make `examples/AAPQIntegration.sol` visibly mirror the v1 source vocabulary:
 
-1. Add `wrapperAddress` and `expectedWrapperAddress` to the restricted Solidity
-   sketch in the same shape as the Lean v1 source artifact.
-2. Extend the trusted Solidity shape extractor only enough to detect those
+1. Added `lastOpHash`, `wrapperAddress`, `expectedWrapperAddress`,
+   `executeUserOp`, and `validateAndExecuteV1` to the restricted Solidity
+   sketch in the same vocabulary as the Lean v1 source artifact.
+2. Extended the trusted Solidity shape extractor only enough to detect those
    names and reject silent drift.
 3. Keep parsing intentionally shallow and documented as a source-shape audit,
    not verified Solidity parsing.
-4. Keep the Lean proofs unchanged unless a small source-instantiation theorem
-   becomes useful.
+4. Updated `v1-source-json` so the wallet storage declares both slot 4
+   `lastOpHash` and slot 5 `wrapperAddress`, and its integration flow names
+   the v1 wallet call plus the execute step.
+
+## Next Milestone: FalconSimpleWallet v2.6 restricted Solidity body recognizer
+
+Move from name-presence checks to a tiny auditable recognizer for the two v1
+Solidity bodies:
+
+1. Recognize the overloaded
+   `AAWallet.validateUserOp(..., expectedWrapperAddress)` body as:
+   wrapper-address guard, EntryPoint guard, nonce guard, domain guard, verifier
+   guard, checked nonce increment.
+2. Recognize `AAPQIntegration.validateAndExecuteV1` as: wrapper verification,
+   key-commitment match, v1 wallet validation, execute write.
+3. Emit a deterministic body-shape summary and compare it to the Lean-owned v1
+   behavior summary.
+4. Reject unknown statements loudly; this remains a trusted recognizer, not a
+   verified Solidity parser.
 
 ## Phase 4: Bridge To Real Solidity And solc
 

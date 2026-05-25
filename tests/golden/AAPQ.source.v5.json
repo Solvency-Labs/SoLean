@@ -2,10 +2,10 @@
   "artifacts": {
     "behaviorSummaryHash": "b5cfd9fe5970806706c94c3988806899ffa5e85baa67379d472fff24e27304d4",
     "fullBehaviorSummaryHash": "ba0e5c7b39e848f763ff16a8b7690eca288836ee98f5ba740c75ab21e4179335",
-    "sourceCertificateHash": "e2ad4425b511d1a9b19b208304ccbe4fcc2002c0e79f3a50fb12301ead6409c9",
+    "sourceCertificateHash": "e73e51b46864511fb89c970666e2b8ba8ebb66b494dc19b18c45aa5b2e403af4",
     "sourceHash": "9ef06ae57aae9f38b47d9edcf3bbd32861ec8077f21297acda01c746e19f4f81",
     "v1FullBehaviorSummaryHash": "d46ee81ed0cf8653af033e10492ae12ced892a52504badbb6e918c2958eae4be",
-    "v1SourceHash": "58f275f0b3008257979c768acddec7265841f25e1319c3228afcd75ffc69e6a9"
+    "v1SourceHash": "79c4b594acac581f31dfe79aeab14a72d9e74bf9df1808f30b1b98e223c4acc4"
   },
   "checks": [
     {
@@ -155,6 +155,12 @@
     {
       "message": "All required external/public functions present in 'AAPQIntegration'.",
       "name": "Solidity AAPQIntegration functions",
+      "status": "passed",
+      "trust": "trusted Solidity shape"
+    },
+    {
+      "message": "Solidity sketch exposes the v1 wrapper-address and execute vocabulary.",
+      "name": "Solidity v1 source vocabulary",
       "status": "passed",
       "trust": "trusted Solidity shape"
     }

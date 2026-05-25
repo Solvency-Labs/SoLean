@@ -500,12 +500,21 @@ def integratedFlow : Json :=
     "validateUserOp(opHash, nonce, domain, signature)"
   ]
 
+def integratedV1Flow : Json :=
+  stringsJson [
+    "verify(publicKey, publicKeyLength, opHash, domain, signature, signatureLength)",
+    "require(wallet.keyCommitment == publicKey)",
+    "validateUserOp(opHash, nonce, domain, signature, expectedWrapperAddress)",
+    "executeUserOp(opHash)"
+  ]
+
 def integratedContractJsonWithLean
     (leanName : String)
-    (contract : SoLean.Source.Shape.IntegratedContract) : Json :=
+    (contract : SoLean.Source.Shape.IntegratedContract)
+    (flow : Json := integratedFlow) : Json :=
   .obj [
     ("integration", .obj [
-      ("flow", integratedFlow),
+      ("flow", flow),
       ("name", .str contract.integrationName),
       ("params", .arr (contract.params.map paramJson))
     ]),
@@ -739,6 +748,7 @@ def aapqV1Source : Json :=
   AAPQ.integratedContractJsonWithLean
     "SoLean.Examples.AAPQSource.integratedV1Contract"
     Examples.AAPQSource.integratedV1Contract
+    AAPQ.integratedV1Flow
 
 def aapqV1SourceJson : String :=
   renderJson aapqV1Source

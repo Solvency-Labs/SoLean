@@ -21,6 +21,7 @@ from scripts.check_aapq_source import (
     check_integration_variants,
     check_protocol_boundary_assumptions,
     check_phase_proof_references,
+    check_solidity_v1_vocabulary,
     check_source_contracts_match_certificate,
     check_under_oracle_assumption_theorems_covered,
     check_v1_full_behavior_summary,
@@ -87,6 +88,22 @@ class SolidityShapeParserTests(unittest.TestCase):
     def test_rejects_unbalanced_braces(self) -> None:
         with self.assertRaises(ValueError):
             parse_solidity_shape("contract Broken {\n uint256 public x;\n")
+
+    def test_v1_vocabulary_check_passes_on_real_sketch(self) -> None:
+        result = check_solidity_v1_vocabulary(SOLIDITY_PATH.read_text())
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_v1_vocabulary_check_ignores_comments(self) -> None:
+        solidity = """
+        // wrapperAddress expectedWrapperAddress validateAndExecuteV1
+        contract AAWallet {
+            uint256 public lastOpHash;
+            function executeUserOp(uint256 opHash) external {}
+        }
+        """
+        result = check_solidity_v1_vocabulary(solidity)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("wrapperAddress", result["message"])
 
 
 class CertificateCrossCheckTests(unittest.TestCase):
@@ -231,6 +248,34 @@ class AuditIntegrationTests(unittest.TestCase):
             solidity,
         )
         self.assertEqual(report["status"], "failed")
+
+    def test_audit_fails_when_solidity_drops_v1_names(self) -> None:
+        source = cached_artifact("source-json")
+        v1_source = cached_artifact("v1-source-json")
+        certificate = cached_artifact("source-certificate-json")
+        summary = cached_artifact("behavior-summary-json")
+        full_summary = cached_artifact("full-behavior-summary-json")
+        v1_full_summary = cached_artifact("v1-full-behavior-summary-json")
+        solidity = (
+            SOLIDITY_PATH.read_text()
+            .replace("expectedWrapperAddress", "expectedWrapper")
+            .replace("validateAndExecuteV1", "validateAndExecute")
+        )
+
+        report = run_audit(
+            source,
+            v1_source,
+            certificate,
+            summary,
+            full_summary,
+            v1_full_summary,
+            solidity,
+        )
+        self.assertEqual(report["status"], "failed")
+        failing = [check for check in report["checks"] if check["status"] == "failed"]
+        self.assertTrue(
+            any(check["name"] == "Solidity v1 source vocabulary" for check in failing)
+        )
 
     def test_main_emits_stable_json_and_zero_exit(self) -> None:
         buffer = io.StringIO()

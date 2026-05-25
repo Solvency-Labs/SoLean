@@ -627,14 +627,18 @@ FalconSimpleWallet v2.3 v1 behavior summary is now landed: the
 structured behavior summary and checked by the Python audit via Lean
 reflection theorem references.
 
-FalconSimpleWallet v2.4 source-shape parity is now landed: `v1-source-json`
-declares `FalconSimpleWallet.wrapperAddress` storage and
-`expectedWrapperAddress` input, and the Python audit scope-checks the v1
-behavior summary against that v1 source vocabulary.
+FalconSimpleWallet v2.5 Solidity sketch parity is now landed:
+`v1-source-json` declares `FalconSimpleWallet.lastOpHash` slot 4,
+`wrapperAddress` slot 5, `expectedWrapperAddress` input, and the v1
+integration flow names the wallet v1 call plus `executeUserOp(opHash)`.
+`examples/AAPQIntegration.sol` mirrors that vocabulary, and the trusted Python
+shape audit fails if those v1 names drift.
 
-The next best qualitative task is FalconSimpleWallet v2.5 Solidity sketch
-parity: make `examples/AAPQIntegration.sol` visibly mirror the v1 source
-vocabulary and extend the trusted shape extractor only enough to detect drift.
+The next best qualitative task is FalconSimpleWallet v2.6 restricted Solidity
+body recognition: emit an auditable body-shape summary for
+`AAWallet.validateUserOp(..., expectedWrapperAddress)` and
+`AAPQIntegration.validateAndExecuteV1`, then compare it to the Lean-owned v1
+behavior summary.
 
 ### FalconSimpleWallet shape v0 (landed)
 
@@ -647,11 +651,12 @@ PQ-AA reference deployment:
    "validateUserOp"), wrapper contract, scheme parameters, and the
    wrapper's EVM address. Surfaced as the new
    `falconSimpleWalletShape` field in the source certificate.
-2. **Wallet storage layout** *(landed)* — `AAWallet.wrapperAddressSlot`
-   (slot 5) declared on the wallet side. The deployment view's
-   wallet contract carries the new `wrapperAddress` storage entry, and
-   `validateProgramV1` requires the operation's expected wrapper address to
-   match that stored slot before running the v0 wallet validation.
+2. **Wallet storage layout** *(landed)* — `AAWallet.lastOpHashSlot`
+   (slot 4) and `AAWallet.wrapperAddressSlot` (slot 5) are declared on the
+   wallet side. The deployment/source views carry the execute-record slot and
+   the stored `wrapperAddress` entry, and `validateProgramV1` requires the
+   operation's expected wrapper address to match that stored slot before
+   running the v0 wallet validation.
 3. **Verifier-wrapper call shape with calibration** *(landed)* —
    `WrapperCalibratedForScheme` is the named assumption tying the
    wrapper's `expectedPublicKeyLengthSlot` and

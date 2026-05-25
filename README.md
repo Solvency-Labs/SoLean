@@ -138,7 +138,10 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   over a small `Operand` DSL (param / slot / msgSender / const) instead of
   English condition strings. The v1 full summary makes the
   `expectedWrapperAddress == wallet.wrapperAddress` guard explicit, and the
-  audit checks that guard against the v1 source vocabulary.
+  audit checks that guard against the v1 source vocabulary. The v1 source
+  vocabulary now also declares the execute-record `lastOpHash` slot and the
+  Solidity sketch mirrors the v1 names, with the explicit limitation that this
+  remains a trusted shape check rather than verified Solidity parsing.
 - A shared `SoLean.Source.Shape` vocabulary for source-shape audit metadata
   (`Param`, `StorageSlot`, `Contract`, and `IntegratedContract`) used by both
   Counter and AA/PQ artifacts.

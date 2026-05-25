@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.35;
 
-// Solidity sketch matching SoLean.Examples.AAPQSource.integratedContract.
+// Solidity sketch matching SoLean.Examples.AAPQSource.integratedContract and
+// integratedV1Contract.
 // This file is a documentation/audit fixture only. It is not parsed, compiled,
 // or proved equivalent to the Lean models. The corresponding proved programs
-// are AAWallet.validateProgram, PQVerifierWrapper.verifyProgram, and
-// AAPQIntegration.validateIntegrated.
+// are AAWallet.validateProgram / validateProgramV1,
+// PQVerifierWrapper.verifyProgram, and AAPQIntegration.validateIntegrated /
+// validateAndExecuteV1.
 
-contract PQVerifierWrapper {
+abstract contract PQVerifierWrapper {
     uint256 public expectedPublicKeyLength; // slot 0
     uint256 public expectedSignatureLength; // slot 1
     uint256 public expectedDomain;          // slot 2
@@ -35,11 +37,13 @@ contract PQVerifierWrapper {
     }
 }
 
-contract AAWallet {
+abstract contract AAWallet {
     uint256 public nonce;         // slot 0
     uint256 public keyCommitment; // slot 1
     uint256 public domain;        // slot 2
     address public entryPoint;    // slot 3 (modeled as uint256 in Lean)
+    uint256 public lastOpHash;    // slot 4
+    address public wrapperAddress; // slot 5 (modeled as uint256 in Lean)
 
     // Modeled in Lean by SoLean.Env.verifier on the same oracle as the wrapper.
     function pqVerifier(
@@ -55,6 +59,30 @@ contract AAWallet {
         uint256 userOpDomain,
         uint256 signature
     ) external {
+        _validateUserOp(opHash, userOpNonce, userOpDomain, signature);
+    }
+
+    function validateUserOp(
+        uint256 opHash,
+        uint256 userOpNonce,
+        uint256 userOpDomain,
+        uint256 signature,
+        address expectedWrapperAddress
+    ) external {
+        require(expectedWrapperAddress == wrapperAddress);
+        _validateUserOp(opHash, userOpNonce, userOpDomain, signature);
+    }
+
+    function executeUserOp(uint256 opHash) external {
+        lastOpHash = opHash;
+    }
+
+    function _validateUserOp(
+        uint256 opHash,
+        uint256 userOpNonce,
+        uint256 userOpDomain,
+        uint256 signature
+    ) internal {
         require(msg.sender == address(uint160(uint256(uint160(entryPoint)))));
         require(userOpNonce == nonce);
         require(userOpDomain == domain);
@@ -64,7 +92,8 @@ contract AAWallet {
 }
 
 // Reference integration shim corresponding to
-// SoLean.Examples.AAPQIntegration.validateIntegrated. The two contracts are
+// SoLean.Examples.AAPQIntegration.validateIntegrated and validateAndExecuteV1.
+// The two contracts are
 // modeled as separate storage boundaries; the integration runs the wrapper,
 // checks the key commitment matches the public key, then runs the wallet
 // validation. External-call semantics, ABI decoding, calldata, memory, gas,
@@ -92,5 +121,34 @@ contract AAPQIntegration {
         );
         require(wallet.keyCommitment() == publicKey);
         wallet.validateUserOp(opHash, userOpNonce, userOpDomain, signature);
+    }
+
+    function validateAndExecuteV1(
+        uint256 publicKey,
+        uint256 publicKeyLength,
+        uint256 opHash,
+        uint256 userOpNonce,
+        uint256 userOpDomain,
+        uint256 signature,
+        uint256 signatureLength,
+        address expectedWrapperAddress
+    ) external {
+        wrapper.verify(
+            publicKey,
+            publicKeyLength,
+            opHash,
+            userOpDomain,
+            signature,
+            signatureLength
+        );
+        require(wallet.keyCommitment() == publicKey);
+        wallet.validateUserOp(
+            opHash,
+            userOpNonce,
+            userOpDomain,
+            signature,
+            expectedWrapperAddress
+        );
+        wallet.executeUserOp(opHash);
     }
 }

@@ -31,20 +31,12 @@ structure FalconSimpleWalletDeployment where
 /--
 The default Falcon-512 FalconSimpleWallet deployment. The wallet is the
 existing `AAPQSource.walletContract` extended (in the source-shape view)
-with a `wrapperAddress` slot; the wrapper is `AAPQSource.wrapperContract`
-calibrated for Falcon-512 lengths.
+with the execute-phase `lastOpHash` slot and the stored `wrapperAddress` slot;
+the wrapper is `AAPQSource.wrapperContract` calibrated for Falcon-512 lengths.
 -/
 def falconSimpleWalletDeployment : FalconSimpleWalletDeployment :=
   { wallet :=
-      { name := "FalconSimpleWallet",
-        pragma := "0.8.35",
-        storage := AAPQSource.walletContract.storage ++ [
-          { name := "wrapperAddress",
-            slot := AAWallet.wrapperAddressSlot,
-            typeName := "address" }
-        ],
-        functionName := "validateUserOp",
-        params := AAPQSource.walletContract.params },
+      AAPQSource.falconSimpleWalletV1Contract,
     wrapper := AAPQSource.wrapperContract,
     scheme := SchemeParameters.falcon512,
     wrapperAddress := ({ value := UInt256.one } : EVM.Address) }

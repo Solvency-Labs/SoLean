@@ -269,5 +269,8 @@ flow: wrapper + key-match + wallet + execute). `behavior-summary-json` covers
 the three-phase `validateIntegrated` (no execute).
 `v1-full-behavior-summary-json` covers `validateAndExecuteV1` and exposes the
 additional `expectedWrapperAddress == wallet.wrapperAddress` guard.
-`v1-source-json` declares the matching `FalconSimpleWallet.wrapperAddress`
-storage slot and `expectedWrapperAddress` input used to scope-check that guard.
+`v1-source-json` declares the matching `FalconSimpleWallet.lastOpHash` slot 4,
+`wrapperAddress` slot 5, and `expectedWrapperAddress` input used to scope-check
+that guard and the execute-record vocabulary. The Solidity sketch mirrors those
+names, but the audit is still a trusted source-shape check, not verified
+Solidity parsing.

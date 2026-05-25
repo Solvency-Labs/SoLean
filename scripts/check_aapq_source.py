@@ -59,14 +59,29 @@ REQUIRED_CONTRACTS: list[tuple[str, list[str], list[str]]] = [
     ),
     (
         "AAWallet",
-        ["nonce", "keyCommitment", "domain", "entryPoint"],
-        ["validateUserOp"],
+        [
+            "nonce",
+            "keyCommitment",
+            "domain",
+            "entryPoint",
+            "lastOpHash",
+            "wrapperAddress",
+        ],
+        ["validateUserOp", "executeUserOp"],
     ),
     (
         "AAPQIntegration",
         [],
-        ["validateIntegrated"],
+        ["validateIntegrated", "validateAndExecuteV1"],
     ),
+]
+
+REQUIRED_V1_SOLIDITY_IDENTIFIERS: list[str] = [
+    "lastOpHash",
+    "wrapperAddress",
+    "expectedWrapperAddress",
+    "validateAndExecuteV1",
+    "executeUserOp",
 ]
 
 
@@ -115,6 +130,11 @@ _FUNCTION_DECL = re.compile(
 )
 
 
+def strip_solidity_comments(text: str) -> str:
+    stripped = _BLOCK_COMMENT.sub("", text)
+    return _LINE_COMMENT.sub("", stripped)
+
+
 def parse_solidity_shape(text: str) -> dict[str, dict[str, list[str]]]:
     """Extract the shape of contracts from a restricted Solidity input.
 
@@ -125,8 +145,7 @@ def parse_solidity_shape(text: str) -> dict[str, dict[str, list[str]]]:
     required shape, not absence of extras.
     """
 
-    stripped = _BLOCK_COMMENT.sub("", text)
-    stripped = _LINE_COMMENT.sub("", stripped)
+    stripped = strip_solidity_comments(text)
 
     shapes: dict[str, dict[str, list[str]]] = {}
     for match in _CONTRACT_HEAD.finditer(stripped):
@@ -151,6 +170,33 @@ def parse_solidity_shape(text: str) -> dict[str, dict[str, list[str]]]:
             "functions": _FUNCTION_DECL.findall(body),
         }
     return shapes
+
+
+def check_solidity_v1_vocabulary(solidity_text: str) -> dict[str, str]:
+    """Check that the documentation Solidity sketch exposes the v1 names.
+
+    This is intentionally only a lexical source-shape guard. It does not verify
+    function bodies, overload resolution, ABI behavior, or Solidity semantics.
+    """
+
+    stripped = strip_solidity_comments(solidity_text)
+    missing = [
+        name
+        for name in REQUIRED_V1_SOLIDITY_IDENTIFIERS
+        if re.search(rf"\b{re.escape(name)}\b", stripped) is None
+    ]
+    if missing:
+        return failed(
+            "Solidity v1 source vocabulary",
+            "trusted Solidity shape",
+            "Missing v1 identifiers in Solidity sketch: "
+            + ", ".join(sorted(missing)),
+        )
+    return passed(
+        "Solidity v1 source vocabulary",
+        "trusted Solidity shape",
+        "Solidity sketch exposes the v1 wrapper-address and execute vocabulary.",
+    )
 
 
 def passed(name: str, trust: str, message: str) -> dict[str, str]:
@@ -1283,6 +1329,7 @@ def run_audit(
             checks.append(check_solidity_storage(shape, contract, storage))
         if functions:
             checks.append(check_solidity_functions(shape, contract, functions))
+    checks.append(check_solidity_v1_vocabulary(solidity_text))
 
     status = "passed" if all(check["status"] == "passed" for check in checks) else "failed"
     return {
