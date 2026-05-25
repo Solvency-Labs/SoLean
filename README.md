@@ -3,34 +3,46 @@
 SoLean is a focused research/engineering prototype for AI-assisted formal
 verification of Solidity contract logic using Lean 4.
 
-The project is intentionally scope-controlled. The first goal is not to verify
-arbitrary Solidity. The first goal is to build a clean, inspectable skeleton
-around calibrated case studies. `Counter` is the calibration case for the
-Solidity/Lean/Yul bridge. The strategic research target is now
-account-abstraction wallet
-validation and post-quantum signature verifier-wrapper contracts, with ERC-20
-used only as an optional calibration case.
+The strategic research target is **PQ account abstraction**, framed as in
+Antonio Sanso's *"The road to Post-Quantum Ethereum transactions is paved
+with Account Abstraction"*: PQ-authenticated Ethereum transactions
+become deployable today by routing them through an AA smart wallet that
+authenticates `UserOp`s with a PQ verifier wrapper. The reference
+deployment shape is **FalconSimpleWallet**-style — no `ecrecover` in the
+wallet path; verification against an explicit stored public key (or key
+commitment); signature acceptance via the verifier wrapper. `Counter`
+remains the calibration case for the Solidity/Lean/Yul bridge. ERC-20 is
+optional calibration only; the project does not broaden into generic DeFi.
 
-## Planned Pipeline
-
-The sharper north star is traceable trust reduction: build a boundary-aware
-verification pipeline where a restricted Solidity subset can be connected to a
-Lean model, proved, compiled to restricted Yul, and compared against pinned `solc`
-output, with every trusted step explicitly identified.
-
-The near-term application target is PQ account abstraction:
+## North Star
 
 ```text
-AA wallet validation logic
-  -> PQ verifier-wrapper contract
-  -> integration proof that execution requires modeled PQ authentication,
-     nonce validity, and domain binding
+Build a boundary-aware Lean/Solidity verification pipeline for
+account-abstraction smart wallets that accept execution only after
+nonce/domain/key-commitment checks and successful post-quantum
+verifier-wrapper validation, with cryptographic assumptions, EVM-call
+assumptions, and remaining protocol-level ECDSA boundaries explicitly
+identified.
 ```
 
-SoLean should verify the contract logic around PQ authentication. It does not
-currently verify the cryptographic security of a PQ signature scheme.
+SoLean verifies the **contract logic** around PQ authentication. It does
+not verify the cryptographic security of Falcon (or any PQ scheme); the
+verifier stays an oracle or structured-verifier model.
 
-The intended long-term loop is:
+Two boundaries deserve loud calling-out:
+
+- **Bundler / ECDSA boundary.** ERC-4337 lets `UserOp`s be
+  PQ-authenticated at the wallet, but the outer bundler transaction may
+  still rely on ECDSA until protocol-level / native-AA work
+  (RIP-7560, EIP-7701-like directions) lands. SoLean treats the
+  residual ECDSA dependence as an **explicit non-claim**.
+- **EIP-7702 caveat.** Delegating an EOA to a smart-wallet
+  implementation can add PQ-AA behavior, but the original ECDSA key
+  remains valid for signing — a PQ-resilience risk SoLean treats as a
+  **trust boundary / non-claim**, not as solved.
+
+The intended long-term loop on the **Counter calibration side** (which
+exercises the source-to-Yul bridge machinery in isolation) is:
 
 1. Compile Solidity with `solc` to Yul1.
 2. Write or generate an equivalent SoLean program.
@@ -38,10 +50,19 @@ The intended long-term loop is:
 4. Compile SoLean back to Yul2.
 5. Check that Yul1 and Yul2 are equivalent for a restricted subset.
 
-Today, the proof side has checked-arithmetic semantics for focused hand-written
-models, a restricted Lean model of the Counter Yul path, and a focused verified
-Counter compiler slice. The broader Solidity and Yul pipeline remains
-placeholder tooling.
+Today, the proof side has checked-arithmetic semantics for focused
+hand-written models, a restricted Lean model of the Counter Yul path,
+and a focused verified Counter compiler slice. The broader Solidity and
+Yul pipeline remains placeholder tooling.
+
+On the **AA/PQ side**, the verified surface is the wallet/wrapper
+boundary itself: integrated `validateAndExecute` proofs, structured
+verifier-shape assumptions (`StructureRespectsBool`, `LatticeShapeBound`),
+EVM-call assumptions (`WrapperOracleConsistent`, `WrapperCodeBound`,
+`NoCallback`, `EnoughGas`), and scheme-discrimination theorems
+(Falcon-512 vs ML-DSA-44). The Yul pipeline above is *not* part of the
+AA/PQ verified surface yet — the AA/PQ proofs live above the Solidity
+source-shape line.
 
 For the current intuition and next steps, see `docs/roadmap.md` and
 `docs/pq-aa-roadmap.md`. For the exact Counter bridge success condition, see

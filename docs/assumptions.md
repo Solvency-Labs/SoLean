@@ -6,14 +6,22 @@ results.
 
 ## Research Direction
 
-- Counter is the calibration case for the Solidity/Lean/Yul bridge.
-- ERC-20-style examples are optional calibration cases for mappings, balances,
-  allowances, and invariants.
-- The main next research target is account-abstraction wallet validation and
-  post-quantum verifier-wrapper contract logic.
-- For PQ work, SoLean should verify contract-level authentication logic under
-  explicit verifier assumptions. It does not currently verify the cryptographic
-  security of a PQ signature scheme.
+- The main research target is **PQ account abstraction**: a boundary-aware
+  Lean/Solidity verification pipeline for AA smart wallets that accept
+  execution only after nonce/domain/key-commitment checks and successful
+  post-quantum verifier-wrapper validation. This matches Antonio Sanso's
+  *"The road to Post-Quantum Ethereum transactions is paved with Account
+  Abstraction"* framing.
+- The reference deployment shape is **FalconSimpleWallet**-style: no
+  `ecrecover` in the wallet path; verification is against an explicit
+  stored public key (or key commitment); signature acceptance is via the
+  verifier wrapper, not the EVM's native crypto.
+- Counter remains the calibration case for the Solidity/Lean/Yul bridge.
+  ERC-20-style examples are optional calibration only.
+- For PQ work, SoLean verifies contract-level authentication logic under
+  explicit verifier assumptions. It does **not** verify the cryptographic
+  security of Falcon (or any PQ scheme); the verifier stays an oracle or
+  structured-verifier model.
 
 ## Arithmetic
 
@@ -62,6 +70,55 @@ results.
   bounded `UInt256` placeholders.
 - This does not verify PQ cryptographic security, byte-level parsing, ABI,
   calldata, memory, external calls, gas, or EVM behavior.
+
+## FalconSimpleWallet Alignment
+
+- `SoLean.Examples.AAWallet` + `SoLean.Examples.PQVerifierWrapper` +
+  `SoLean.Examples.AAPQIntegration` are intended to model the
+  **FalconSimpleWallet** deployment shape: an AA smart wallet that
+  authenticates `UserOp`s against an explicit stored public key (or key
+  commitment) via a PQ verifier wrapper, with no `ecrecover` in the
+  validation path.
+- The wallet's `keyCommitmentSlot` is the modeled "stored public key"
+  anchor; the integrated flow's key-match guard enforces
+  `input.publicKey == wallet.keyCommitment` before the wrapper call.
+- The wrapper's `expectedPublicKeyLength`, `expectedSignatureLength`, and
+  `expectedDomain` slots are the modeled deployment parameters of the
+  verifier wrapper for a specific PQ scheme (e.g. Falcon-512 or
+  ML-DSA-44, surfaced via `SoLean.Examples.SchemeParameters`).
+- Hashing-scheme choices (Keccak-256 vs SHAKE-256 for `opHash`,
+  EIP-712-style domain binding, etc.) are **not** modeled at the byte
+  level. The `opHash` is a `UInt256` placeholder; downstream EVM-friendly
+  vs non-EVM-friendly hashing is out of scope unless a future slice
+  models it explicitly.
+
+## Bundler / ECDSA Boundary
+
+- ERC-4337 lets `UserOp`s be PQ-authenticated at the wallet layer.
+  However, the final bundler transaction that lands the bundle on chain
+  may still rely on ECDSA until protocol-level / native-AA work
+  (RIP-7560, EIP-7701-like directions) lands.
+- SoLean's proofs cover the **wallet-side** PQ-AA flow only. The
+  residual ECDSA dependence at the bundler layer is an **explicit
+  non-claim** of the certificate, not a solved problem.
+- The wrapper-call shim (`AAPQIntegration.callVerifierWrapper`) and the
+  EVM CALL model (`SoLean.EVM.Call`) cover the wallet-to-wrapper call
+  boundary. They do **not** cover the EOA-to-EntryPoint or
+  bundler-to-EntryPoint transaction layers.
+
+## EIP-7702 Caveat
+
+- EIP-7702 allows an EOA to delegate execution to a smart-wallet
+  implementation, which can in principle add PQ-AA behavior to an
+  existing account.
+- However, the original ECDSA key for the EOA **remains valid for
+  signing**, which is a PQ-resilience risk: anyone who can break the
+  ECDSA key can authorize transactions independent of the PQ verifier
+  wrapper.
+- SoLean treats EIP-7702 as a **trust boundary / non-claim**, not as
+  solved. A PQ-resilient deployment under EIP-7702 would require
+  additional protocol-level guarantees (key disabling, key rotation,
+  etc.) that are out of scope for SoLean's current proofs.
 
 ## AA + PQ Integration
 

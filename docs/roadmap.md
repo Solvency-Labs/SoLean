@@ -7,15 +7,26 @@ Lean.
 ## Mental Model
 
 SoLean's north star is traceable trust reduction, now aimed at a concrete
-Ethereum-facing target: account-abstraction wallet validation with
-post-quantum verifier-wrapper contracts.
+Ethereum-facing target: **PQ account abstraction**. The framing follows
+Antonio Sanso's *"The road to Post-Quantum Ethereum transactions is paved
+with Account Abstraction"*: the deployable route to PQ-authenticated
+Ethereum transactions today is an AA smart wallet that authenticates
+`UserOp`s with a PQ verifier wrapper, not native EVM cryptography.
 
 ```text
 Build a boundary-aware Lean/Solidity verification pipeline for
-account-abstraction contracts that authenticate user operations through
-post-quantum signature verification, with cryptographic assumptions explicit
-and contract-level safety properties proved.
+account-abstraction smart wallets that accept execution only after
+nonce/domain/key-commitment checks and successful post-quantum
+verifier-wrapper validation, with cryptographic assumptions, EVM-call
+assumptions, and remaining protocol-level ECDSA boundaries explicitly
+identified.
 ```
+
+The reference deployment shape is **FalconSimpleWallet**-style: no
+`ecrecover` in the wallet path, verification against an explicit stored
+public key (or key commitment), signature acceptance through the verifier
+wrapper. Falcon/ML-DSA cryptographic security stays an oracle assumption;
+SoLean does not prove it.
 
 The project is trying to connect four worlds:
 
@@ -602,13 +613,55 @@ finite sub-domain or moving to a richer codomain (e.g., tuples).
 The next best qualitative task is:
 
 ```text
-Bring more of the original AA/PQ non-claim list into scope — the EVM CALL
-boundary is now a working precedent, so the natural next moves are gas
-accounting, returndata, or ABI calldata structure.
+FalconSimpleWallet shape v0 — reframe and consolidate the existing AA/PQ
+proofs around the Antonio-Sanso-style PQ-AA reference deployment, with
+loud non-claims for ECDSA, EIP-7702, ERC-4337 bundlers, real Falcon
+arithmetic, byte parsing, and EVM-friendly hashing choices.
 ```
 
-Work is organized into two named lanes. Lane A is in-flight; Lane B is
-queued for the next session.
+### FalconSimpleWallet shape v0 (next milestone)
+
+The Lean-side proofs already cover most of this shape (key commitment,
+nonce, domain, entry point, integrated validateAndExecute, replay
+failure, witness extraction). The milestone is mostly *re-presentation*
+and explicit non-claim wiring:
+
+1. **AA-facing source-shape view.** Add or rename an artifact closer to
+   `validateUserOp` so the certificate exposes the wallet shape an
+   ERC-4337 reviewer recognizes.
+2. **Wallet storage layout.** Make the wallet's `wrapperAddress` slot
+   explicit (currently held in `EvmEnv`, not wallet storage). Slots:
+   key commitment / public-key commitment, nonce, domain, entryPoint,
+   verifier wrapper address.
+3. **Verifier-wrapper call.** Surface the wrapper invocation as
+   validating an explicit `(publicKey, opHash, domain, signature,
+   publicKeyLength, signatureLength)` tuple, with a named
+   FalconSimpleWallet calibration referencing the relevant
+   `SchemeParameters` (`falcon512` initially).
+4. **Composite safety theorem.** Bundle the existing claims into a
+   single FalconSimpleWallet-facing theorem:
+   successful `validateAndExecute` implies (a) the public key matches
+   the wallet's commitment, (b) the verifier wrapper accepted the exact
+   tuple, (c) the nonce advanced through checked arithmetic, (d) the
+   `opHash` is recorded at `lastOpHashSlot`, and (e) the same `UserOp`
+   cannot replay on the post-state.
+5. **Loud non-claims** baked into the certificate:
+   - real Falcon arithmetic / cryptographic security
+   - byte parsing of ABI calldata, real Keccak-vs-SHAKE choice
+   - full ERC-4337 bundler / EntryPoint semantics
+   - protocol-level bundler ECDSA dependence (RIP-7560 / EIP-7701
+     pending)
+   - EIP-7702 ECDSA-key-still-valid risk
+   - signature aggregation, gas schedule beyond the single-cost model
+
+Counter stays as a calibration case. ERC-20 stays optional. Do not
+broaden into generic DeFi.
+
+### Already-completed lanes (kept for reference)
+
+Work is organized into named lanes. Lanes A, B, C below are
+feature-complete; FalconSimpleWallet shape v0 (above) is the new
+in-flight milestone.
 
 ### Lane A — Deepen the EVM CALL boundary (in flight)
 

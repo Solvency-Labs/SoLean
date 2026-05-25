@@ -45,6 +45,14 @@ scripts/demo_aapq_source.py   -> one-command runner + trust boundary summary
 
 ## Current Claims
 
+The integrated AA/PQ flow modeled here matches the
+**FalconSimpleWallet**-style PQ-AA deployment from Antonio Sanso's
+*"The road to Post-Quantum Ethereum transactions is paved with Account
+Abstraction"*: no `ecrecover` in the wallet path, verification against
+an explicit stored public-key commitment, signature acceptance through
+a verifier wrapper. Falcon/PQ cryptographic security is **not** proved;
+the verifier stays an oracle (or structured-verifier) model.
+
 The demo supports this claim:
 
 ```text
@@ -186,7 +194,9 @@ Trust Boundaries section):
 The demo does not claim:
 
 - verified Solidity parsing
-- verified PQ cryptographic security
+- verified PQ cryptographic security (Falcon / ML-DSA / any scheme)
+- EVM-friendly hashing choices like Keccak-256 vs SHAKE-256 for
+  `opHash`, or EIP-712-style domain binding at the byte level
 - full EVM CALL semantics (no per-opcode gas schedule, no reentrancy,
   no code resolution, no value transfer) — a first calldata/returndata
   CALL boundary exists, conditional on `WrapperOracleConsistent`, with
@@ -194,6 +204,17 @@ The demo does not claim:
 - full ABI encoding (the calldata model is one word per argument plus a
   4-byte function selector modeled as a full word; no per-byte padding,
   no dynamic types)
+- full ERC-4337 / EntryPoint / paymaster / aggregator machinery; the
+  integration covers the wallet ↔ wrapper boundary, not the bundler
+  pipeline
+- **bundler ECDSA dependence:** ERC-4337 today relies on ECDSA for the
+  outer bundler transaction. Protocol-level work (RIP-7560 /
+  EIP-7701-like native AA) would close this gap; SoLean leaves it as
+  an explicit non-claim
+- **EIP-7702 caveat:** delegating an EOA to a smart-wallet
+  implementation can add PQ-AA behavior, but the original ECDSA key
+  remains valid for signing — a PQ-resilience risk SoLean does not
+  resolve
 - memory, events, or full revert-data propagation
 - semantic equivalence with any real Yul or `solc` output
 - production readiness for AA wallets

@@ -1,24 +1,72 @@
 # PQ Account-Abstraction Roadmap
 
-SoLean's strategic target is now a hybrid path that leans toward Ethereum
-post-quantum account abstraction work.
+SoLean's strategic target is **PQ account abstraction**, framed as in
+Antonio Sanso's *"The road to Post-Quantum Ethereum transactions is paved
+with Account Abstraction"*: PQ-authenticated Ethereum transactions become
+deployable today by routing them through an AA smart wallet that
+authenticates `UserOp`s with a PQ verifier wrapper, instead of waiting
+for native EVM PQ cryptography.
 
-Counter remains the calibration case for the bridge machinery. ERC-20-style
-examples may be used as focused calibration exercises. The serious research
-target is contract-level verification around account-abstraction wallets and
-post-quantum signature verifier wrappers.
+The reference deployment shape is **FalconSimpleWallet**-style: no
+`ecrecover` in the wallet path; verification against an explicit stored
+public key (or key commitment); signature acceptance through the verifier
+wrapper.
+
+Counter remains the calibration case for the bridge machinery. ERC-20
+stays as optional calibration only. The serious research target is
+contract-level verification of the PQ-AA wallet/wrapper boundary.
 
 ## North Star
 
 ```text
 Build a boundary-aware Lean/Solidity verification pipeline for
-account-abstraction contracts that authenticate user operations through
-post-quantum signature verification, with cryptographic assumptions explicit
-and contract-level safety properties proved.
+account-abstraction smart wallets that accept execution only after
+nonce/domain/key-commitment checks and successful post-quantum
+verifier-wrapper validation, with cryptographic assumptions, EVM-call
+assumptions, and remaining protocol-level ECDSA boundaries explicitly
+identified.
 ```
 
-The project should verify the contract logic around PQ authentication. It does
-not currently verify the cryptographic security of a PQ signature scheme.
+SoLean verifies the **contract logic** around PQ authentication. It does
+not verify the cryptographic security of Falcon or any PQ scheme; the
+verifier stays an oracle (or structured-verifier) model.
+
+## What's In Scope vs Out of Scope
+
+In scope:
+
+- Wallet validation logic (entry-point, nonce, domain, key-commitment
+  checks, checked nonce increment).
+- Verifier-wrapper validation logic (length/domain checks before the
+  oracle).
+- Integrated wallet ↔ wrapper composition with a modeled EVM CALL
+  boundary, gas accounting (single-cost), EIP-150 63/64 rule,
+  selector-checked calldata, structural no-reentrancy, and a directed
+  cross-contract assumption graph.
+- Cross-scheme replay impossibility for the documented byte-length
+  checks (Falcon-512 vs ML-DSA-44).
+
+Out of scope (named non-claims surfaced in the source certificate):
+
+- **Real Falcon / ML-DSA cryptographic security.** Falcon/PQ
+  verification stays an oracle or structured-verifier model.
+- **EVM-friendly hashing choices.** Keccak-256 vs SHAKE-256 for
+  `opHash` and EIP-712-style domain binding are not modeled at the byte
+  level; the `opHash` is a `UInt256` placeholder.
+- **Full ERC-4337 / EntryPoint / paymaster / aggregator machinery.**
+  The integration models the wallet/wrapper boundary, not the bundler
+  pipeline.
+- **Bundler ECDSA dependence.** ERC-4337 today still relies on ECDSA
+  for the outer bundler transaction. Protocol-level work
+  (RIP-7560 / EIP-7701-like native AA) would close this gap; SoLean
+  treats it as an explicit non-claim.
+- **EIP-7702 caveat.** Delegating an EOA to a smart-wallet
+  implementation can add PQ-AA behavior, but the original ECDSA key
+  remains valid for signing — a PQ-resilience risk SoLean does not
+  resolve.
+- **Real byte-level ABI parsing**, dynamic-tail decoding, calldata
+  padding, real solc Yul equivalence, signature aggregation, and a
+  per-opcode gas schedule.
 
 ## Why This Direction
 
@@ -341,6 +389,56 @@ new oracle-assumption theorem cannot be represented as an untracked floating
 string without breaking the Lean build or the Python audit.
 
 This is the first target that should feel like a serious Ethereum research demo.
+
+## Next Milestone: FalconSimpleWallet shape v0
+
+Reframe the existing AA/PQ proofs around the
+**FalconSimpleWallet**-style PQ-AA deployment so the certificate
+exposes a wallet shape an ERC-4337 reviewer recognizes, with loud
+non-claims for the boundaries SoLean does not cross.
+
+Concrete scope (mostly re-presentation + targeted Lean tweaks; the
+underlying proofs already exist):
+
+1. **AA-facing source-shape view.** Add or rename an artifact closer
+   to `validateUserOp` (the AA-facing entry point name) so the source
+   certificate exposes the wallet shape an ERC-4337 reviewer
+   recognizes. Surface as a new entry alongside the existing
+   `AAPQSource.integratedContract`.
+2. **Wallet storage layout.** Make the wallet's `wrapperAddress` slot
+   explicit on the wallet side (currently held in `EvmEnv`, not in
+   wallet storage). Slots: key commitment / public-key commitment,
+   nonce, domain, entry point, verifier wrapper address.
+3. **Verifier-wrapper call shape.** Surface the wrapper invocation as
+   validating an explicit
+   `(publicKey, opHash, domain, signature, publicKeyLength,
+    signatureLength)` tuple, with a named FalconSimpleWallet
+   calibration referencing the relevant
+   `SchemeParameters` (`falcon512` first).
+4. **Composite FalconSimpleWallet safety theorem.** Bundle existing
+   claims into a single theorem visible to AA reviewers: a successful
+   `validateAndExecute` implies (a) the public key matches the
+   wallet's stored commitment, (b) the verifier wrapper accepted the
+   exact `(publicKey, opHash, domain, signature)` tuple, (c) the
+   nonce advanced through checked arithmetic, (d) the `opHash` is
+   recorded at `lastOpHashSlot`, and (e) the same `UserOp` cannot
+   replay on the post-state.
+5. **Loud non-claims** baked into the certificate's assumption /
+   non-claim surface:
+   - real Falcon arithmetic / cryptographic security
+   - byte parsing of ABI calldata, real Keccak-vs-SHAKE choice
+   - full ERC-4337 bundler / EntryPoint / paymaster / aggregator
+     semantics
+   - protocol-level bundler ECDSA dependence (RIP-7560 / EIP-7701
+     pending)
+   - EIP-7702 ECDSA-key-still-valid risk
+   - signature aggregation, full gas schedule beyond the single-cost
+     model
+
+After Phase 5/6 verifier-shape work, FalconSimpleWallet shape v1
+would lift the loose `wrapperAddress` from `EvmEnv` into a
+wallet-storage anchor with a cross-storage equality assumption,
+giving the wallet a fully self-describing deployment view.
 
 ## Phase 4: Bridge To Real Solidity And solc
 
