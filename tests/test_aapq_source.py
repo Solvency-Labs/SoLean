@@ -16,7 +16,9 @@ from scripts.check_aapq_source import (
     check_crypto_assumptions_link_to_proofs,
     check_full_behavior_summary_extends_short_summary,
     check_full_behavior_summary_includes_execute_phase,
+    check_falcon_simple_wallet_shape,
     check_integration_variants,
+    check_protocol_boundary_assumptions,
     check_phase_proof_references,
     check_source_contracts_match_certificate,
     check_under_oracle_assumption_theorems_covered,
@@ -693,6 +695,88 @@ class IntegrationVariantsAuditTests(unittest.TestCase):
         result = check_integration_variants(certificate)
         self.assertEqual(result["status"], "failed")
         self.assertIn("expected exactly one canonical variant", result["message"])
+
+
+class ProtocolBoundaryAuditTests(unittest.TestCase):
+    def test_real_certificate_passes(self) -> None:
+        cert = cached_artifact("source-certificate-json")
+        self.assertEqual(
+            check_protocol_boundary_assumptions(cert)["status"], "passed"
+        )
+
+    def test_missing_section_fails(self) -> None:
+        result = check_protocol_boundary_assumptions({})
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("no protocolBoundaryAssumptions", result["message"])
+
+    def test_invalid_status_fails(self) -> None:
+        cert = {
+            "protocolBoundaryAssumptions": [
+                {
+                    "name": "X",
+                    "leanReference": "M.X",
+                    "statement": "...",
+                    "status": "totally-fine",
+                    "theoremReferences": ["M.X_trivial"],
+                }
+            ],
+            "proofReferences": ["M.X_trivial"],
+        }
+        result = check_protocol_boundary_assumptions(cert)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("status", result["message"])
+
+    def test_dangling_theorem_fails(self) -> None:
+        cert = {
+            "protocolBoundaryAssumptions": [
+                {
+                    "name": "X",
+                    "leanReference": "M.X",
+                    "statement": "...",
+                    "status": "non-claim",
+                    "theoremReferences": ["M.X_missing"],
+                }
+            ],
+            "proofReferences": ["M.Y"],
+        }
+        result = check_protocol_boundary_assumptions(cert)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("M.X_missing", result["message"])
+
+
+class FalconSimpleWalletShapeAuditTests(unittest.TestCase):
+    def test_real_certificate_passes(self) -> None:
+        cert = cached_artifact("source-certificate-json")
+        self.assertEqual(
+            check_falcon_simple_wallet_shape(cert)["status"], "passed"
+        )
+
+    def test_missing_section_fails(self) -> None:
+        result = check_falcon_simple_wallet_shape({})
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("no falconSimpleWalletShape", result["message"])
+
+    def test_dangling_composite_theorem_fails(self) -> None:
+        cert = {
+            "falconSimpleWalletShape": {
+                "walletName": "X",
+                "walletFunction": "f",
+                "scheme": "S",
+                "storedSlots": [{"name": "s", "slot": 0, "type": "uint256"}],
+                "crossStorageAssumption": {
+                    "name": "X", "leanReference": "M.X", "statement": "..."
+                },
+                "wrapperCalibrationAssumption": {
+                    "name": "Y", "leanReference": "M.Y", "statement": "..."
+                },
+                "compositeSafetyTheorem": "M.missing_composite",
+                "schemeDiscriminationTheorem": "M.scheme_discr",
+            },
+            "proofReferences": ["M.scheme_discr"],
+        }
+        result = check_falcon_simple_wallet_shape(cert)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("M.missing_composite", result["message"])
 
 
 class DemoTests(unittest.TestCase):

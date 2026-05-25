@@ -863,6 +863,131 @@ def check_full_behavior_summary_extends_short_summary(
     )
 
 
+def check_protocol_boundary_assumptions(
+    certificate: dict[str, Any],
+) -> dict[str, str]:
+    """Each protocolBoundaryAssumptions entry must have name, leanReference,
+    statement, status, and a theoremReferences list whose entries appear in
+    proofReferences. Status must be "non-claim" or "discharged"."""
+    entries = certificate.get("protocolBoundaryAssumptions", [])
+    if not entries:
+        return failed(
+            "protocolBoundaryAssumptions present",
+            "Lean-owned certificate",
+            "Certificate has no protocolBoundaryAssumptions array.",
+        )
+    proofs = set(certificate.get("proofReferences", []))
+    problems: list[str] = []
+    valid_statuses = {"non-claim", "discharged"}
+    for entry in entries:
+        name = entry.get("name", "?")
+        if not entry.get("leanReference"):
+            problems.append(f"{name}: missing leanReference")
+        if not entry.get("statement"):
+            problems.append(f"{name}: missing statement")
+        status = entry.get("status", "")
+        if status not in valid_statuses:
+            problems.append(
+                f"{name}: status {status!r} not in {sorted(valid_statuses)}"
+            )
+        refs = entry.get("theoremReferences", [])
+        if not refs:
+            problems.append(f"{name}: missing theoremReferences")
+        for ref in refs:
+            if ref not in proofs:
+                problems.append(
+                    f"{name}: theoremReference {ref} not in proofReferences"
+                )
+    if problems:
+        return failed(
+            "protocol boundary assumptions resolve",
+            "Lean-owned certificate",
+            "Broken protocol boundaries: " + "; ".join(problems),
+        )
+    return passed(
+        "protocol boundary assumptions resolve",
+        "Lean-owned certificate",
+        f"All {len(entries)} protocolBoundaryAssumptions entries resolve.",
+    )
+
+
+def check_falcon_simple_wallet_shape(
+    certificate: dict[str, Any],
+) -> dict[str, str]:
+    """The falconSimpleWalletShape must have walletName, walletFunction,
+    scheme, storedSlots, crossStorageAssumption, wrapperCalibrationAssumption,
+    compositeSafetyTheorem (in proofReferences), schemeDiscriminationTheorem
+    (in proofReferences), walletV1 + wrapperAddressPreservation (each with
+    their named theorems in proofReferences)."""
+    shape = certificate.get("falconSimpleWalletShape")
+    if not shape:
+        return failed(
+            "falconSimpleWalletShape present",
+            "Lean-owned certificate",
+            "Certificate has no falconSimpleWalletShape object.",
+        )
+    proofs = set(certificate.get("proofReferences", []))
+    problems: list[str] = []
+    required_strings = ("walletName", "walletFunction", "scheme",
+                        "compositeSafetyTheorem", "schemeDiscriminationTheorem")
+    for key in required_strings:
+        if not shape.get(key):
+            problems.append(f"falconSimpleWalletShape: missing {key}")
+    stored_slots = shape.get("storedSlots", [])
+    if not stored_slots:
+        problems.append("falconSimpleWalletShape: missing storedSlots")
+    for assumption_key in ("crossStorageAssumption",
+                           "wrapperCalibrationAssumption"):
+        assumption = shape.get(assumption_key)
+        if not assumption:
+            problems.append(f"falconSimpleWalletShape: missing {assumption_key}")
+            continue
+        for inner in ("name", "leanReference", "statement"):
+            if not assumption.get(inner):
+                problems.append(
+                    f"falconSimpleWalletShape.{assumption_key}: missing {inner}"
+                )
+    theorem_refs = []
+    for key in ("compositeSafetyTheorem", "schemeDiscriminationTheorem"):
+        ref = shape.get(key, "")
+        if ref:
+            theorem_refs.append(ref)
+    wallet_v1 = shape.get("walletV1")
+    if wallet_v1:
+        for inner in ("program", "userOpType", "addressCheckTheorem",
+                      "rationale"):
+            if not wallet_v1.get(inner):
+                problems.append(f"walletV1: missing {inner}")
+        addr_ref = wallet_v1.get("addressCheckTheorem", "")
+        if addr_ref:
+            theorem_refs.append(addr_ref)
+    preservation = shape.get("wrapperAddressPreservation")
+    if preservation:
+        for inner in ("walletProgramTheorem", "integratedTheorem", "rationale"):
+            if not preservation.get(inner):
+                problems.append(f"wrapperAddressPreservation: missing {inner}")
+        for inner in ("walletProgramTheorem", "integratedTheorem"):
+            ref = preservation.get(inner, "")
+            if ref:
+                theorem_refs.append(ref)
+    for ref in theorem_refs:
+        if ref not in proofs:
+            problems.append(
+                f"falconSimpleWalletShape: theorem {ref} not in proofReferences"
+            )
+    if problems:
+        return failed(
+            "falcon simple wallet shape resolves",
+            "Lean-owned certificate",
+            "Broken FalconSimpleWallet shape: " + "; ".join(problems),
+        )
+    return passed(
+        "falcon simple wallet shape resolves",
+        "Lean-owned certificate",
+        f"FalconSimpleWalletShape resolves all {len(theorem_refs)} theorem references.",
+    )
+
+
 def check_phase_proof_references(behavior_summary: dict[str, Any]) -> dict[str, str]:
     phases = behavior_summary.get("phases", [])
     if not phases:
@@ -906,6 +1031,8 @@ def run_audit(
     checks.append(check_crypto_assumption_support_graph(certificate))
     checks.append(check_verifier_model_calibrations(certificate))
     checks.append(check_integration_variants(certificate))
+    checks.append(check_protocol_boundary_assumptions(certificate))
+    checks.append(check_falcon_simple_wallet_shape(certificate))
     checks.append(
         check_full_behavior_summary_includes_execute_phase(full_behavior_summary)
     )

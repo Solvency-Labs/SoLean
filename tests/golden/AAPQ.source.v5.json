@@ -61,6 +61,18 @@
       "trust": "Lean-owned certificate"
     },
     {
+      "message": "All 2 protocolBoundaryAssumptions entries resolve.",
+      "name": "protocol boundary assumptions resolve",
+      "status": "passed",
+      "trust": "Lean-owned certificate"
+    },
+    {
+      "message": "FalconSimpleWalletShape resolves all 5 theorem references.",
+      "name": "falcon simple wallet shape resolves",
+      "status": "passed",
+      "trust": "Lean-owned certificate"
+    },
+    {
       "message": "Execute phase has the expected finalWrite to slot 4.",
       "name": "full-behavior-summary execute phase",
       "status": "passed",
