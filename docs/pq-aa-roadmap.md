@@ -416,6 +416,10 @@ What landed:
   wrapper-address slot preservation to the deployment-facing
   `WalletStoresWrapperAddress` assumption: if it held before a successful
   `validateAndExecute`, it still holds in the final wallet storage.
+- `FalconSimpleWalletDeploymentInvariant` bundles
+  `WalletStoresWrapperAddress` and `WrapperCalibratedForScheme`, and
+  `validateAndExecute_preserves_deploymentInvariant` proves successful
+  `validateAndExecute` preserves that current deployment invariant.
 - `falconSimpleWallet_composite_safety` produces a
   `FalconSimpleWalletSafety` record from a successful
   `validateAndExecute`, bundling: (a) public key matches the
@@ -432,18 +436,17 @@ What landed:
   EIP-7701 pending), EIP-7702 risk, signature aggregation, and the
   full gas schedule.
 
-## Next Milestone: FalconSimpleWallet deployment invariant v1.7
+## Next Milestone: validateAndExecuteV1 v2.0
 
-Bundle the individual deployment facts into one reviewer-facing invariant:
+Use the v1 wallet validation shape throughout the integrated flow:
 
-1. Define a `FalconSimpleWalletDeploymentInvariant` record over the deployment,
-   wrapper storage, and wallet storage.
-2. Include at least `WalletStoresWrapperAddress`,
-   `WrapperCalibratedForScheme`, and the existing wallet configuration facts.
-3. Prove successful `validateAndExecute` preserves the invariant fields that
-   should survive execution.
-4. Surface the invariant theorem in `falconSimpleWalletShape` and the Python
-   audit.
+1. Add an integrated input or adapter carrying `expectedWrapperAddress`.
+2. Define `walletProgramV1` and `validateAndExecuteV1` using
+   `AAWallet.validateProgramV1`.
+3. Prove the v1 flow refines the existing `validateAndExecute` when the
+   expected wrapper address matches wallet storage.
+4. Surface the v1 theorem set in the source certificate without replacing the
+   older v0 theorems yet.
 
 ## Phase 4: Bridge To Real Solidity And solc
 

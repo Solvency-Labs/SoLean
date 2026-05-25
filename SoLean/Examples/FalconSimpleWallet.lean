@@ -79,6 +79,23 @@ def WrapperCalibratedForScheme
       deployment.scheme.signatureByteLengthUInt256
 
 /--
+Deployment invariant for the current FalconSimpleWallet shape.
+
+This bundles the deployment-facing facts that should survive successful wallet
+execution: the wallet stores the wrapper address declared by the deployment,
+and the wrapper storage remains calibrated to the deployment's scheme
+parameters. It intentionally stays small; future versions can add code-hash,
+domain, and EntryPoint invariants as those boundaries become first-class.
+-/
+structure FalconSimpleWalletDeploymentInvariant
+    (deployment : FalconSimpleWalletDeployment)
+    (wrapperStorage walletStorage : Storage) : Prop where
+  walletStoresWrapperAddress :
+    WalletStoresWrapperAddress deployment walletStorage
+  wrapperCalibratedForScheme :
+    WrapperCalibratedForScheme deployment wrapperStorage
+
+/--
 Composite safety result for a successful `validateAndExecute` against a
 FalconSimpleWallet-style deployment.
 
@@ -239,6 +256,39 @@ theorem validateAndExecute_preserves_walletStoresWrapperAddress
   rw [AAPQIntegration.validateAndExecute_preserves_wallet_wrapperAddress
     env input wrapperStorage walletStorage finalWrapper finalWallet h]
   exact hStored
+
+/--
+Successful integrated execution preserves the current deployment invariant:
+wrapper storage is unchanged, and the wallet-side wrapper address assumption is
+preserved across validation + execute.
+-/
+theorem validateAndExecute_preserves_deploymentInvariant
+    (deployment : FalconSimpleWalletDeployment)
+    (env : Env) (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (hInvariant :
+      FalconSimpleWalletDeploymentInvariant deployment wrapperStorage
+        walletStorage)
+    (h :
+      AAPQIntegration.validateAndExecute env input wrapperStorage
+          walletStorage =
+        AAPQIntegration.IntegratedFullResult.success finalWrapper
+          finalWallet) :
+    FalconSimpleWalletDeploymentInvariant deployment finalWrapper
+      finalWallet := by
+  refine
+    { walletStoresWrapperAddress := ?_,
+      wrapperCalibratedForScheme := ?_ }
+  · exact
+      validateAndExecute_preserves_walletStoresWrapperAddress deployment env
+        input wrapperStorage walletStorage finalWrapper finalWallet
+        hInvariant.walletStoresWrapperAddress h
+  · have hWrapper :
+        finalWrapper = wrapperStorage :=
+      AAPQIntegration.validateAndExecute_preserves_wrapper_storage env input
+        wrapperStorage walletStorage finalWrapper finalWallet h
+    rw [hWrapper]
+    exact hInvariant.wrapperCalibratedForScheme
 
 end FalconSimpleWallet
 end Examples

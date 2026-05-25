@@ -972,6 +972,21 @@ def check_falcon_simple_wallet_shape(
             ref = preservation.get(inner, "")
             if ref:
                 theorem_refs.append(ref)
+    deployment_invariant = shape.get("deploymentInvariant")
+    if deployment_invariant:
+        for inner in ("record", "preservationTheorem", "fields", "rationale"):
+            if not deployment_invariant.get(inner):
+                problems.append(f"deploymentInvariant: missing {inner}")
+        invariant_ref = deployment_invariant.get("preservationTheorem", "")
+        if invariant_ref:
+            theorem_refs.append(invariant_ref)
+        fields = deployment_invariant.get("fields", [])
+        for required_field in ("WalletStoresWrapperAddress",
+                               "WrapperCalibratedForScheme"):
+            if required_field not in fields:
+                problems.append(
+                    f"deploymentInvariant: missing field {required_field}"
+                )
     for ref in theorem_refs:
         if ref not in proofs:
             problems.append(

@@ -613,9 +613,9 @@ finite sub-domain or moving to a richer codomain (e.g., tuples).
 The next best qualitative task is:
 
 ```text
-FalconSimpleWallet deployment invariant v1.7 — bundle the landed
-wallet-storage anchor, wrapper calibration, wrapper-address preservation, and
-configuration-preservation facts into one reviewer-facing deployment invariant.
+validateAndExecuteV1 v2.0 — use the v1 wallet validation shape throughout the
+integrated flow, carrying the expected wrapper address through the integrated
+input rather than only surfacing `validateProgramV1` as a side theorem.
 ```
 
 ### FalconSimpleWallet shape v0 (landed)
@@ -646,7 +646,12 @@ PQ-AA reference deployment:
    accepted the exact tuple, (c) nonce advanced through checked
    arithmetic, (d) opHash recorded at `lastOpHashSlot`, (e) replay
    cannot succeed on the post-state.
-5. **Loud non-claims** *(landed)* — new `falconSimpleWalletNonClaims`
+5. **Deployment invariant bundle** *(landed)* —
+   `FalconSimpleWalletDeploymentInvariant` bundles
+   `WalletStoresWrapperAddress` and `WrapperCalibratedForScheme`, and
+   `validateAndExecute_preserves_deploymentInvariant` proves successful
+   `validateAndExecute` preserves that bundle.
+6. **Loud non-claims** *(landed)* — new `falconSimpleWalletNonClaims`
    field in the certificate enumerates: real Falcon / PQ
    cryptographic security; Keccak-vs-SHAKE hashing choice; byte-level
    ABI parsing; full ERC-4337 EntryPoint / paymaster / aggregator;
@@ -659,9 +664,10 @@ broaden into generic DeFi.
 ### Already-completed lanes (kept for reference)
 
 Work is organized into named lanes. Lanes A, B, C below are
-feature-complete; FalconSimpleWallet shape v1 is now landed through the
-wallet-side wrapper-address check and preservation theorem, and v1.7 is the
-next milestone.
+feature-complete; FalconSimpleWallet shape v1.7 is now landed through the
+wallet-side wrapper-address check, preservation theorem, and deployment
+invariant bundle. v2.0 should make the integrated execution path use the v1
+wallet validation shape directly.
 
 ### Lane A — Deepen the EVM CALL boundary (in flight)
 
