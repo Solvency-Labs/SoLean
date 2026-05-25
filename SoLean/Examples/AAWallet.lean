@@ -143,6 +143,66 @@ theorem validate_success_properties
 def validatePost (op : UserOp) : Post :=
   fun env storage finalStorage => ValidationPost op env storage finalStorage
 
+def wrapperAddressExpr : ValueExpr :=
+  .slot wrapperAddressSlot
+
+/--
+Extended user operation carrying the wrapper address the integration
+intends to call. This is the input shape FalconSimpleWallet v1's
+`validateProgramV1` checks against the wallet's stored
+`wrapperAddressSlot`.
+
+Strictly extends `UserOp`; old code that uses `UserOp` keeps working.
+-/
+structure UserOpV1 extends UserOp where
+  expectedWrapperAddress : UInt256
+deriving Repr, DecidableEq
+
+/--
+v1 wallet validation: assert the wallet's stored wrapper address
+matches the user op's declared expectation, then run the existing
+`validateProgram`. The check goes *first* so a misconfigured wallet
+(or a wrong-deployment UserOp) reverts before any state changes.
+
+This is strictly stronger than `validateProgram` — successful
+execution implies everything `validateProgram` did, plus that the
+wallet's stored wrapper address equals `op.expectedWrapperAddress`.
+-/
+def validateProgramV1 (op : UserOpV1) : Stmt :=
+  .seq
+    (.require (.eq (.const op.expectedWrapperAddress) wrapperAddressExpr))
+    (validateProgram op.toUserOp)
+
+/--
+Successful `validateProgramV1` implies:
+- the wallet's stored wrapper address equals
+  `op.expectedWrapperAddress` (the new v1 claim);
+- the full `ValidationPost` for the underlying `UserOp` (everything
+  v0 already proved: entry point, nonce, domain, verifier
+  acceptance, nonce-add through checked arithmetic, key/domain/entry
+  point storage unchanged).
+-/
+theorem validateV1_success_properties
+    (env : Env) (storage finalStorage : Storage) (op : UserOpV1)
+    (h :
+      exec env (validateProgramV1 op) storage =
+        ExecResult.success finalStorage) :
+    op.expectedWrapperAddress = storage.read wrapperAddressSlot ∧
+      ValidationPost op.toUserOp env storage finalStorage := by
+  by_cases hAddr :
+      op.expectedWrapperAddress = storage.read wrapperAddressSlot
+  · have hInner :
+        exec env (validateProgram op.toUserOp) storage =
+          ExecResult.success finalStorage := by
+      simpa [validateProgramV1, wrapperAddressExpr, exec, evalBool,
+        evalValue, hAddr] using h
+    exact
+      ⟨hAddr,
+        validate_success_properties env storage finalStorage op.toUserOp
+          hInner⟩
+  · simp [validateProgramV1, wrapperAddressExpr, exec, evalBool,
+      evalValue, hAddr] at h
+
 theorem validate_ensures (op : UserOp) :
     FunctionEnsures (validateProgram op) (fun _ _ => True) (validatePost op) := by
   intro env storage _

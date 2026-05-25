@@ -172,6 +172,7 @@ Trust Boundaries section):
 - `SoLean.Examples.SchemeParameters.validateAndExecute_falcon512_calibrated_rejects_mlDsa44_signature_length`
 - `SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_composite_safety`
 - `SoLean.Examples.FalconSimpleWallet.falconSimpleWalletDeployment_rejects_mlDsa44_signature_length`
+- `SoLean.Examples.AAWallet.validateV1_success_properties`
 - `SoLean.Examples.ProtocolBoundaries.bundlerEcdsaDependence_trivial`
 - `SoLean.Examples.ProtocolBoundaries.eip7702EcdsaKeyValidity_trivial`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas`

@@ -917,7 +917,15 @@ def aapqSourceCertificate : Json :=
       ("compositeSafetyTheorem", .str
         "SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_composite_safety"),
       ("schemeDiscriminationTheorem", .str
-        "SoLean.Examples.FalconSimpleWallet.falconSimpleWalletDeployment_rejects_mlDsa44_signature_length")
+        "SoLean.Examples.FalconSimpleWallet.falconSimpleWalletDeployment_rejects_mlDsa44_signature_length"),
+      ("walletV1", .obj [
+        ("program", .str "SoLean.Examples.AAWallet.validateProgramV1"),
+        ("userOpType", .str "SoLean.Examples.AAWallet.UserOpV1"),
+        ("addressCheckTheorem", .str
+          "SoLean.Examples.AAWallet.validateV1_success_properties"),
+        ("rationale", .str
+          "v1 wallet validation asserts the wallet's stored wrapperAddress matches the user op's declared expectedWrapperAddress before running the v0 ValidationPost checks. Strictly stronger than validateProgram; success implies both the v0 post and op.expectedWrapperAddress = wallet.wrapperAddress.")
+      ])
     ]),
     ("protocolBoundaryAssumptions", .arr [
       .obj [
@@ -1030,6 +1038,7 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.SchemeParameters.validateAndExecute_falcon512_calibrated_rejects_mlDsa44_signature_length",
       "SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_composite_safety",
       "SoLean.Examples.FalconSimpleWallet.falconSimpleWalletDeployment_rejects_mlDsa44_signature_length",
+      "SoLean.Examples.AAWallet.validateV1_success_properties",
       "SoLean.Examples.ProtocolBoundaries.bundlerEcdsaDependence_trivial",
       "SoLean.Examples.ProtocolBoundaries.eip7702EcdsaKeyValidity_trivial",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
