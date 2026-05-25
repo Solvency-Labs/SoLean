@@ -143,6 +143,55 @@ theorem validate_success_properties
 def validatePost (op : UserOp) : Post :=
   fun env storage finalStorage => ValidationPost op env storage finalStorage
 
+/--
+`validateProgram` only writes to `nonceSlot` on the success path, so the
+wallet's `wrapperAddressSlot` is preserved across any successful
+execution. Independent of `ValidationPost` (which doesn't mention slot
+5); proved by the same case analysis as `validate_success_properties`
+but returning only the wrapperAddressSlot preservation conjunct.
+-/
+theorem validateProgram_preserves_wrapperAddressSlot
+    (env : Env) (storage finalStorage : Storage) (op : UserOp)
+    (h :
+      exec env (validateProgram op) storage =
+        ExecResult.success finalStorage) :
+    finalStorage.read wrapperAddressSlot =
+      storage.read wrapperAddressSlot := by
+  by_cases hCaller : env.msgSender = storage.read entryPointSlot
+  · by_cases hNonce : op.nonce = storage.read nonceSlot
+    · by_cases hDomain : op.domain = storage.read domainSlot
+      · by_cases hVerify :
+          env.verifier
+              (storage.read keyCommitmentSlot)
+              op.opHash
+              (storage.read domainSlot)
+              op.signature = true
+        · cases hAdd :
+            UInt256.checkedAdd (storage.read nonceSlot) UInt256.one with
+          | none =>
+              simp [validateProgram, nonceExpr, keyCommitmentExpr, domainExpr,
+                entryPointExpr, exec, evalBool, evalValue, hCaller, hNonce,
+                hDomain, hVerify, hAdd] at h
+          | some newNonce =>
+              have hFinal :
+                  ExecResult.success
+                      (Storage.write storage nonceSlot newNonce) =
+                    ExecResult.success finalStorage := by
+                simpa [validateProgram, nonceExpr, keyCommitmentExpr,
+                  domainExpr, entryPointExpr, exec, evalBool, evalValue,
+                  hCaller, hNonce, hDomain, hVerify, hAdd] using h
+              cases hFinal
+              simp [nonceSlot, wrapperAddressSlot, Storage.write]
+        · simp [validateProgram, nonceExpr, keyCommitmentExpr, domainExpr,
+            entryPointExpr, exec, evalBool, evalValue, hCaller, hNonce,
+            hDomain, hVerify] at h
+      · simp [validateProgram, nonceExpr, domainExpr, entryPointExpr, exec,
+          evalBool, evalValue, hCaller, hNonce, hDomain] at h
+    · simp [validateProgram, nonceExpr, entryPointExpr, exec, evalBool,
+        evalValue, hCaller, hNonce] at h
+  · simp [validateProgram, entryPointExpr, exec, evalBool, evalValue, hCaller]
+      at h
+
 def wrapperAddressExpr : ValueExpr :=
   .slot wrapperAddressSlot
 

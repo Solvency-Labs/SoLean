@@ -174,6 +174,27 @@ theorem wallet_program_success_properties
       hKey] at h
 
 /--
+Extract the underlying `AAWallet.validateProgram` exec from a successful
+`walletProgram` exec. The key-match guard succeeds without writing, so
+the wallet-validation program runs on the original `walletStorage` and
+produces the same `finalWalletStorage`.
+-/
+theorem wallet_program_success_implies_validate_program_success
+    (env : Env) (walletStorage finalWalletStorage : Storage)
+    (input : IntegratedInput)
+    (h :
+      exec env (walletProgram input) walletStorage =
+        ExecResult.success finalWalletStorage) :
+    exec env (AAWallet.validateProgram (toUserOp input)) walletStorage =
+      ExecResult.success finalWalletStorage := by
+  by_cases hKey :
+      input.publicKey = walletStorage.read AAWallet.keyCommitmentSlot
+  · simpa [walletProgram, keyMatchesWalletProgram, exec, evalBool, evalValue,
+      hKey] using h
+  · simp [walletProgram, keyMatchesWalletProgram, exec, evalBool, evalValue,
+      hKey] at h
+
+/--
 Integrated AA/PQ validation has no modeled authentication bypass.
 
 Successful integrated execution implies:
@@ -973,6 +994,69 @@ theorem validateAndExecute_preserves_wallet_configuration
   · rw [hFinalWalletEq,
         Storage.read_write_other postWallet input.opHash hLastOpNeEntry,
         hEntryUnchanged]
+
+/--
+Wallet-storage isolation extended to the FalconSimpleWallet
+`wrapperAddressSlot`: a successful `validateAndExecute` leaves the
+wallet's stored wrapper address unchanged.
+
+Together with `validateAndExecute_preserves_wallet_configuration`, this
+shows that all wallet slots except `nonceSlot` (advanced through checked
+arithmetic) and `lastOpHashSlot` (set by the execute step) are preserved
+end-to-end through the integrated flow. The new
+`wrapperAddressSlot` declared for FalconSimpleWallet is not silently
+mutated.
+-/
+theorem validateAndExecute_preserves_wallet_wrapperAddress
+    (env : Env) (input : IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateAndExecute env input wrapperStorage walletStorage =
+        IntegratedFullResult.success finalWrapper finalWallet) :
+    finalWallet.read AAWallet.wrapperAddressSlot =
+      walletStorage.read AAWallet.wrapperAddressSlot := by
+  obtain ⟨postWallet, hValidate, hFinalWalletEq⟩ :=
+    validateAndExecute_success_structure
+      env input wrapperStorage walletStorage finalWrapper finalWallet h
+  -- Extract wallet exec success from validateIntegrated.
+  have hWalletExec :
+      exec env (walletProgram input) walletStorage =
+        ExecResult.success postWallet := by
+    -- validateIntegrated unfolds to a match on the wrapper and wallet execs.
+    cases hWrapperExec :
+        exec env
+          (PQVerifierWrapper.verifyProgram (toWrapperInput input))
+          wrapperStorage with
+    | success wrapperPost =>
+        cases hWallet :
+            exec env (walletProgram input) walletStorage with
+        | success postWalletObserved =>
+            have hEq :
+                IntegratedResult.success wrapperPost postWalletObserved =
+                  IntegratedResult.success finalWrapper postWallet := by
+              simpa [validateIntegrated, hWrapperExec, hWallet] using hValidate
+            injection hEq with _ hPostEq
+            exact congrArg ExecResult.success hPostEq
+        | revert _ =>
+            simp [validateIntegrated, hWrapperExec, hWallet] at hValidate
+    | revert _ =>
+        simp [validateIntegrated, hWrapperExec] at hValidate
+  -- The wallet exec on walletProgram lifts to the underlying validateProgram exec.
+  have hValidateExec :=
+    wallet_program_success_implies_validate_program_success env walletStorage
+      postWallet input hWalletExec
+  -- validateProgram preserves wrapperAddressSlot.
+  have hAddrEq :
+      postWallet.read AAWallet.wrapperAddressSlot =
+        walletStorage.read AAWallet.wrapperAddressSlot :=
+    AAWallet.validateProgram_preserves_wrapperAddressSlot env walletStorage
+      postWallet (toUserOp input) hValidateExec
+  -- Finally, the execute step writes only to lastOpHashSlot, not wrapperAddressSlot.
+  have hLastOpNeWrapper :
+      Not (AAWallet.wrapperAddressSlot = AAWallet.lastOpHashSlot) := by decide
+  rw [hFinalWalletEq,
+      Storage.read_write_other postWallet input.opHash hLastOpNeWrapper,
+      hAddrEq]
 
 /--
 Contrapositive gate theorem: when `validateIntegrated` reverts,

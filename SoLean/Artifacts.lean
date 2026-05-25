@@ -925,6 +925,14 @@ def aapqSourceCertificate : Json :=
           "SoLean.Examples.AAWallet.validateV1_success_properties"),
         ("rationale", .str
           "v1 wallet validation asserts the wallet's stored wrapperAddress matches the user op's declared expectedWrapperAddress before running the v0 ValidationPost checks. Strictly stronger than validateProgram; success implies both the v0 post and op.expectedWrapperAddress = wallet.wrapperAddress.")
+      ]),
+      ("wrapperAddressPreservation", .obj [
+        ("walletProgramTheorem", .str
+          "SoLean.Examples.AAWallet.validateProgram_preserves_wrapperAddressSlot"),
+        ("integratedTheorem", .str
+          "SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wallet_wrapperAddress"),
+        ("rationale", .str
+          "validateProgram only writes to nonceSlot and the execute step only writes to lastOpHashSlot; the new FalconSimpleWallet wrapperAddressSlot is preserved end-to-end. Auditors can rely on the wallet's stored wrapper address surviving every successful validateAndExecute.")
       ])
     ]),
     ("protocolBoundaryAssumptions", .arr [
@@ -1005,6 +1013,9 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQIntegration.validateAndExecute_reverts_iff_validateIntegrated_reverts",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wrapper_storage",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wallet_configuration",
+      "SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wallet_wrapperAddress",
+      "SoLean.Examples.AAWallet.validateProgram_preserves_wrapperAddressSlot",
+      "SoLean.Examples.AAPQIntegration.wallet_program_success_implies_validate_program_success",
       "SoLean.Examples.AAPQEvmCall.parse_build_verifier_calldata",
       "SoLean.Examples.AAPQEvmCall.parseVerifierCalldata_rejects_wrong_selector",
       "SoLean.Examples.AAPQEvmCall.parseVerifierCalldata_rejects_short_calldata",
