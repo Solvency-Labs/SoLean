@@ -148,6 +148,9 @@ Trust Boundaries section):
 - `SoLean.Examples.StructuredVerifier.allFieldsEqualStructuredVerifier_respects_bool`
 - `SoLean.Examples.StructuredVerifier.decide_isSome_of_toBool`
 - `SoLean.Examples.StructuredVerifier.witness_extractable_under_respectsBool`
+- `SoLean.Examples.StructuredVerifier.validateIntegrated_success_extracts_witness`
+- `SoLean.Examples.StructuredVerifier.validateAndExecute_success_extracts_witness`
+- `SoLean.Examples.StructuredVerifier.validateAndExecute_success_extracts_witness_with_authorized_opHash`
 - `SoLean.Examples.LatticePublicKey.compress_cons`
 - `SoLean.Examples.LatticePublicKey.compress_degree_independent`
 - `SoLean.Examples.LatticePublicKey.compress_injectiveOnHead`

@@ -157,6 +157,99 @@ theorem witness_extractable_under_respectsBool
   rw [toBool_eq_under_respectsBool sv bv hRespects]
   exact h
 
+/--
+Bridge: a successful `validateIntegrated` lets us extract a structured
+`VerifierWitness` for the verified tuple, when the env's verifier is a
+`Bool` projection of a `StructuredVerifier` under `StructureRespectsBool`.
+
+Chains `AAPQIntegration.noBypass_implies_verifier_accepted` (Bool-level
+acceptance from contract success) into
+`witness_extractable_under_respectsBool` (witness from Bool acceptance).
+
+The point: every AA/PQ safety theorem that lifts "the verifier said yes"
+out of a successful run now also lifts "and here is the structured
+witness that says yes" — making Lane B's StructuredVerifier
+infrastructure actually fire on the contract layer.
+-/
+theorem validateIntegrated_success_extracts_witness
+    (sv : StructuredVerifier)
+    (env : Env)
+    (hRespects : StructureRespectsBool sv env.verifier)
+    (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      AAPQIntegration.validateIntegrated env input
+          wrapperStorage walletStorage =
+        AAPQIntegration.IntegratedResult.success finalWrapper finalWallet) :
+    ∃ witness,
+      sv.decide input.publicKey input.opHash input.domain input.signature =
+        some witness :=
+  witness_extractable_under_respectsBool hRespects
+    (AAPQIntegration.noBypass_implies_verifier_accepted env input
+      wrapperStorage walletStorage finalWrapper finalWallet h)
+
+/--
+Bridge: a successful `validateAndExecute` (the full validate-then-execute
+flow) lets us extract a structured `VerifierWitness` for the verified
+tuple. Lifts the above through the gate
+`validateAndExecute_implies_verifier_accepted`.
+
+This is the AA/PQ-side payoff of Lane B: by the time the wallet has
+recorded the modeled execute side-effect, the structured verifier has
+*also* witnessed the verification, with all of its scheme-specific
+components available for downstream reasoning.
+-/
+theorem validateAndExecute_success_extracts_witness
+    (sv : StructuredVerifier)
+    (env : Env)
+    (hRespects : StructureRespectsBool sv env.verifier)
+    (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      AAPQIntegration.validateAndExecute env input
+          wrapperStorage walletStorage =
+        AAPQIntegration.IntegratedFullResult.success finalWrapper finalWallet) :
+    ∃ witness,
+      sv.decide input.publicKey input.opHash input.domain input.signature =
+        some witness :=
+  witness_extractable_under_respectsBool hRespects
+    (AAPQIntegration.validateAndExecute_implies_verifier_accepted env input
+      wrapperStorage walletStorage finalWrapper finalWallet h)
+
+/--
+Combined view: after a successful `validateAndExecute`, the wallet's
+`lastOpHashSlot` records the operation hash AND that opHash was
+authorized by the abstract verifier AND a structured witness is
+extractable. Single theorem auditors can cite to know "what the
+post-execute state means."
+-/
+theorem validateAndExecute_success_extracts_witness_with_authorized_opHash
+    (sv : StructuredVerifier)
+    (env : Env)
+    (hRespects : StructureRespectsBool sv env.verifier)
+    (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      AAPQIntegration.validateAndExecute env input
+          wrapperStorage walletStorage =
+        AAPQIntegration.IntegratedFullResult.success finalWrapper finalWallet) :
+    finalWallet.read AAWallet.lastOpHashSlot = input.opHash ∧
+      env.verifier
+          (walletStorage.read AAWallet.keyCommitmentSlot)
+          input.opHash
+          input.domain
+          input.signature = true ∧
+      ∃ witness,
+        sv.decide input.publicKey input.opHash input.domain input.signature =
+          some witness := by
+  refine ⟨?_, ?_, ?_⟩
+  · exact (AAPQIntegration.validateAndExecute_records_authorized_opHash
+      env input wrapperStorage walletStorage finalWrapper finalWallet h).1
+  · exact (AAPQIntegration.validateAndExecute_records_authorized_opHash
+      env input wrapperStorage walletStorage finalWrapper finalWallet h).2
+  · exact validateAndExecute_success_extracts_witness sv env hRespects
+      input wrapperStorage walletStorage finalWrapper finalWallet h
+
 end StructuredVerifier
 end Examples
 end SoLean
