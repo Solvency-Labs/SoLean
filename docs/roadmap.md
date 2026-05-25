@@ -190,8 +190,10 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   `verify`, v1 `validateUserOp`, `_validateUserOp`, `executeUserOp`, and
   `validateAndExecuteV1` bodies into a deterministic four-phase body summary
   and checks its phase/guard/write signature against the Lean-owned v1
-  behavior summary. The report is committed as
-  `tests/golden/AAPQ.source.v6.json` (reportVersion 6).
+  behavior summary. It also emits an ordered per-statement trace with stable
+  rule names, normalized effects, trust labels, and proof references for the
+  Lean-backed target phases. The report is committed as
+  `tests/golden/AAPQ.source.v7.json` (reportVersion 7).
 - `scripts/demo_aapq_source.py` is a one-command research demo that runs
   `lake build`, the AA/PQ-focused Python tests, the Lean artifact smokes,
   the markdown source-shape report, and a Trust Boundaries summary sourced
@@ -635,17 +637,20 @@ FalconSimpleWallet v2.3 v1 behavior summary is now landed: the
 structured behavior summary and checked by the Python audit via Lean
 reflection theorem references.
 
-FalconSimpleWallet v2.6 restricted Solidity body recognition is now landed:
+FalconSimpleWallet v2.7 source-body trace audit is now landed:
 `v1-source-json` declares `FalconSimpleWallet.lastOpHash` slot 4,
 `wrapperAddress` slot 5, `expectedWrapperAddress` input, and the v1
 integration flow names the wallet v1 call plus `executeUserOp(opHash)`.
 `examples/AAPQIntegration.sol` mirrors that vocabulary, and the trusted Python
 shape/body audit now fails if those v1 names or bodies drift from the
-Lean-owned v1 behavior signature.
+Lean-owned v1 behavior signature. The report also shows every recognized v1
+Solidity statement as a stable trace entry with a rule name, effect, trust
+label, and Lean proof reference.
 
-The next best qualitative task is FalconSimpleWallet v2.7 source-body trace
-audit: keep the same restricted recognizer, but emit ordered per-statement trace
-entries with rule names and Lean proof references where available.
+The next best qualitative task is FalconSimpleWallet v2.8 trace coverage from
+Lean manifest: move the expected trace rule list and required proof references
+into a Lean-owned artifact, then make Python compare its observed trace against
+that artifact.
 
 ### FalconSimpleWallet shape v0 (landed)
 

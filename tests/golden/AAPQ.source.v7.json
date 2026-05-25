@@ -169,6 +169,12 @@
       "name": "Solidity v1 body summary matches Lean v1 behavior",
       "status": "passed",
       "trust": "trusted Solidity body recognizer"
+    },
+    {
+      "message": "All 16 recognized Solidity statements have ordered rules, effects, trust labels, and Lean proof references.",
+      "name": "Solidity v1 body trace resolves",
+      "status": "passed",
+      "trust": "trusted Solidity body recognizer"
     }
   ],
   "cryptoAssumptionSupportGraph": [
@@ -231,7 +237,7 @@
     "Does not verify external-call, ABI, calldata, memory, gas, or reentrancy semantics.",
     "Verifier is an abstract oracle in the Lean models."
   ],
-  "reportVersion": 6,
+  "reportVersion": 7,
   "solidityContracts": [
     "AAPQIntegration",
     "AAWallet",
@@ -332,6 +338,231 @@
       "AAWallet._validateUserOp",
       "AAWallet.executeUserOp",
       "AAPQIntegration.validateAndExecuteV1"
+    ],
+    "trace": [
+      {
+        "contract": "PQVerifierWrapper",
+        "effect": {
+          "guard": "lengthCheck",
+          "kind": "guard",
+          "phase": "wrapper"
+        },
+        "function": "verify",
+        "index": 0,
+        "leanProof": "SoLean.Examples.PQVerifierWrapper.verify_success_properties",
+        "rule": "wrapperPublicKeyLengthGuard",
+        "source": "require(publicKeyLength==expectedPublicKeyLength)",
+        "trust": "trusted recognizer; Lean proof covers wrapper phase"
+      },
+      {
+        "contract": "PQVerifierWrapper",
+        "effect": {
+          "guard": "lengthCheck",
+          "kind": "guard",
+          "phase": "wrapper"
+        },
+        "function": "verify",
+        "index": 1,
+        "leanProof": "SoLean.Examples.PQVerifierWrapper.verify_success_properties",
+        "rule": "wrapperSignatureLengthGuard",
+        "source": "require(signatureLength==expectedSignatureLength)",
+        "trust": "trusted recognizer; Lean proof covers wrapper phase"
+      },
+      {
+        "contract": "PQVerifierWrapper",
+        "effect": {
+          "guard": "domainCheck",
+          "kind": "guard",
+          "phase": "wrapper"
+        },
+        "function": "verify",
+        "index": 2,
+        "leanProof": "SoLean.Examples.PQVerifierWrapper.verify_success_properties",
+        "rule": "wrapperDomainGuard",
+        "source": "require(domain==expectedDomain)",
+        "trust": "trusted recognizer; Lean proof covers wrapper phase"
+      },
+      {
+        "contract": "PQVerifierWrapper",
+        "effect": {
+          "guard": "verifierCheck",
+          "kind": "guard",
+          "phase": "wrapper"
+        },
+        "function": "verify",
+        "index": 3,
+        "leanProof": "SoLean.Examples.PQVerifierWrapper.verify_success_properties",
+        "rule": "wrapperVerifierGuard",
+        "source": "require(pqVerifier(publicKey,message,domain,signature))",
+        "trust": "trusted recognizer; Lean proof covers wrapper phase"
+      },
+      {
+        "contract": "AAWallet",
+        "effect": {
+          "guard": "wrapperAddressCheck",
+          "kind": "guard",
+          "phase": "walletV1"
+        },
+        "function": "validateUserOp",
+        "index": 4,
+        "leanProof": "SoLean.Examples.AAWallet.validateV1_success_properties",
+        "rule": "walletWrapperAddressGuard",
+        "source": "require(expectedWrapperAddress==wrapperAddress)",
+        "trust": "trusted recognizer; Lean proof covers walletV1 phase"
+      },
+      {
+        "contract": "AAWallet",
+        "effect": {
+          "kind": "delegates",
+          "phase": "walletV1",
+          "target": "AAWallet._validateUserOp"
+        },
+        "function": "validateUserOp",
+        "index": 5,
+        "leanProof": "SoLean.Examples.AAWallet.validateV1_success_properties",
+        "rule": "walletDelegateToBaseValidation",
+        "source": "_validateUserOp(opHash,userOpNonce,userOpDomain,signature)",
+        "trust": "trusted recognizer; Lean proof covers walletV1 phase"
+      },
+      {
+        "contract": "AAWallet",
+        "effect": {
+          "guard": "entryPointCheck",
+          "kind": "guard",
+          "phase": "walletV1"
+        },
+        "function": "_validateUserOp",
+        "index": 6,
+        "leanProof": "SoLean.Examples.AAWallet.validateV1_success_properties",
+        "rule": "walletEntryPointGuard",
+        "source": "require(msg.sender==address(uint160(uint256(uint160(entryPoint)))))",
+        "trust": "trusted recognizer; Lean proof covers walletV1 phase"
+      },
+      {
+        "contract": "AAWallet",
+        "effect": {
+          "guard": "nonceCheck",
+          "kind": "guard",
+          "phase": "walletV1"
+        },
+        "function": "_validateUserOp",
+        "index": 7,
+        "leanProof": "SoLean.Examples.AAWallet.validateV1_success_properties",
+        "rule": "walletNonceGuard",
+        "source": "require(userOpNonce==nonce)",
+        "trust": "trusted recognizer; Lean proof covers walletV1 phase"
+      },
+      {
+        "contract": "AAWallet",
+        "effect": {
+          "guard": "domainCheck",
+          "kind": "guard",
+          "phase": "walletV1"
+        },
+        "function": "_validateUserOp",
+        "index": 8,
+        "leanProof": "SoLean.Examples.AAWallet.validateV1_success_properties",
+        "rule": "walletDomainGuard",
+        "source": "require(userOpDomain==domain)",
+        "trust": "trusted recognizer; Lean proof covers walletV1 phase"
+      },
+      {
+        "contract": "AAWallet",
+        "effect": {
+          "guard": "verifierCheck",
+          "kind": "guard",
+          "phase": "walletV1"
+        },
+        "function": "_validateUserOp",
+        "index": 9,
+        "leanProof": "SoLean.Examples.AAWallet.validateV1_success_properties",
+        "rule": "walletVerifierGuard",
+        "source": "require(pqVerifier(keyCommitment,opHash,domain,signature))",
+        "trust": "trusted recognizer; Lean proof covers walletV1 phase"
+      },
+      {
+        "contract": "AAWallet",
+        "effect": {
+          "kind": "finalWrite",
+          "name": "nonce",
+          "phase": "walletV1",
+          "slot": 0
+        },
+        "function": "_validateUserOp",
+        "index": 10,
+        "leanProof": "SoLean.Examples.AAWallet.validateV1_success_properties",
+        "rule": "walletNonceIncrement",
+        "source": "nonce=nonce+1",
+        "trust": "trusted recognizer; Lean proof covers walletV1 phase"
+      },
+      {
+        "contract": "AAWallet",
+        "effect": {
+          "kind": "finalWrite",
+          "name": "lastOpHash",
+          "phase": "execute",
+          "slot": 4
+        },
+        "function": "executeUserOp",
+        "index": 11,
+        "leanProof": "SoLean.Examples.AAWallet.executeUserOp",
+        "rule": "walletExecuteRecordsOpHash",
+        "source": "lastOpHash=opHash",
+        "trust": "trusted recognizer; Lean proof covers execute phase"
+      },
+      {
+        "contract": "AAPQIntegration",
+        "effect": {
+          "kind": "phaseCall",
+          "phase": "wrapper"
+        },
+        "function": "validateAndExecuteV1",
+        "index": 12,
+        "leanProof": "SoLean.Examples.AAPQSource.BehaviorReflection.integratedV1FullBehaviorSummary_reflects_validateAndExecuteV1Flow",
+        "rule": "integrationWrapperVerifyCall",
+        "source": "wrapper.verify(publicKey,publicKeyLength,opHash,userOpDomain,signature,signatureLength)",
+        "trust": "trusted recognizer; Lean proof covers v1 flow reflection"
+      },
+      {
+        "contract": "AAPQIntegration",
+        "effect": {
+          "guard": "keyCommitmentCheck",
+          "kind": "guard",
+          "phase": "keyMatch"
+        },
+        "function": "validateAndExecuteV1",
+        "index": 13,
+        "leanProof": "SoLean.Examples.AAPQIntegration.wallet_program_success_properties",
+        "rule": "integrationKeyCommitmentGuard",
+        "source": "require(wallet.keyCommitment()==publicKey)",
+        "trust": "trusted recognizer; Lean proof covers keyMatch phase"
+      },
+      {
+        "contract": "AAPQIntegration",
+        "effect": {
+          "kind": "phaseCall",
+          "phase": "walletV1"
+        },
+        "function": "validateAndExecuteV1",
+        "index": 14,
+        "leanProof": "SoLean.Examples.AAPQSource.BehaviorReflection.integratedV1FullBehaviorSummary_reflects_validateAndExecuteV1Flow",
+        "rule": "integrationWalletV1Call",
+        "source": "wallet.validateUserOp(opHash,userOpNonce,userOpDomain,signature,expectedWrapperAddress)",
+        "trust": "trusted recognizer; Lean proof covers v1 flow reflection"
+      },
+      {
+        "contract": "AAPQIntegration",
+        "effect": {
+          "kind": "phaseCall",
+          "phase": "execute"
+        },
+        "function": "validateAndExecuteV1",
+        "index": 15,
+        "leanProof": "SoLean.Examples.AAPQSource.BehaviorReflection.integratedV1FullBehaviorSummary_reflects_validateAndExecuteV1Flow",
+        "rule": "integrationExecuteCall",
+        "source": "wallet.executeUserOp(opHash)",
+        "trust": "trusted recognizer; Lean proof covers v1 flow reflection"
+      }
     ],
     "version": 1
   },

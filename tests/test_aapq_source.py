@@ -23,6 +23,7 @@ from scripts.check_aapq_source import (
     check_protocol_boundary_assumptions,
     check_phase_proof_references,
     check_solidity_v1_body_summary,
+    check_solidity_v1_trace,
     check_solidity_v1_vocabulary,
     check_source_contracts_match_certificate,
     check_under_oracle_assumption_theorems_covered,
@@ -51,7 +52,7 @@ from scripts.demo_aapq_source import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOLIDITY_PATH = REPO_ROOT / "examples" / "AAPQIntegration.sol"
-GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v6.json"
+GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v7.json"
 
 
 @lru_cache(maxsize=None)
@@ -117,6 +118,43 @@ class SolidityShapeParserTests(unittest.TestCase):
             [phase["name"] for phase in body["phases"]],
             ["wrapper", "keyMatch", "walletV1", "execute"],
         )
+
+    def test_v1_body_summary_trace_is_ordered_and_proof_linked(self) -> None:
+        body = solidity_v1_body_summary(SOLIDITY_PATH.read_text())
+        result = check_solidity_v1_trace(body)
+        self.assertEqual(result["status"], "passed", result)
+        self.assertEqual(
+            [entry["rule"] for entry in body["trace"]],
+            [
+                "wrapperPublicKeyLengthGuard",
+                "wrapperSignatureLengthGuard",
+                "wrapperDomainGuard",
+                "wrapperVerifierGuard",
+                "walletWrapperAddressGuard",
+                "walletDelegateToBaseValidation",
+                "walletEntryPointGuard",
+                "walletNonceGuard",
+                "walletDomainGuard",
+                "walletVerifierGuard",
+                "walletNonceIncrement",
+                "walletExecuteRecordsOpHash",
+                "integrationWrapperVerifyCall",
+                "integrationKeyCommitmentGuard",
+                "integrationWalletV1Call",
+                "integrationExecuteCall",
+            ],
+        )
+        for index, entry in enumerate(body["trace"]):
+            self.assertEqual(entry["index"], index)
+            self.assertTrue(entry["leanProof"])
+            self.assertIn("trusted recognizer", entry["trust"])
+
+    def test_v1_trace_check_rejects_missing_proof(self) -> None:
+        body = solidity_v1_body_summary(SOLIDITY_PATH.read_text())
+        body["trace"][0]["leanProof"] = ""
+        result = check_solidity_v1_trace(body)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("missing leanProof", result["message"])
 
     def test_v1_body_summary_rejects_missing_wrapper_guard(self) -> None:
         solidity = SOLIDITY_PATH.read_text().replace(
@@ -358,6 +396,8 @@ class AuditIntegrationTests(unittest.TestCase):
         self.assertIn("Status: **passed**", text)
         self.assertIn("## Crypto Assumption Support Graph", text)
         self.assertIn("## Solidity V1 Body Summary", text)
+        self.assertIn("## Solidity V1 Trace", text)
+        self.assertIn("walletWrapperAddressGuard", text)
         self.assertIn("walletV1", text)
         self.assertIn("VerifierSignatureBinding", text)
         self.assertIn("## Verifier Model Calibrations", text)

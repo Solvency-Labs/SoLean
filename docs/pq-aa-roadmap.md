@@ -226,7 +226,7 @@ Current v0:
   shape and current v1 body shape. It is still an audit fixture, not verified
   Solidity parsing.
 - `scripts/check_aapq_source.py` produces a deterministic source-shape/body
-  audit report (`tests/golden/AAPQ.source.v6.json`) cross-checking the
+  audit report (`tests/golden/AAPQ.source.v7.json`) cross-checking the
   Lean-owned artifacts against each other and against the Solidity sketch,
   walks every operand in the short and full behavior summaries to confirm it
   references a declared parameter or a known storage slot, audits the
@@ -236,7 +236,9 @@ Current v0:
   the full behavior summary extends the short summary with the execute phase.
   The v1 body recognizer also collapses the Solidity sketch into a four-phase
   body summary and compares its phase/guard/write signature to the Lean-owned
-  v1 behavior summary.
+  v1 behavior summary. It emits an ordered per-statement trace with rule names,
+  normalized effects, trust labels, and proof references for the Lean-backed
+  target phases.
 - `SoLean.Examples.ToyVerifier` provides three assumption-discharge
   calibrations: `allFieldsEqualVerifier` (4-way collapse) and
   `keyDomainBindingVerifier` (paired sig↔key, msg↔domain) are
@@ -518,17 +520,29 @@ Solidity bodies:
 4. Rejected unknown statements loudly; this remains a trusted recognizer, not a
    verified Solidity parser.
 
-## Next Milestone: FalconSimpleWallet v2.7 source-body trace audit
+## FalconSimpleWallet v2.7 source-body trace audit *(landed)*
 
 Make the v1 Solidity body recognizer line-auditable:
 
-1. Emit an ordered trace entry for every recognized statement.
-2. Give each trace entry a stable rule name, e.g. `wrapperLengthGuard`,
+1. Emitted an ordered trace entry for every recognized statement.
+2. Gave each trace entry a stable rule name, e.g. `wrapperLengthGuard`,
    `walletWrapperAddressGuard`, `walletNonceIncrement`, and
    `integrationExecuteCall`.
-3. Attach existing Lean proof references when the statement maps directly to a
+3. Attached existing Lean proof references when the statement maps directly to a
    proved phase theorem, and mark parser/body-recognition facts as trusted.
-4. Keep the recognizer exact and fail loudly on unsupported bodies.
+4. Kept the recognizer exact and fail loudly on unsupported bodies.
+
+## Next Milestone: FalconSimpleWallet v2.8 Lean-owned trace manifest
+
+Reduce Python-owned trace expectations:
+
+1. Export a Lean-owned expected trace rule/proof manifest for the current v1
+   source/behavior boundary.
+2. Make Python compare the observed Solidity trace rule order and proof
+   references against that Lean artifact.
+3. Keep source parsing trusted, but make drift in rule names/proofs visible from
+   Lean-owned data.
+4. Preserve the report's existing trace JSON shape.
 
 ## Phase 4: Bridge To Real Solidity And solc
 

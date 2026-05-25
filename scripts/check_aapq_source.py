@@ -26,7 +26,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-REPORT_VERSION = 6
+REPORT_VERSION = 7
 
 LIMITATIONS = [
     "AA/PQ source-shape/body audit only.",
@@ -308,6 +308,42 @@ def require_solidity_statements(
         )
 
 
+V1_PHASE_PROOFS: dict[str, str] = {
+    "wrapper": "SoLean.Examples.PQVerifierWrapper.verify_success_properties",
+    "keyMatch": "SoLean.Examples.AAPQIntegration.wallet_program_success_properties",
+    "walletV1": "SoLean.Examples.AAWallet.validateV1_success_properties",
+    "execute": "SoLean.Examples.AAWallet.executeUserOp",
+}
+
+V1_FLOW_PROOF = (
+    "SoLean.Examples.AAPQSource.BehaviorReflection."
+    "integratedV1FullBehaviorSummary_reflects_validateAndExecuteV1Flow"
+)
+
+
+def trace_entry(
+    index: int,
+    *,
+    contract: str,
+    function: str,
+    rule: str,
+    source: str,
+    effect: dict[str, Any],
+    lean_proof: str,
+    trust: str,
+) -> dict[str, Any]:
+    return {
+        "contract": contract,
+        "effect": effect,
+        "function": function,
+        "index": index,
+        "leanProof": lean_proof,
+        "rule": rule,
+        "source": source,
+        "trust": trust,
+    }
+
+
 def solidity_v1_body_summary(solidity_text: str) -> dict[str, Any]:
     """Recognize the current v1 AA/PQ Solidity sketch body shape.
 
@@ -414,6 +450,188 @@ def solidity_v1_body_summary(solidity_text: str) -> dict[str, Any]:
         integration_v1, "AAPQIntegration", integration_expected
     )
 
+    trace_specs = [
+        (
+            "PQVerifierWrapper",
+            "verify",
+            "wrapperPublicKeyLengthGuard",
+            wrapper_expected[0],
+            {"guard": "lengthCheck", "kind": "guard", "phase": "wrapper"},
+            V1_PHASE_PROOFS["wrapper"],
+            "trusted recognizer; Lean proof covers wrapper phase",
+        ),
+        (
+            "PQVerifierWrapper",
+            "verify",
+            "wrapperSignatureLengthGuard",
+            wrapper_expected[1],
+            {"guard": "lengthCheck", "kind": "guard", "phase": "wrapper"},
+            V1_PHASE_PROOFS["wrapper"],
+            "trusted recognizer; Lean proof covers wrapper phase",
+        ),
+        (
+            "PQVerifierWrapper",
+            "verify",
+            "wrapperDomainGuard",
+            wrapper_expected[2],
+            {"guard": "domainCheck", "kind": "guard", "phase": "wrapper"},
+            V1_PHASE_PROOFS["wrapper"],
+            "trusted recognizer; Lean proof covers wrapper phase",
+        ),
+        (
+            "PQVerifierWrapper",
+            "verify",
+            "wrapperVerifierGuard",
+            wrapper_expected[3],
+            {"guard": "verifierCheck", "kind": "guard", "phase": "wrapper"},
+            V1_PHASE_PROOFS["wrapper"],
+            "trusted recognizer; Lean proof covers wrapper phase",
+        ),
+        (
+            "AAWallet",
+            "validateUserOp",
+            "walletWrapperAddressGuard",
+            wallet_v1_expected[0],
+            {"guard": "wrapperAddressCheck", "kind": "guard", "phase": "walletV1"},
+            V1_PHASE_PROOFS["walletV1"],
+            "trusted recognizer; Lean proof covers walletV1 phase",
+        ),
+        (
+            "AAWallet",
+            "validateUserOp",
+            "walletDelegateToBaseValidation",
+            wallet_v1_expected[1],
+            {
+                "kind": "delegates",
+                "phase": "walletV1",
+                "target": "AAWallet._validateUserOp",
+            },
+            V1_PHASE_PROOFS["walletV1"],
+            "trusted recognizer; Lean proof covers walletV1 phase",
+        ),
+        (
+            "AAWallet",
+            "_validateUserOp",
+            "walletEntryPointGuard",
+            wallet_helper_expected[0],
+            {"guard": "entryPointCheck", "kind": "guard", "phase": "walletV1"},
+            V1_PHASE_PROOFS["walletV1"],
+            "trusted recognizer; Lean proof covers walletV1 phase",
+        ),
+        (
+            "AAWallet",
+            "_validateUserOp",
+            "walletNonceGuard",
+            wallet_helper_expected[1],
+            {"guard": "nonceCheck", "kind": "guard", "phase": "walletV1"},
+            V1_PHASE_PROOFS["walletV1"],
+            "trusted recognizer; Lean proof covers walletV1 phase",
+        ),
+        (
+            "AAWallet",
+            "_validateUserOp",
+            "walletDomainGuard",
+            wallet_helper_expected[2],
+            {"guard": "domainCheck", "kind": "guard", "phase": "walletV1"},
+            V1_PHASE_PROOFS["walletV1"],
+            "trusted recognizer; Lean proof covers walletV1 phase",
+        ),
+        (
+            "AAWallet",
+            "_validateUserOp",
+            "walletVerifierGuard",
+            wallet_helper_expected[3],
+            {"guard": "verifierCheck", "kind": "guard", "phase": "walletV1"},
+            V1_PHASE_PROOFS["walletV1"],
+            "trusted recognizer; Lean proof covers walletV1 phase",
+        ),
+        (
+            "AAWallet",
+            "_validateUserOp",
+            "walletNonceIncrement",
+            wallet_helper_expected[4],
+            {
+                "kind": "finalWrite",
+                "name": "nonce",
+                "phase": "walletV1",
+                "slot": 0,
+            },
+            V1_PHASE_PROOFS["walletV1"],
+            "trusted recognizer; Lean proof covers walletV1 phase",
+        ),
+        (
+            "AAWallet",
+            "executeUserOp",
+            "walletExecuteRecordsOpHash",
+            execute_expected[0],
+            {
+                "kind": "finalWrite",
+                "name": "lastOpHash",
+                "phase": "execute",
+                "slot": 4,
+            },
+            V1_PHASE_PROOFS["execute"],
+            "trusted recognizer; Lean proof covers execute phase",
+        ),
+        (
+            "AAPQIntegration",
+            "validateAndExecuteV1",
+            "integrationWrapperVerifyCall",
+            integration_expected[0],
+            {"kind": "phaseCall", "phase": "wrapper"},
+            V1_FLOW_PROOF,
+            "trusted recognizer; Lean proof covers v1 flow reflection",
+        ),
+        (
+            "AAPQIntegration",
+            "validateAndExecuteV1",
+            "integrationKeyCommitmentGuard",
+            integration_expected[1],
+            {"guard": "keyCommitmentCheck", "kind": "guard", "phase": "keyMatch"},
+            V1_PHASE_PROOFS["keyMatch"],
+            "trusted recognizer; Lean proof covers keyMatch phase",
+        ),
+        (
+            "AAPQIntegration",
+            "validateAndExecuteV1",
+            "integrationWalletV1Call",
+            integration_expected[2],
+            {"kind": "phaseCall", "phase": "walletV1"},
+            V1_FLOW_PROOF,
+            "trusted recognizer; Lean proof covers v1 flow reflection",
+        ),
+        (
+            "AAPQIntegration",
+            "validateAndExecuteV1",
+            "integrationExecuteCall",
+            integration_expected[3],
+            {"kind": "phaseCall", "phase": "execute"},
+            V1_FLOW_PROOF,
+            "trusted recognizer; Lean proof covers v1 flow reflection",
+        ),
+    ]
+    trace = [
+        trace_entry(
+            index,
+            contract=contract,
+            function=function,
+            rule=rule,
+            source=source,
+            effect=effect,
+            lean_proof=lean_proof,
+            trust=trust,
+        )
+        for index, (
+            contract,
+            function,
+            rule,
+            source,
+            effect,
+            lean_proof,
+            trust,
+        ) in enumerate(trace_specs)
+    ]
+
     return {
         "kind": "aapqSolidityV1BodySummary",
         "phases": [
@@ -480,6 +698,7 @@ def solidity_v1_body_summary(solidity_text: str) -> dict[str, Any]:
             "AAWallet.executeUserOp",
             "AAPQIntegration.validateAndExecuteV1",
         ],
+        "trace": trace,
         "version": 1,
     }
 
@@ -519,6 +738,62 @@ def check_solidity_v1_body_summary(
         "trusted Solidity body recognizer",
         "Restricted Solidity v1 body summary has the same phase/guard/write "
         "signature as the Lean-owned v1 behavior summary.",
+    )
+
+
+def check_solidity_v1_trace(body_summary: dict[str, Any]) -> dict[str, str]:
+    trace = body_summary.get("trace", [])
+    if body_summary.get("kind") != "aapqSolidityV1BodySummary":
+        return failed(
+            "Solidity v1 body trace resolves",
+            "trusted Solidity body recognizer",
+            "No supported Solidity v1 body trace is available.",
+        )
+    if not trace:
+        return failed(
+            "Solidity v1 body trace resolves",
+            "trusted Solidity body recognizer",
+            "Trace is empty.",
+        )
+
+    problems: list[str] = []
+    observed_indices = [entry.get("index") for entry in trace]
+    expected_indices = list(range(len(trace)))
+    if observed_indices != expected_indices:
+        problems.append(
+            f"indices {observed_indices!r} != {expected_indices!r}"
+        )
+
+    seen_rules: set[str] = set()
+    for entry in trace:
+        rule = entry.get("rule", "")
+        if not rule:
+            problems.append(f"trace[{entry.get('index', '?')}]: missing rule")
+        elif rule in seen_rules:
+            problems.append(f"trace[{entry.get('index', '?')}]: duplicate rule {rule}")
+        seen_rules.add(rule)
+        for field in ("contract", "function", "source", "trust"):
+            if not entry.get(field):
+                problems.append(
+                    f"trace[{entry.get('index', '?')}]: missing {field}"
+                )
+        effect = entry.get("effect")
+        if not isinstance(effect, dict) or not effect.get("kind"):
+            problems.append(f"trace[{entry.get('index', '?')}]: missing effect")
+        if not entry.get("leanProof"):
+            problems.append(f"trace[{entry.get('index', '?')}]: missing leanProof")
+
+    if problems:
+        return failed(
+            "Solidity v1 body trace resolves",
+            "trusted Solidity body recognizer",
+            "Broken trace: " + "; ".join(problems),
+        )
+    return passed(
+        "Solidity v1 body trace resolves",
+        "trusted Solidity body recognizer",
+        f"All {len(trace)} recognized Solidity statements have ordered rules, "
+        "effects, trust labels, and Lean proof references.",
     )
 
 
@@ -1698,6 +1973,7 @@ def run_audit(
             checks.append(check_solidity_functions(shape, contract, functions))
     checks.append(check_solidity_v1_vocabulary(solidity_text))
     checks.append(body_summary_check)
+    checks.append(check_solidity_v1_trace(body_summary))
 
     status = "passed" if all(check["status"] == "passed" for check in checks) else "failed"
     return {
@@ -1761,6 +2037,24 @@ def format_markdown_report(report: dict[str, Any]) -> str:
             )
     else:
         lines.append(f"- unsupported: {body_summary.get('error', 'unknown error')}")
+    lines.append("")
+    lines.append("## Solidity V1 Trace")
+    lines.append("")
+    trace = body_summary.get("trace", [])
+    if trace:
+        for entry in trace:
+            effect = entry.get("effect", {})
+            effect_bits = [f"{key}={value}" for key, value in effect.items()]
+            lines.append(
+                f"- `{entry.get('index', '?')}` **{entry.get('rule', '?')}** "
+                f"`{entry.get('contract', '?')}.{entry.get('function', '?')}`"
+            )
+            lines.append(f"  - source: `{entry.get('source', '?')}`")
+            lines.append("  - effect: " + ", ".join(effect_bits))
+            lines.append(f"  - proof: `{entry.get('leanProof', '')}`")
+            lines.append(f"  - trust: {entry.get('trust', '')}")
+    else:
+        lines.append("_No supported Solidity v1 trace is available._")
     lines.append("")
     lines.append(
         format_crypto_assumption_graph_markdown(

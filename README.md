@@ -222,8 +222,10 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   `verifierModelCalibrations` proof references and non-claim text. It also
   recognizes the restricted v1 Solidity body shape for
   `validateAndExecuteV1` and compares its phase/guard/write signature to the
-  Lean-owned v1 behavior summary. The report has a committed golden fixture at
-  `tests/golden/AAPQ.source.v6.json`.
+  Lean-owned v1 behavior summary. It also emits an ordered per-statement trace
+  with stable rule names, normalized effects, trust labels, and proof
+  references for the Lean-backed target phases. The report has a committed
+  golden fixture at `tests/golden/AAPQ.source.v7.json`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.
   - Yul subset classification for supported/unsupported compiler output.
@@ -355,7 +357,7 @@ still a restricted Solidity subset rather than an EVM semantics.
 │   └── yul_subset.py
 └── tests/
     ├── golden/
-    │   ├── AAPQ.source.v6.json
+    │   ├── AAPQ.source.v7.json
     │   ├── Counter.bridge.v7.json
     │   └── Counter.solean.yul
     ├── README.md
