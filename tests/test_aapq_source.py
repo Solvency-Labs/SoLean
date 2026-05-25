@@ -12,6 +12,7 @@ from scripts.check_aapq_source import (
     artifact_hash,
     check_behavior_summary_operand_scope,
     check_certificate_embeds_behavior_summary,
+    check_certificate_embeds_v1_source,
     check_crypto_assumption_support_graph,
     check_crypto_assumptions_link_to_proofs,
     check_full_behavior_summary_extends_short_summary,
@@ -105,6 +106,18 @@ class CertificateCrossCheckTests(unittest.TestCase):
         result = check_certificate_embeds_behavior_summary({}, {"phases": []})
         self.assertEqual(result["status"], "failed")
 
+    def test_passes_when_certificate_embeds_v1_source(self) -> None:
+        source = {"wallet": {"storage": []}, "wrapper": {"storage": []}}
+        certificate = {"expectedV1Source": source}
+        result = check_certificate_embeds_v1_source(certificate, source)
+        self.assertEqual(result["status"], "passed")
+
+    def test_fails_when_certificate_v1_source_disagrees(self) -> None:
+        source = {"wallet": {"storage": []}}
+        certificate = {"expectedV1Source": {"wallet": {"storage": ["x"]}}}
+        result = check_certificate_embeds_v1_source(certificate, source)
+        self.assertEqual(result["status"], "failed")
+
     def test_source_contracts_compare_in_a_stable_order(self) -> None:
         wallet = {"name": "AAWallet"}
         wrapper = {"name": "PQVerifierWrapper"}
@@ -140,6 +153,7 @@ class CertificateCrossCheckTests(unittest.TestCase):
 class AuditIntegrationTests(unittest.TestCase):
     def test_audit_passes_on_real_artifacts(self) -> None:
         source = cached_artifact("source-json")
+        v1_source = cached_artifact("v1-source-json")
         certificate = cached_artifact("source-certificate-json")
         summary = cached_artifact("behavior-summary-json")
         full_summary = cached_artifact("full-behavior-summary-json")
@@ -148,6 +162,7 @@ class AuditIntegrationTests(unittest.TestCase):
 
         report = run_audit(
             source,
+            v1_source,
             certificate,
             summary,
             full_summary,
@@ -163,6 +178,7 @@ class AuditIntegrationTests(unittest.TestCase):
 
     def test_audit_fails_when_behavior_summary_diverges(self) -> None:
         source = cached_artifact("source-json")
+        v1_source = cached_artifact("v1-source-json")
         certificate = copied_json(cached_artifact("source-certificate-json"))
         summary = copied_json(cached_artifact("behavior-summary-json"))
         full_summary = cached_artifact("full-behavior-summary-json")
@@ -183,6 +199,7 @@ class AuditIntegrationTests(unittest.TestCase):
 
         report = run_audit(
             source,
+            v1_source,
             certificate,
             summary,
             full_summary,
@@ -195,6 +212,7 @@ class AuditIntegrationTests(unittest.TestCase):
 
     def test_audit_fails_when_solidity_drops_a_contract(self) -> None:
         source = cached_artifact("source-json")
+        v1_source = cached_artifact("v1-source-json")
         certificate = cached_artifact("source-certificate-json")
         summary = cached_artifact("behavior-summary-json")
         full_summary = cached_artifact("full-behavior-summary-json")
@@ -205,6 +223,7 @@ class AuditIntegrationTests(unittest.TestCase):
 
         report = run_audit(
             source,
+            v1_source,
             certificate,
             summary,
             full_summary,
@@ -309,6 +328,26 @@ class OperandScopeCheckTests(unittest.TestCase):
             check_behavior_summary_operand_scope(summary, source)["status"],
             "passed",
         )
+
+    def test_v1_summary_passes_against_v1_source(self) -> None:
+        source = cached_artifact("v1-source-json")
+        summary = cached_artifact("v1-full-behavior-summary-json")
+        self.assertEqual(
+            check_behavior_summary_operand_scope(
+                summary,
+                source,
+                name="v1 behavior-summary operands in v1 source scope",
+                trust="Lean-owned v1 source and behavior summary",
+            )["status"],
+            "passed",
+        )
+
+    def test_v1_summary_fails_against_v0_source(self) -> None:
+        source = cached_artifact("source-json")
+        summary = cached_artifact("v1-full-behavior-summary-json")
+        result = check_behavior_summary_operand_scope(summary, source)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("wallet.wrapperAddress", result["message"])
 
     def test_fails_on_unknown_param(self) -> None:
         source = self._source_with(["nonce"], ["expectedDomain"])
@@ -964,6 +1003,7 @@ class DemoTests(unittest.TestCase):
 class GoldenReportTests(unittest.TestCase):
     def test_matches_golden(self) -> None:
         source = cached_artifact("source-json")
+        v1_source = cached_artifact("v1-source-json")
         certificate = cached_artifact("source-certificate-json")
         summary = cached_artifact("behavior-summary-json")
         full_summary = cached_artifact("full-behavior-summary-json")
@@ -972,6 +1012,7 @@ class GoldenReportTests(unittest.TestCase):
 
         report = run_audit(
             source,
+            v1_source,
             certificate,
             summary,
             full_summary,

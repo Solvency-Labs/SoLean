@@ -2,14 +2,21 @@
   "artifacts": {
     "behaviorSummaryHash": "b5cfd9fe5970806706c94c3988806899ffa5e85baa67379d472fff24e27304d4",
     "fullBehaviorSummaryHash": "ba0e5c7b39e848f763ff16a8b7690eca288836ee98f5ba740c75ab21e4179335",
-    "sourceCertificateHash": "fb785fdb20e6dd093dce7e86bf36b4951f7136b40481a20fbfe8f6ee64d92921",
+    "sourceCertificateHash": "e2ad4425b511d1a9b19b208304ccbe4fcc2002c0e79f3a50fb12301ead6409c9",
     "sourceHash": "9ef06ae57aae9f38b47d9edcf3bbd32861ec8077f21297acda01c746e19f4f81",
-    "v1FullBehaviorSummaryHash": "d46ee81ed0cf8653af033e10492ae12ced892a52504badbb6e918c2958eae4be"
+    "v1FullBehaviorSummaryHash": "d46ee81ed0cf8653af033e10492ae12ced892a52504badbb6e918c2958eae4be",
+    "v1SourceHash": "58f275f0b3008257979c768acddec7265841f25e1319c3228afcd75ffc69e6a9"
   },
   "checks": [
     {
       "message": "Certificate's expectedBehaviorSummary matches standalone artifact.",
       "name": "certificate.expectedBehaviorSummary == behavior-summary artifact",
+      "status": "passed",
+      "trust": "Lean-owned certificate"
+    },
+    {
+      "message": "Certificate's expectedV1Source matches standalone v1 source artifact.",
+      "name": "certificate.expectedV1Source == v1-source artifact",
       "status": "passed",
       "trust": "Lean-owned certificate"
     },
@@ -96,6 +103,12 @@
       "name": "v1 full behavior summary resolves",
       "status": "passed",
       "trust": "Lean-owned v1 behavior summary"
+    },
+    {
+      "message": "All structured operands reference a declared param or known storage slot.",
+      "name": "v1 behavior-summary operands in v1 source scope",
+      "status": "passed",
+      "trust": "Lean-owned v1 source and behavior summary"
     },
     {
       "message": "Found contract 'PQVerifierWrapper' in the Solidity sketch.",

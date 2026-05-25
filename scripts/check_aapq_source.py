@@ -184,6 +184,29 @@ def check_certificate_embeds_behavior_summary(
     )
 
 
+def check_certificate_embeds_v1_source(
+    certificate: dict[str, Any], v1_source: dict[str, Any]
+) -> dict[str, str]:
+    embedded = certificate.get("expectedV1Source")
+    if embedded is None:
+        return failed(
+            "certificate.expectedV1Source present",
+            "Lean-owned certificate",
+            "Certificate does not embed expectedV1Source.",
+        )
+    if embedded == v1_source:
+        return passed(
+            "certificate.expectedV1Source == v1-source artifact",
+            "Lean-owned certificate",
+            "Certificate's expectedV1Source matches standalone v1 source artifact.",
+        )
+    return failed(
+        "certificate.expectedV1Source == v1-source artifact",
+        "Lean-owned certificate",
+        "Certificate's expectedV1Source differs from standalone v1 source artifact.",
+    )
+
+
 def check_source_contracts_match_certificate(
     source: dict[str, Any], certificate: dict[str, Any]
 ) -> dict[str, str]:
@@ -369,7 +392,11 @@ def operand_is_in_scope(
 
 
 def check_behavior_summary_operand_scope(
-    summary: dict[str, Any], source: dict[str, Any]
+    summary: dict[str, Any],
+    source: dict[str, Any],
+    *,
+    name: str = "behavior-summary operands in scope",
+    trust: str = "Lean-owned behavior summary",
 ) -> dict[str, str]:
     params = set(summary.get("params", []))
     storage = operand_storage_lookup(source)
@@ -395,13 +422,13 @@ def check_behavior_summary_operand_scope(
 
     if violations:
         return failed(
-            "behavior-summary operands in scope",
-            "Lean-owned behavior summary",
+            name,
+            trust,
             "Out-of-scope operands: " + "; ".join(violations),
         )
     return passed(
-        "behavior-summary operands in scope",
-        "Lean-owned behavior summary",
+        name,
+        trust,
         "All structured operands reference a declared param or known storage slot.",
     )
 
@@ -1204,6 +1231,7 @@ def check_phase_proof_references(behavior_summary: dict[str, Any]) -> dict[str, 
 
 def run_audit(
     source: dict[str, Any],
+    v1_source: dict[str, Any],
     certificate: dict[str, Any],
     behavior_summary: dict[str, Any],
     full_behavior_summary: dict[str, Any],
@@ -1216,6 +1244,7 @@ def run_audit(
     checks.append(
         check_certificate_embeds_behavior_summary(certificate, behavior_summary)
     )
+    checks.append(check_certificate_embeds_v1_source(certificate, v1_source))
     checks.append(check_source_contracts_match_certificate(source, certificate))
     checks.append(check_phase_proof_references(behavior_summary))
     checks.append(check_behavior_summary_operand_scope(behavior_summary, source))
@@ -1240,6 +1269,14 @@ def run_audit(
     checks.append(
         check_v1_full_behavior_summary(certificate, v1_full_behavior_summary)
     )
+    checks.append(
+        check_behavior_summary_operand_scope(
+            v1_full_behavior_summary,
+            v1_source,
+            name="v1 behavior-summary operands in v1 source scope",
+            trust="Lean-owned v1 source and behavior summary",
+        )
+    )
     for contract, storage, functions in REQUIRED_CONTRACTS:
         checks.append(check_solidity_contract_present(shape, contract))
         if storage:
@@ -1252,6 +1289,7 @@ def run_audit(
         "artifacts": {
             "behaviorSummaryHash": artifact_hash(behavior_summary),
             "fullBehaviorSummaryHash": artifact_hash(full_behavior_summary),
+            "v1SourceHash": artifact_hash(v1_source),
             "v1FullBehaviorSummaryHash": artifact_hash(v1_full_behavior_summary),
             "sourceCertificateHash": artifact_hash(certificate),
             "sourceHash": artifact_hash(source),
@@ -1319,6 +1357,11 @@ def main(argv: list[str] | None = None) -> int:
         "Defaults to invoking lake.",
     )
     parser.add_argument(
+        "--v1-source-json",
+        help="Path to a precomputed aapq v1-source-json artifact. "
+        "Defaults to invoking lake.",
+    )
+    parser.add_argument(
         "--source-certificate-json",
         help="Path to a precomputed aapq source-certificate-json artifact. "
         "Defaults to invoking lake.",
@@ -1352,6 +1395,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     source = load_json_arg(args.source_json, "source-json")
+    v1_source = load_json_arg(args.v1_source_json, "v1-source-json")
     certificate = load_json_arg(
         args.source_certificate_json, "source-certificate-json"
     )
@@ -1369,6 +1413,7 @@ def main(argv: list[str] | None = None) -> int:
 
     report = run_audit(
         source,
+        v1_source,
         certificate,
         behavior_summary,
         full_behavior_summary,

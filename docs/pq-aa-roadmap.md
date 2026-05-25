@@ -213,7 +213,7 @@ Current v0:
   environment and storage produces the same `IntegratedResult` as
   `AAPQIntegration.validateIntegrated`.
 - `SoLean/AAPQArtifactsMain.lean` emits `source-json`,
-  `source-certificate-json`, `behavior-summary-json`,
+  `v1-source-json`, `source-certificate-json`, `behavior-summary-json`,
   `full-behavior-summary-json`, and `v1-full-behavior-summary-json` artifacts
   naming the assumptions, contracts, integration flow, ordered phase guards
   (wrapper, key-match, wallet, execute), final wallet writes, theorem
@@ -471,17 +471,30 @@ behavior layer, not only in theorem/artifact metadata:
    Solidity parser.
 4. Kept the verifier cryptography and real EVM/Yul boundaries unchanged.
 
-## Next Milestone: FalconSimpleWallet v2.4 source-shape parity
+## FalconSimpleWallet v2.4 source-shape parity *(landed)*
 
 Make the source-shape side catch up with the v1 behavior summary:
 
-1. Add a Lean-owned FalconSimpleWallet v1 source shape that includes
+1. Added a Lean-owned FalconSimpleWallet v1 source shape that includes
    `wrapperAddress` storage and `expectedWrapperAddress` input.
-2. Audit the v1 behavior summary operands against that v1 source shape instead
+2. Audited the v1 behavior summary operands against that v1 source shape instead
    of relying only on certificate metadata.
-3. Keep the existing Solidity parser restricted; do not claim general Solidity
+3. Kept the existing Solidity parser restricted; do not claim general Solidity
    parsing.
-4. Keep real Yul/solc generation out of this AA/PQ milestone.
+4. Kept real Yul/solc generation out of this AA/PQ milestone.
+
+## Next Milestone: FalconSimpleWallet v2.5 Solidity sketch parity
+
+Make `examples/AAPQIntegration.sol` visibly mirror the v1 source vocabulary:
+
+1. Add `wrapperAddress` and `expectedWrapperAddress` to the restricted Solidity
+   sketch in the same shape as the Lean v1 source artifact.
+2. Extend the trusted Solidity shape extractor only enough to detect those
+   names and reject silent drift.
+3. Keep parsing intentionally shallow and documented as a source-shape audit,
+   not verified Solidity parsing.
+4. Keep the Lean proofs unchanged unless a small source-instantiation theorem
+   becomes useful.
 
 ## Phase 4: Bridge To Real Solidity And solc
 

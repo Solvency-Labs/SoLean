@@ -35,11 +35,33 @@ def walletContract : Contract :=
       { name := "signature", typeName := "uint256" }
     ] }
 
+def wrapperAddressStorageSlot : StorageSlot :=
+  { name := "wrapperAddress",
+    slot := AAWallet.wrapperAddressSlot,
+    typeName := "address" }
+
+def expectedWrapperAddressParam : Param :=
+  { name := "expectedWrapperAddress", typeName := "address" }
+
+def falconSimpleWalletV1Contract : Contract :=
+  { name := "FalconSimpleWallet",
+    pragma := "0.8.35",
+    storage := walletContract.storage ++ [wrapperAddressStorageSlot],
+    functionName := "validateUserOp",
+    params := walletContract.params ++ [expectedWrapperAddressParam] }
+
 def walletBody (op : AAWallet.UserOp) : Stmt :=
   AAWallet.validateProgram op
 
 theorem walletSource_instantiates_to_existing_model (op : AAWallet.UserOp) :
     walletBody op = AAWallet.validateProgram op := rfl
+
+def walletV1Body (op : AAWallet.UserOpV1) : Stmt :=
+  AAWallet.validateProgramV1 op
+
+theorem walletV1Source_instantiates_to_existing_model
+    (op : AAWallet.UserOpV1) :
+    walletV1Body op = AAWallet.validateProgramV1 op := rfl
 
 def wrapperContract : Contract :=
   { name := "PQVerifierWrapper",
@@ -88,6 +110,14 @@ def integratedContract : IntegratedContract :=
       { name := "signatureLength",  typeName := "uint256" }
     ] }
 
+def integratedV1Contract : IntegratedContract :=
+  { name := "AAPQIntegration",
+    pragma := "0.8.35",
+    wallet := falconSimpleWalletV1Contract,
+    wrapper := wrapperContract,
+    integrationName := "validateAndExecuteV1",
+    params := integratedContract.params ++ [expectedWrapperAddressParam] }
+
 def instantiateIntegrated
     (env : Env)
     (input : AAPQIntegration.IntegratedInput)
@@ -100,6 +130,21 @@ theorem integratedSource_instantiates_to_existing_model
     (wrapperStorage walletStorage : Storage) :
     instantiateIntegrated env input wrapperStorage walletStorage =
       AAPQIntegration.validateIntegrated env input wrapperStorage walletStorage :=
+  rfl
+
+def instantiateIntegratedV1
+    (env : Env)
+    (input : AAPQIntegration.IntegratedInputV1)
+    (wrapperStorage walletStorage : Storage) :
+    AAPQIntegration.IntegratedFullResult :=
+  AAPQIntegration.validateAndExecuteV1 env input wrapperStorage walletStorage
+
+theorem integratedV1Source_instantiates_to_existing_model
+    (env : Env)
+    (input : AAPQIntegration.IntegratedInputV1)
+    (wrapperStorage walletStorage : Storage) :
+    instantiateIntegratedV1 env input wrapperStorage walletStorage =
+      AAPQIntegration.validateAndExecuteV1 env input wrapperStorage walletStorage :=
   rfl
 
 /--

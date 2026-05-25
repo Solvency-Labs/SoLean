@@ -18,7 +18,7 @@ The demo runs:
 
 - `lake build`
 - the AA/PQ-focused Python test module (`tests.test_aapq_source`)
-- Lean artifact export smoke checks for `source-json`,
+- Lean artifact export smoke checks for `source-json`, `v1-source-json`,
   `source-certificate-json`, `behavior-summary-json`,
   `full-behavior-summary-json`, and `v1-full-behavior-summary-json`
 - the AA/PQ source-shape report in Markdown mode
@@ -257,6 +257,7 @@ Export individual Lean-owned artifacts:
 
 ```bash
 lake env lean --run SoLean/AAPQArtifactsMain.lean source-json
+lake env lean --run SoLean/AAPQArtifactsMain.lean v1-source-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean source-certificate-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean behavior-summary-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean full-behavior-summary-json
@@ -268,3 +269,5 @@ flow: wrapper + key-match + wallet + execute). `behavior-summary-json` covers
 the three-phase `validateIntegrated` (no execute).
 `v1-full-behavior-summary-json` covers `validateAndExecuteV1` and exposes the
 additional `expectedWrapperAddress == wallet.wrapperAddress` guard.
+`v1-source-json` declares the matching `FalconSimpleWallet.wrapperAddress`
+storage slot and `expectedWrapperAddress` input used to scope-check that guard.

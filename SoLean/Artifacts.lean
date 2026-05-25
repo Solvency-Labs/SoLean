@@ -500,7 +500,8 @@ def integratedFlow : Json :=
     "validateUserOp(opHash, nonce, domain, signature)"
   ]
 
-def integratedContractJson
+def integratedContractJsonWithLean
+    (leanName : String)
     (contract : SoLean.Source.Shape.IntegratedContract) : Json :=
   .obj [
     ("integration", .obj [
@@ -509,12 +510,18 @@ def integratedContractJson
       ("params", .arr (contract.params.map paramJson))
     ]),
     ("kind", .str "aapqIntegratedSource"),
-    ("lean", .str "SoLean.Examples.AAPQSource.integratedContract"),
+    ("lean", .str leanName),
     ("name", .str contract.name),
     ("pragma", .str contract.pragma),
     ("wallet", contractJson contract.wallet),
     ("wrapper", contractJson contract.wrapper)
   ]
+
+def integratedContractJson
+    (contract : SoLean.Source.Shape.IntegratedContract) : Json :=
+  integratedContractJsonWithLean
+    "SoLean.Examples.AAPQSource.integratedContract"
+    contract
 
 end AAPQ
 
@@ -728,6 +735,14 @@ end AAPQBehavior
 def aapqSourceJson : String :=
   renderJson (AAPQ.integratedContractJson Examples.AAPQSource.integratedContract)
 
+def aapqV1Source : Json :=
+  AAPQ.integratedContractJsonWithLean
+    "SoLean.Examples.AAPQSource.integratedV1Contract"
+    Examples.AAPQSource.integratedV1Contract
+
+def aapqV1SourceJson : String :=
+  renderJson aapqV1Source
+
 /--
 Lean-owned source certificate for the integrated AA/PQ validation flow.
 
@@ -795,6 +810,7 @@ def aapqSourceCertificate : Json :=
     ]),
     ("expectedBehaviorSummary",
       AAPQBehavior.summaryJson Examples.AAPQSource.integratedBehaviorSummary),
+    ("expectedV1Source", aapqV1Source),
     ("expectedV1FullBehaviorSummary",
       AAPQBehavior.summaryJsonWithLean
         "SoLean.Examples.AAPQSource.integratedV1FullBehaviorSummary"
@@ -1026,8 +1042,10 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQIntegration.validateIntegratedViaCall_eq_validateIntegrated",
       "SoLean.Examples.AAPQIntegration.validateIntegratedViaCall_success_properties",
       "SoLean.Examples.AAPQSource.walletSource_instantiates_to_existing_model",
+      "SoLean.Examples.AAPQSource.walletV1Source_instantiates_to_existing_model",
       "SoLean.Examples.AAPQSource.wrapperSource_instantiates_to_existing_model",
       "SoLean.Examples.AAPQSource.integratedSource_instantiates_to_existing_model",
+      "SoLean.Examples.AAPQSource.integratedV1Source_instantiates_to_existing_model",
       "SoLean.Examples.AAPQSource.BehaviorReflection.wrapperPhase_reflects_verifyProgram",
       "SoLean.Examples.AAPQSource.BehaviorReflection.keyMatchPhase_reflects_keyMatchesWalletProgram",
       "SoLean.Examples.AAPQSource.BehaviorReflection.walletPhase_reflects_validateProgram",

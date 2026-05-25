@@ -181,6 +181,7 @@ def main(argv: list[str] | None = None) -> int:
 
     for kind in (
         "source-json",
+        "v1-source-json",
         "source-certificate-json",
         "behavior-summary-json",
         "full-behavior-summary-json",

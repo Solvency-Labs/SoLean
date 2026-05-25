@@ -627,10 +627,14 @@ FalconSimpleWallet v2.3 v1 behavior summary is now landed: the
 structured behavior summary and checked by the Python audit via Lean
 reflection theorem references.
 
-The next best qualitative task is FalconSimpleWallet v2.4 source-shape parity:
-add a Lean-owned v1 source shape carrying `wrapperAddress` storage and
-`expectedWrapperAddress` input, then audit the v1 behavior summary against
-that v1 source vocabulary.
+FalconSimpleWallet v2.4 source-shape parity is now landed: `v1-source-json`
+declares `FalconSimpleWallet.wrapperAddress` storage and
+`expectedWrapperAddress` input, and the Python audit scope-checks the v1
+behavior summary against that v1 source vocabulary.
+
+The next best qualitative task is FalconSimpleWallet v2.5 Solidity sketch
+parity: make `examples/AAPQIntegration.sol` visibly mirror the v1 source
+vocabulary and extend the trusted shape extractor only enough to detect drift.
 
 ### FalconSimpleWallet shape v0 (landed)
 
