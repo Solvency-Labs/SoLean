@@ -2,6 +2,7 @@ import SoLean.Bridge
 import SoLean.Examples.AAPQSource
 import SoLean.Examples.CounterCompiler
 import SoLean.Examples.FalconSimpleWallet
+import SoLean.Examples.ProtocolBoundaries
 import SoLean.Examples.SchemeParameters
 import SoLean.Examples.StructuredVerifier
 import SoLean.Examples.ToyVerifier
@@ -918,6 +919,30 @@ def aapqSourceCertificate : Json :=
       ("schemeDiscriminationTheorem", .str
         "SoLean.Examples.FalconSimpleWallet.falconSimpleWalletDeployment_rejects_mlDsa44_signature_length")
     ]),
+    ("protocolBoundaryAssumptions", .arr [
+      .obj [
+        ("leanReference", .str
+          "SoLean.Examples.ProtocolBoundaries.BundlerEcdsaDependence"),
+        ("name", .str "BundlerEcdsaDependence"),
+        ("statement", .str
+          "ERC-4337 today relies on ECDSA for the outer bundler transaction that lands a UserOp bundle on chain, even when individual UserOps are PQ-authenticated via the wallet's verifier wrapper. SoLean does not prove any property of this boundary. A future protocol-level / native-AA milestone (RIP-7560 / EIP-7701-like direction) would let SoLean model the bundler interface and discharge the dependence; until then it remains an explicit non-claim."),
+        ("status", .str "non-claim"),
+        ("theoremReferences", stringsJson [
+          "SoLean.Examples.ProtocolBoundaries.bundlerEcdsaDependence_trivial"
+        ])
+      ],
+      .obj [
+        ("leanReference", .str
+          "SoLean.Examples.ProtocolBoundaries.Eip7702EcdsaKeyValidity"),
+        ("name", .str "Eip7702EcdsaKeyValidity"),
+        ("statement", .str
+          "Under EIP-7702, an EOA can delegate to a smart-wallet implementation that adds PQ-AA behavior, but the original ECDSA key remains valid for signing — a PQ-resilience risk SoLean does not resolve. A PQ-resilient EIP-7702 deployment would require additional protocol-level guarantees (key disabling, key rotation, on-delegation revocation, etc.) that are out of scope for SoLean's current proofs."),
+        ("status", .str "non-claim"),
+        ("theoremReferences", stringsJson [
+          "SoLean.Examples.ProtocolBoundaries.eip7702EcdsaKeyValidity_trivial"
+        ])
+      ]
+    ]),
     ("falconSimpleWalletNonClaims", stringsJson [
       "Real Falcon (or any PQ scheme) cryptographic security — the verifier stays an oracle / structured-verifier model.",
       "EVM-friendly hashing choices (Keccak-256 vs SHAKE-256) for opHash and EIP-712-style domain binding are not modeled at the byte level; opHash is a UInt256 placeholder.",
@@ -1005,6 +1030,8 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.SchemeParameters.validateAndExecute_falcon512_calibrated_rejects_mlDsa44_signature_length",
       "SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_composite_safety",
       "SoLean.Examples.FalconSimpleWallet.falconSimpleWalletDeployment_rejects_mlDsa44_signature_length",
+      "SoLean.Examples.ProtocolBoundaries.bundlerEcdsaDependence_trivial",
+      "SoLean.Examples.ProtocolBoundaries.eip7702EcdsaKeyValidity_trivial",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success",

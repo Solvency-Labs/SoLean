@@ -12,6 +12,7 @@ import SoLean.Examples.AAPQSource
 import SoLean.Examples.PQVerifierWrapper
 import SoLean.Examples.FalconSimpleWallet
 import SoLean.Examples.LatticePublicKey
+import SoLean.Examples.ProtocolBoundaries
 import SoLean.Examples.SchemeParameters
 import SoLean.Examples.StructuredVerifier
 import SoLean.Examples.ToyVerifier
