@@ -179,8 +179,13 @@ Trust Boundaries section):
 - `SoLean.Examples.FalconSimpleWallet.validateAndExecute_preserves_walletStoresWrapperAddress`
 - `SoLean.Examples.FalconSimpleWallet.validateAndExecute_preserves_deploymentInvariant`
 - `SoLean.Examples.AAPQIntegration.walletProgramV1_success_implies_walletProgram_success`
+- `SoLean.Examples.AAPQIntegration.walletProgramV1_success_expectedWrapperAddress`
 - `SoLean.Examples.AAPQIntegration.validateIntegratedV1_success_implies_validateIntegrated_success`
+- `SoLean.Examples.AAPQIntegration.validateIntegratedV1_success_expectedWrapperAddress`
+- `SoLean.Examples.AAPQIntegration.validateAndExecuteV1_success_implies_validateIntegratedV1_success`
+- `SoLean.Examples.AAPQIntegration.validateAndExecuteV1_success_structure`
 - `SoLean.Examples.AAPQIntegration.validateAndExecuteV1_success_implies_validateAndExecute_success`
+- `SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_v1_composite_safety`
 - `SoLean.Examples.ProtocolBoundaries.bundlerEcdsaDependence_trivial`
 - `SoLean.Examples.ProtocolBoundaries.eip7702EcdsaKeyValidity_trivial`
 - `SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas`

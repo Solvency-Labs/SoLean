@@ -917,8 +917,9 @@ def check_falcon_simple_wallet_shape(
     """The falconSimpleWalletShape must have walletName, walletFunction,
     scheme, storedSlots, crossStorageAssumption, wrapperCalibrationAssumption,
     compositeSafetyTheorem (in proofReferences), schemeDiscriminationTheorem
-    (in proofReferences), walletV1 + wrapperAddressPreservation (each with
-    their named theorems in proofReferences)."""
+    (in proofReferences), walletV1, integratedV1, v1CompositeSafety,
+    wrapperAddressPreservation, and deploymentInvariant (each with their named
+    theorems in proofReferences)."""
     shape = certificate.get("falconSimpleWalletShape")
     if not shape:
         return failed(
@@ -961,6 +962,8 @@ def check_falcon_simple_wallet_shape(
         addr_ref = wallet_v1.get("addressCheckTheorem", "")
         if addr_ref:
             theorem_refs.append(addr_ref)
+    else:
+        problems.append("falconSimpleWalletShape: missing walletV1")
     integrated_v1 = shape.get("integratedV1")
     if integrated_v1:
         for inner in ("program", "inputType", "refinementTheorem",
@@ -970,6 +973,19 @@ def check_falcon_simple_wallet_shape(
         refinement_ref = integrated_v1.get("refinementTheorem", "")
         if refinement_ref:
             theorem_refs.append(refinement_ref)
+    else:
+        problems.append("falconSimpleWalletShape: missing integratedV1")
+    v1_safety = shape.get("v1CompositeSafety")
+    if v1_safety:
+        for inner in ("record", "theorem", "extends", "extraClaim",
+                      "rationale"):
+            if not v1_safety.get(inner):
+                problems.append(f"v1CompositeSafety: missing {inner}")
+        v1_safety_ref = v1_safety.get("theorem", "")
+        if v1_safety_ref:
+            theorem_refs.append(v1_safety_ref)
+    else:
+        problems.append("falconSimpleWalletShape: missing v1CompositeSafety")
     preservation = shape.get("wrapperAddressPreservation")
     if preservation:
         for inner in ("walletProgramTheorem", "integratedTheorem",
@@ -981,6 +997,8 @@ def check_falcon_simple_wallet_shape(
             ref = preservation.get(inner, "")
             if ref:
                 theorem_refs.append(ref)
+    else:
+        problems.append("falconSimpleWalletShape: missing wrapperAddressPreservation")
     deployment_invariant = shape.get("deploymentInvariant")
     if deployment_invariant:
         for inner in ("record", "preservationTheorem", "fields", "rationale"):
@@ -996,6 +1014,8 @@ def check_falcon_simple_wallet_shape(
                 problems.append(
                     f"deploymentInvariant: missing field {required_field}"
                 )
+    else:
+        problems.append("falconSimpleWalletShape: missing deploymentInvariant")
     for ref in theorem_refs:
         if ref not in proofs:
             problems.append(

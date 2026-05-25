@@ -426,6 +426,10 @@ What landed:
 - `validateAndExecuteV1_success_implies_validateAndExecute_success` proves
   successful integrated v1 execution refines the existing `validateAndExecute`
   result.
+- `falconSimpleWallet_v1_composite_safety` proves successful
+  `validateAndExecuteV1` yields the existing composite safety bundle plus the
+  v1-specific fact that `expectedWrapperAddress` equals the wallet's stored
+  `wrapperAddressSlot`.
 - `falconSimpleWallet_composite_safety` produces a
   `FalconSimpleWalletSafety` record from a successful
   `validateAndExecute`, bundling: (a) public key matches the
@@ -442,17 +446,17 @@ What landed:
   EIP-7701 pending), EIP-7702 risk, signature aggregation, and the
   full gas schedule.
 
-## Next Milestone: FalconSimpleWallet v2.1 safety theorem
+## Next Milestone: FalconSimpleWallet v2.2 manifest hygiene
 
-Lift the existing reviewer-facing safety bundle onto the v1 integrated path:
+Reduce duplication in the AA/PQ source certificate and audit:
 
-1. Define `falconSimpleWalletV1_composite_safety` for successful
-   `validateAndExecuteV1`.
-2. Reuse the v1-to-v0 refinement theorem plus the existing
-   `falconSimpleWallet_composite_safety`.
-3. Add the extra v1 fact: the operation's `expectedWrapperAddress` equals the
-   wallet's stored wrapper address.
-4. Surface the v1 composite theorem in `falconSimpleWalletShape` and the audit.
+1. Factor common theorem-reference checks for nested certificate sections.
+2. Make the `falconSimpleWalletShape` audit report which section introduced
+   each theorem reference.
+3. Keep the exported JSON shape stable unless the new structure catches a real
+   ambiguity.
+4. Leave Solidity/Yul generation untouched; this is a trust-boundary cleanup
+   milestone.
 
 ## Phase 4: Bridge To Real Solidity And solc
 

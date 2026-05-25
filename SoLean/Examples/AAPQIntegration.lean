@@ -710,6 +710,27 @@ theorem walletProgramV1_success_implies_walletProgram_success
   · simp [walletProgramV1, keyMatchesWalletProgram, AAWallet.keyCommitmentExpr,
       exec, evalBool, evalValue, hKey] at h
 
+theorem walletProgramV1_success_expectedWrapperAddress
+    (env : Env) (input : IntegratedInputV1)
+    (walletStorage finalWallet : Storage)
+    (h :
+      exec env (walletProgramV1 input) walletStorage =
+        ExecResult.success finalWallet) :
+    input.expectedWrapperAddress =
+      walletStorage.read AAWallet.wrapperAddressSlot := by
+  by_cases hKey :
+      input.publicKey = walletStorage.read AAWallet.keyCommitmentSlot
+  · have hV1 :
+        exec env (AAWallet.validateProgramV1 (toUserOpV1 input))
+            walletStorage =
+          ExecResult.success finalWallet := by
+      simpa [walletProgramV1, keyMatchesWalletProgram, AAWallet.keyCommitmentExpr,
+        exec, evalBool, evalValue, hKey] using h
+    exact (AAWallet.validateV1_success_properties env walletStorage
+      finalWallet (toUserOpV1 input) hV1).1
+  · simp [walletProgramV1, keyMatchesWalletProgram, AAWallet.keyCommitmentExpr,
+      exec, evalBool, evalValue, hKey] at h
+
 theorem validateIntegratedV1_success_implies_validateIntegrated_success
     (env : Env) (input : IntegratedInputV1)
     (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
@@ -740,6 +761,32 @@ theorem validateIntegratedV1_success_implies_validateIntegrated_success
             walletProgramV1_success_implies_walletProgram_success
               env input walletStorage finalWallet hWallet
           simp [validateIntegrated, hWrapper, hWalletV0]
+      | revert failure =>
+          simp [validateIntegratedV1, hWrapper, hWallet] at h
+  | revert failure =>
+      simp [validateIntegratedV1, hWrapper] at h
+
+theorem validateIntegratedV1_success_expectedWrapperAddress
+    (env : Env) (input : IntegratedInputV1)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateIntegratedV1 env input wrapperStorage walletStorage =
+        IntegratedResult.success finalWrapper finalWallet) :
+    input.expectedWrapperAddress =
+      walletStorage.read AAWallet.wrapperAddressSlot := by
+  generalize hWrapper :
+      exec env
+        (PQVerifierWrapper.verifyProgram
+          (toWrapperInput input.toIntegratedInput))
+        wrapperStorage = wrapperResult
+  cases wrapperResult with
+  | success observedWrapper =>
+      generalize hWallet :
+          exec env (walletProgramV1 input) walletStorage = walletResult
+      cases walletResult with
+      | success observedWallet =>
+          exact walletProgramV1_success_expectedWrapperAddress
+            env input walletStorage observedWallet hWallet
       | revert failure =>
           simp [validateIntegratedV1, hWrapper, hWallet] at h
   | revert failure =>
@@ -793,6 +840,45 @@ private theorem executeUserOp_step
     exec env (AAWallet.executeUserOp op) storage =
       ExecResult.success
         (Storage.write storage AAWallet.lastOpHashSlot op.opHash) := rfl
+
+theorem validateAndExecuteV1_success_implies_validateIntegratedV1_success
+    (env : Env) (input : IntegratedInputV1)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateAndExecuteV1 env input wrapperStorage walletStorage =
+        IntegratedFullResult.success finalWrapper finalWallet) :
+    ∃ postWallet,
+      validateIntegratedV1 env input wrapperStorage walletStorage =
+        IntegratedResult.success finalWrapper postWallet := by
+  cases hValidate :
+      validateIntegratedV1 env input wrapperStorage walletStorage with
+  | success postWrapper postWallet =>
+      simp only [validateAndExecuteV1_step, hValidate, executeUserOp_step] at h
+      injection h with hWrap _
+      subst hWrap
+      exact ⟨postWallet, rfl⟩
+  | revert failure =>
+      simp only [validateAndExecuteV1_step, hValidate] at h
+      cases h
+
+theorem validateAndExecuteV1_success_structure
+    (env : Env) (input : IntegratedInputV1)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      validateAndExecuteV1 env input wrapperStorage walletStorage =
+        IntegratedFullResult.success finalWrapper finalWallet) :
+    ∃ postWallet,
+      validateIntegratedV1 env input wrapperStorage walletStorage =
+        IntegratedResult.success finalWrapper postWallet ∧
+      finalWallet =
+        Storage.write postWallet AAWallet.lastOpHashSlot input.opHash := by
+  obtain ⟨postWallet, hValidate⟩ :=
+    validateAndExecuteV1_success_implies_validateIntegratedV1_success
+      env input wrapperStorage walletStorage finalWrapper finalWallet h
+  refine ⟨postWallet, hValidate, ?_⟩
+  simp only [validateAndExecuteV1_step, hValidate, executeUserOp_step] at h
+  injection h with _ hWallet
+  simpa [toUserOp] using hWallet.symm
 
 theorem validateAndExecute_success_implies_validateIntegrated_success
     (env : Env) (input : IntegratedInput)

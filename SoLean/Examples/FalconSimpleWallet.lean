@@ -128,6 +128,25 @@ structure FalconSimpleWalletSafety
         AAPQIntegration.IntegratedFullResult.success rw rw'
 
 /--
+V1 reviewer-facing safety result for the wrapper-address-aware integrated
+path.
+
+It reuses the existing v0 composite safety bundle through the v1-to-v0
+refinement theorem, then adds the v1-specific address claim: the operation's
+`expectedWrapperAddress` equals the wallet's stored `wrapperAddressSlot`.
+-/
+structure FalconSimpleWalletV1Safety
+    (env : Env) (input : AAPQIntegration.IntegratedInputV1)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage) :
+    Prop where
+  baseSafety :
+    FalconSimpleWalletSafety env input.toIntegratedInput wrapperStorage
+      walletStorage finalWrapper finalWallet
+  expectedWrapperAddressMatches :
+    input.expectedWrapperAddress =
+      walletStorage.read AAWallet.wrapperAddressSlot
+
+/--
 The FalconSimpleWallet composite safety theorem. A single statement an
 AA reviewer can cite to know what a successful integrated
 `validateAndExecute` means against this deployment shape.
@@ -190,6 +209,42 @@ theorem falconSimpleWallet_composite_safety
     exact
       AAPQIntegration.validateAndExecute_replay_rejected env input
         wrapperStorage walletStorage finalWrapper finalWallet rw rw' h hReplay
+
+/--
+V1 composite safety theorem. A successful wrapper-address-aware
+`validateAndExecuteV1` gives the existing FalconSimpleWallet safety record and
+the additional v1 check tying `input.expectedWrapperAddress` to the wallet's
+stored wrapper address.
+-/
+theorem falconSimpleWallet_v1_composite_safety
+    (env : Env) (input : AAPQIntegration.IntegratedInputV1)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (h :
+      AAPQIntegration.validateAndExecuteV1 env input wrapperStorage
+          walletStorage =
+        AAPQIntegration.IntegratedFullResult.success finalWrapper
+          finalWallet) :
+    FalconSimpleWalletV1Safety env input wrapperStorage walletStorage
+      finalWrapper finalWallet := by
+  obtain ⟨postWallet, hValidateV1, _⟩ :=
+    AAPQIntegration.validateAndExecuteV1_success_structure env input
+      wrapperStorage walletStorage finalWrapper finalWallet h
+  have hV0 :
+      AAPQIntegration.validateAndExecute env input.toIntegratedInput
+          wrapperStorage walletStorage =
+        AAPQIntegration.IntegratedFullResult.success finalWrapper
+          finalWallet :=
+    AAPQIntegration.validateAndExecuteV1_success_implies_validateAndExecute_success
+      env input wrapperStorage walletStorage finalWrapper finalWallet h
+  refine
+    { baseSafety :=
+        falconSimpleWallet_composite_safety env input.toIntegratedInput
+          wrapperStorage walletStorage finalWrapper finalWallet hV0,
+      expectedWrapperAddressMatches := ?_ }
+  exact
+    AAPQIntegration.validateIntegratedV1_success_expectedWrapperAddress
+      env input wrapperStorage walletStorage finalWrapper postWallet
+      hValidateV1
 
 /--
 Deployment-level scheme discrimination: a Falcon-512 FalconSimpleWallet

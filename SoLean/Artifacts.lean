@@ -936,6 +936,18 @@ def aapqSourceCertificate : Json :=
         ("rationale", .str
           "Integrated v1 carries expectedWrapperAddress through the AA/PQ input and runs validateProgramV1 in the wallet phase. Successful v1 execution refines the existing validateAndExecute result.")
       ]),
+      ("v1CompositeSafety", .obj [
+        ("record", .str
+          "SoLean.Examples.FalconSimpleWallet.FalconSimpleWalletV1Safety"),
+        ("theorem", .str
+          "SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_v1_composite_safety"),
+        ("extends", .str
+          "SoLean.Examples.FalconSimpleWallet.FalconSimpleWalletSafety"),
+        ("extraClaim", .str
+          "input.expectedWrapperAddress = walletStorage.read AAWallet.wrapperAddressSlot"),
+        ("rationale", .str
+          "Successful validateAndExecuteV1 now gives the existing composite FalconSimpleWallet safety bundle and the v1-specific stored-wrapper-address agreement.")
+      ]),
       ("wrapperAddressPreservation", .obj [
         ("walletProgramTheorem", .str
           "SoLean.Examples.AAWallet.validateProgram_preserves_wrapperAddressSlot"),
@@ -1077,8 +1089,13 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.FalconSimpleWallet.validateAndExecute_preserves_deploymentInvariant",
       "SoLean.Examples.AAWallet.validateV1_success_properties",
       "SoLean.Examples.AAPQIntegration.walletProgramV1_success_implies_walletProgram_success",
+      "SoLean.Examples.AAPQIntegration.walletProgramV1_success_expectedWrapperAddress",
       "SoLean.Examples.AAPQIntegration.validateIntegratedV1_success_implies_validateIntegrated_success",
+      "SoLean.Examples.AAPQIntegration.validateIntegratedV1_success_expectedWrapperAddress",
+      "SoLean.Examples.AAPQIntegration.validateAndExecuteV1_success_implies_validateIntegratedV1_success",
+      "SoLean.Examples.AAPQIntegration.validateAndExecuteV1_success_structure",
       "SoLean.Examples.AAPQIntegration.validateAndExecuteV1_success_implies_validateAndExecute_success",
+      "SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_v1_composite_safety",
       "SoLean.Examples.ProtocolBoundaries.bundlerEcdsaDependence_trivial",
       "SoLean.Examples.ProtocolBoundaries.eip7702EcdsaKeyValidity_trivial",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",

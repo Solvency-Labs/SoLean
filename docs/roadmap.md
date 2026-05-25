@@ -610,13 +610,17 @@ relation must have but cannot be inhabited by a concrete `UInt256`
 derivation. A concrete witness would require either restricting to a
 finite sub-domain or moving to a richer codomain (e.g., tuples).
 
-The next best qualitative task is:
+The v2.1 safety theorem is now landed:
 
 ```text
-FalconSimpleWallet v2.1 safety theorem — lift the reviewer-facing composite
-safety bundle onto the v1 integrated path and include the expected wrapper
+FalconSimpleWallet v2.1 safety theorem — successful validateAndExecuteV1
+yields the reviewer-facing composite safety bundle plus the expected wrapper
 address check as a first-class successful-execution fact.
 ```
+
+The next best qualitative task is FalconSimpleWallet v2.2 manifest hygiene:
+factor the repeated certificate theorem-reference checks while keeping the
+model and JSON shape stable.
 
 ### FalconSimpleWallet shape v0 (landed)
 
@@ -666,8 +670,11 @@ broaden into generic DeFi.
 Work is organized into named lanes. Lanes A, B, C below are
 feature-complete; FalconSimpleWallet shape v2.0 is now landed through the
 wallet-side wrapper-address check, preservation theorem, deployment invariant
-bundle, and `validateAndExecuteV1` refinement path. v2.1 should lift the
-composite safety theorem onto that v1 path.
+bundle, and `validateAndExecuteV1` refinement path. v2.1 lifts the composite
+safety theorem onto that v1 path, adding the stored-wrapper-address agreement
+to the reviewer-facing safety bundle. The next useful step is manifest hygiene:
+factor repeated certificate theorem-reference checks without widening the
+model.
 
 ### Lane A — Deepen the EVM CALL boundary (in flight)
 
