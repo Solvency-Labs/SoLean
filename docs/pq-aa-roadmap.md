@@ -420,6 +420,12 @@ What landed:
   `WalletStoresWrapperAddress` and `WrapperCalibratedForScheme`, and
   `validateAndExecute_preserves_deploymentInvariant` proves successful
   `validateAndExecute` preserves that current deployment invariant.
+- `AAPQIntegration.IntegratedInputV1` and `validateAndExecuteV1` carry
+  `expectedWrapperAddress` through the integrated flow and use
+  `AAWallet.validateProgramV1` in the wallet phase.
+- `validateAndExecuteV1_success_implies_validateAndExecute_success` proves
+  successful integrated v1 execution refines the existing `validateAndExecute`
+  result.
 - `falconSimpleWallet_composite_safety` produces a
   `FalconSimpleWalletSafety` record from a successful
   `validateAndExecute`, bundling: (a) public key matches the
@@ -436,17 +442,17 @@ What landed:
   EIP-7701 pending), EIP-7702 risk, signature aggregation, and the
   full gas schedule.
 
-## Next Milestone: validateAndExecuteV1 v2.0
+## Next Milestone: FalconSimpleWallet v2.1 safety theorem
 
-Use the v1 wallet validation shape throughout the integrated flow:
+Lift the existing reviewer-facing safety bundle onto the v1 integrated path:
 
-1. Add an integrated input or adapter carrying `expectedWrapperAddress`.
-2. Define `walletProgramV1` and `validateAndExecuteV1` using
-   `AAWallet.validateProgramV1`.
-3. Prove the v1 flow refines the existing `validateAndExecute` when the
-   expected wrapper address matches wallet storage.
-4. Surface the v1 theorem set in the source certificate without replacing the
-   older v0 theorems yet.
+1. Define `falconSimpleWalletV1_composite_safety` for successful
+   `validateAndExecuteV1`.
+2. Reuse the v1-to-v0 refinement theorem plus the existing
+   `falconSimpleWallet_composite_safety`.
+3. Add the extra v1 fact: the operation's `expectedWrapperAddress` equals the
+   wallet's stored wrapper address.
+4. Surface the v1 composite theorem in `falconSimpleWalletShape` and the audit.
 
 ## Phase 4: Bridge To Real Solidity And solc
 

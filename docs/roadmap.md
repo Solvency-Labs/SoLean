@@ -613,9 +613,9 @@ finite sub-domain or moving to a richer codomain (e.g., tuples).
 The next best qualitative task is:
 
 ```text
-validateAndExecuteV1 v2.0 — use the v1 wallet validation shape throughout the
-integrated flow, carrying the expected wrapper address through the integrated
-input rather than only surfacing `validateProgramV1` as a side theorem.
+FalconSimpleWallet v2.1 safety theorem — lift the reviewer-facing composite
+safety bundle onto the v1 integrated path and include the expected wrapper
+address check as a first-class successful-execution fact.
 ```
 
 ### FalconSimpleWallet shape v0 (landed)
@@ -664,10 +664,10 @@ broaden into generic DeFi.
 ### Already-completed lanes (kept for reference)
 
 Work is organized into named lanes. Lanes A, B, C below are
-feature-complete; FalconSimpleWallet shape v1.7 is now landed through the
-wallet-side wrapper-address check, preservation theorem, and deployment
-invariant bundle. v2.0 should make the integrated execution path use the v1
-wallet validation shape directly.
+feature-complete; FalconSimpleWallet shape v2.0 is now landed through the
+wallet-side wrapper-address check, preservation theorem, deployment invariant
+bundle, and `validateAndExecuteV1` refinement path. v2.1 should lift the
+composite safety theorem onto that v1 path.
 
 ### Lane A — Deepen the EVM CALL boundary (in flight)
 

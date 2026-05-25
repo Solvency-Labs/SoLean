@@ -961,6 +961,15 @@ def check_falcon_simple_wallet_shape(
         addr_ref = wallet_v1.get("addressCheckTheorem", "")
         if addr_ref:
             theorem_refs.append(addr_ref)
+    integrated_v1 = shape.get("integratedV1")
+    if integrated_v1:
+        for inner in ("program", "inputType", "refinementTheorem",
+                      "rationale"):
+            if not integrated_v1.get(inner):
+                problems.append(f"integratedV1: missing {inner}")
+        refinement_ref = integrated_v1.get("refinementTheorem", "")
+        if refinement_ref:
+            theorem_refs.append(refinement_ref)
     preservation = shape.get("wrapperAddressPreservation")
     if preservation:
         for inner in ("walletProgramTheorem", "integratedTheorem",

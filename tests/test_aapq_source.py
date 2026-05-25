@@ -796,6 +796,15 @@ class FalconSimpleWalletShapeAuditTests(unittest.TestCase):
         self.assertEqual(result["status"], "failed")
         self.assertIn("WrapperCalibratedForScheme", result["message"])
 
+    def test_missing_integrated_v1_refinement_fails(self) -> None:
+        cert = copied_json(cached_artifact("source-certificate-json"))
+        del cert["falconSimpleWalletShape"]["integratedV1"][
+            "refinementTheorem"
+        ]
+        result = check_falcon_simple_wallet_shape(cert)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("refinementTheorem", result["message"])
+
 
 class DemoTests(unittest.TestCase):
     def test_print_trust_boundaries_emits_all_sections(self) -> None:

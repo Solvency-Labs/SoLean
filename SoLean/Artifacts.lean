@@ -926,6 +926,16 @@ def aapqSourceCertificate : Json :=
         ("rationale", .str
           "v1 wallet validation asserts the wallet's stored wrapperAddress matches the user op's declared expectedWrapperAddress before running the v0 ValidationPost checks. Strictly stronger than validateProgram; success implies both the v0 post and op.expectedWrapperAddress = wallet.wrapperAddress.")
       ]),
+      ("integratedV1", .obj [
+        ("program", .str
+          "SoLean.Examples.AAPQIntegration.validateAndExecuteV1"),
+        ("inputType", .str
+          "SoLean.Examples.AAPQIntegration.IntegratedInputV1"),
+        ("refinementTheorem", .str
+          "SoLean.Examples.AAPQIntegration.validateAndExecuteV1_success_implies_validateAndExecute_success"),
+        ("rationale", .str
+          "Integrated v1 carries expectedWrapperAddress through the AA/PQ input and runs validateProgramV1 in the wallet phase. Successful v1 execution refines the existing validateAndExecute result.")
+      ]),
       ("wrapperAddressPreservation", .obj [
         ("walletProgramTheorem", .str
           "SoLean.Examples.AAWallet.validateProgram_preserves_wrapperAddressSlot"),
@@ -1066,6 +1076,9 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.FalconSimpleWallet.validateAndExecute_preserves_walletStoresWrapperAddress",
       "SoLean.Examples.FalconSimpleWallet.validateAndExecute_preserves_deploymentInvariant",
       "SoLean.Examples.AAWallet.validateV1_success_properties",
+      "SoLean.Examples.AAPQIntegration.walletProgramV1_success_implies_walletProgram_success",
+      "SoLean.Examples.AAPQIntegration.validateIntegratedV1_success_implies_validateIntegrated_success",
+      "SoLean.Examples.AAPQIntegration.validateAndExecuteV1_success_implies_validateAndExecute_success",
       "SoLean.Examples.ProtocolBoundaries.bundlerEcdsaDependence_trivial",
       "SoLean.Examples.ProtocolBoundaries.eip7702EcdsaKeyValidity_trivial",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
