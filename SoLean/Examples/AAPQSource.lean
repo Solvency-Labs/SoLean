@@ -114,6 +114,7 @@ inductive GuardKind where
   | lengthCheck
   | verifierCheck
   | keyCommitmentCheck
+  | wrapperAddressCheck
 deriving Repr, DecidableEq
 
 def GuardKind.toString : GuardKind -> String
@@ -123,6 +124,7 @@ def GuardKind.toString : GuardKind -> String
   | .lengthCheck        => "lengthCheck"
   | .verifierCheck      => "verifierCheck"
   | .keyCommitmentCheck => "keyCommitmentCheck"
+  | .wrapperAddressCheck => "wrapperAddressCheck"
 
 /--
 Structured operand DSL for guard conditions and final-write value expressions.
@@ -401,6 +403,35 @@ def walletPhase : Phase :=
     proofReference :=
       "SoLean.Examples.AAWallet.validate_success_properties" }
 
+def walletV1Phase : Phase :=
+  { name := "walletV1",
+    contract := "AAWallet",
+    guards := [
+      { kind := .wrapperAddressCheck,
+        condition :=
+          .eq (paramOperand "expectedWrapperAddress")
+            (walletSlot "wrapperAddress") },
+      { kind := .entryPointCheck,
+        condition := .eq .msgSender (walletSlot "entryPoint") },
+      { kind := .nonceCheck,
+        condition := .eq (paramOperand "nonce") (walletSlot "nonce") },
+      { kind := .domainCheck,
+        condition := .eq (paramOperand "domain") (walletSlot "domain") },
+      { kind := .verifierCheck,
+        condition :=
+          .verifier (walletSlot "keyCommitment") (paramOperand "opHash")
+            (paramOperand "domain") (paramOperand "signature") }
+    ],
+    finalWrites := [
+      { contract := "AAWallet",
+        slotName := "nonce",
+        slot := AAWallet.nonceSlot,
+        value :=
+          .checkedAdd (.operand (walletSlot "nonce")) (.operand (.const 1)) }
+    ],
+    proofReference :=
+      "SoLean.Examples.AAWallet.validateV1_success_properties" }
+
 def integratedBehaviorSummary : BehaviorSummary :=
   { object := "AAPQIntegration",
     function := "validateIntegrated",
@@ -430,6 +461,14 @@ def integratedFullBehaviorSummary : BehaviorSummary :=
        "signature", "signatureLength"],
     phases := [wrapperPhase, keyMatchPhase, walletPhase, executePhase] }
 
+def integratedV1FullBehaviorSummary : BehaviorSummary :=
+  { object := "AAPQIntegration",
+    function := "validateAndExecuteV1",
+    params :=
+      ["publicKey", "publicKeyLength", "opHash", "nonce", "domain",
+       "signature", "signatureLength", "expectedWrapperAddress"],
+    phases := [wrapperPhase, keyMatchPhase, walletV1Phase, executePhase] }
+
 -- Semantics for the structured Operand/Condition/ValueExpression DSL under a
 -- concrete AAPQIntegration.IntegratedInput. The reflection is intentionally
 -- total: unrecognized parameter names, slot roles, or constants return `none`.
@@ -458,6 +497,7 @@ def operandToValueExpr
   | .slot "wallet"  "keyCommitment" => some AAWallet.keyCommitmentExpr
   | .slot "wallet"  "domain"        => some AAWallet.domainExpr
   | .slot "wallet"  "entryPoint"    => some AAWallet.entryPointExpr
+  | .slot "wallet"  "wrapperAddress" => some AAWallet.wrapperAddressExpr
   | .slot "wrapper" "expectedPublicKeyLength" =>
       some PQVerifierWrapper.expectedPublicKeyLengthExpr
   | .slot "wrapper" "expectedSignatureLength" =>
@@ -467,6 +507,13 @@ def operandToValueExpr
   | .slot _ _ => none
   | .msgSender => some .msgSender
   | .const n => some (constToValueExpr n)
+
+def operandToValueExprV1
+    (input : AAPQIntegration.IntegratedInputV1) :
+    Operand -> Option SoLean.ValueExpr
+  | .param "expectedWrapperAddress" =>
+      some (.const input.expectedWrapperAddress)
+  | operand => operandToValueExpr input.toIntegratedInput operand
 
 def conditionToBoolExpr
     (input : AAPQIntegration.IntegratedInput) :
@@ -484,10 +531,33 @@ def conditionToBoolExpr
       | some k, some m, some d, some s => some (.verify k m d s)
       | _, _, _, _ => none
 
+def conditionToBoolExprV1
+    (input : AAPQIntegration.IntegratedInputV1) :
+    Condition -> Option SoLean.BoolExpr
+  | .eq lhs rhs =>
+      match operandToValueExprV1 input lhs, operandToValueExprV1 input rhs with
+      | some l, some r => some (.eq l r)
+      | _, _ => none
+  | .verifier key message domain signature =>
+      match
+        operandToValueExprV1 input key,
+        operandToValueExprV1 input message,
+        operandToValueExprV1 input domain,
+        operandToValueExprV1 input signature with
+      | some k, some m, some d, some s => some (.verify k m d s)
+      | _, _, _, _ => none
+
 def guardToStmt
     (input : AAPQIntegration.IntegratedInput) (guard : Guard) :
     Option SoLean.Stmt :=
   match conditionToBoolExpr input guard.condition with
+  | some expr => some (.require expr)
+  | none => none
+
+def guardToStmtV1
+    (input : AAPQIntegration.IntegratedInputV1) (guard : Guard) :
+    Option SoLean.Stmt :=
+  match conditionToBoolExprV1 input guard.condition with
   | some expr => some (.require expr)
   | none => none
 
@@ -500,10 +570,26 @@ def valueToValueExpr
       | some l, some r => some (.add l r)
       | _, _ => none
 
+def valueToValueExprV1
+    (input : AAPQIntegration.IntegratedInputV1) :
+    ValueExpression -> Option SoLean.ValueExpr
+  | .operand op => operandToValueExprV1 input op
+  | .checkedAdd lhs rhs =>
+      match valueToValueExprV1 input lhs, valueToValueExprV1 input rhs with
+      | some l, some r => some (.add l r)
+      | _, _ => none
+
 def finalWriteToStmt
     (input : AAPQIntegration.IntegratedInput) (write : FinalWrite) :
     Option SoLean.Stmt :=
   match valueToValueExpr input write.value with
+  | some expr => some (.assign write.slot expr)
+  | none => none
+
+def finalWriteToStmtV1
+    (input : AAPQIntegration.IntegratedInputV1) (write : FinalWrite) :
+    Option SoLean.Stmt :=
+  match valueToValueExprV1 input write.value with
   | some expr => some (.assign write.slot expr)
   | none => none
 
@@ -525,6 +611,15 @@ def phaseToStmt
     Option SoLean.Stmt :=
   let guardStmts := phase.guards.map (guardToStmt input)
   let writeStmts := phase.finalWrites.map (finalWriteToStmt input)
+  match sequenceOptions (guardStmts ++ writeStmts) with
+  | some stmts => some (seqOfStmts stmts)
+  | none => none
+
+def phaseToStmtV1
+    (input : AAPQIntegration.IntegratedInputV1) (phase : Phase) :
+    Option SoLean.Stmt :=
+  let guardStmts := phase.guards.map (guardToStmtV1 input)
+  let writeStmts := phase.finalWrites.map (finalWriteToStmtV1 input)
   match sequenceOptions (guardStmts ++ writeStmts) with
   | some stmts => some (seqOfStmts stmts)
   | none => none
@@ -561,6 +656,16 @@ theorem walletPhase_reflects_validateProgram
     (input : AAPQIntegration.IntegratedInput) :
     phaseToStmt input walletPhase =
       some (AAWallet.validateProgram (AAPQIntegration.toUserOp input)) := by
+  rfl
+
+/--
+The reflected `walletV1Phase` reconstructs exactly the proved
+`AAWallet.validateProgramV1`, including the stored-wrapper-address guard.
+-/
+theorem walletV1Phase_reflects_validateProgramV1
+    (input : AAPQIntegration.IntegratedInputV1) :
+    phaseToStmtV1 input walletV1Phase =
+      some (AAWallet.validateProgramV1 (AAPQIntegration.toUserOpV1 input)) := by
   rfl
 
 /--
@@ -652,6 +757,24 @@ theorem integratedFullBehaviorSummary_reflects_validateAndExecuteFlow
   rfl
 
 /--
+The reflected v1 full behavior summary reconstructs the four programs composed
+by `AAPQIntegration.validateAndExecuteV1`, with `walletV1Phase` exposing the
+extra stored-wrapper-address guard.
+-/
+theorem integratedV1FullBehaviorSummary_reflects_validateAndExecuteV1Flow
+    (input : AAPQIntegration.IntegratedInputV1) :
+    integratedV1FullBehaviorSummary.phases.map (phaseToStmtV1 input) =
+      [ some
+          (PQVerifierWrapper.verifyProgram
+            (AAPQIntegration.toWrapperInput input.toIntegratedInput)),
+        some (AAPQIntegration.keyMatchesWalletProgram input.toIntegratedInput),
+        some (AAWallet.validateProgramV1 (AAPQIntegration.toUserOpV1 input)),
+        some
+          (AAWallet.executeUserOp
+            (AAPQIntegration.toUserOp input.toIntegratedInput)) ] := by
+  rfl
+
+/--
 Execute the four reflected phases of `integratedFullBehaviorSummary` in the
 same composition pattern as `AAPQIntegration.validateAndExecute`.
 -/
@@ -696,6 +819,53 @@ theorem reflectedValidateAndExecute_eq_validateAndExecute
     reflectedValidateAndExecute env input wrapperStorage walletStorage =
       some
         (AAPQIntegration.validateAndExecute env input wrapperStorage walletStorage) := by
+  rfl
+
+/--
+Execute the four reflected phases of `integratedV1FullBehaviorSummary` in the
+same composition pattern as `AAPQIntegration.validateAndExecuteV1`.
+-/
+def reflectedValidateAndExecuteV1
+    (env : SoLean.Env)
+    (input : AAPQIntegration.IntegratedInputV1)
+    (wrapperStorage walletStorage : SoLean.Storage) :
+    Option AAPQIntegration.IntegratedFullResult :=
+  match phaseToStmtV1 input wrapperPhase,
+        phaseToStmtV1 input keyMatchPhase,
+        phaseToStmtV1 input walletV1Phase,
+        phaseToStmtV1 input executePhase with
+  | some wrapperStmt, some keyMatchStmt, some walletStmt, some executeStmt =>
+      some
+        (match
+            (match SoLean.exec env wrapperStmt wrapperStorage with
+             | .success finalWrapperStorage =>
+                 match SoLean.exec env (.seq keyMatchStmt walletStmt) walletStorage with
+                 | .success finalWalletStorage =>
+                     AAPQIntegration.IntegratedResult.success
+                       finalWrapperStorage finalWalletStorage
+                 | .revert failure => .revert failure
+             | .revert failure => .revert failure) with
+         | .success postWrapper postWallet =>
+             match SoLean.exec env executeStmt postWallet with
+             | .success finalWalletStorage =>
+                 AAPQIntegration.IntegratedFullResult.success
+                   postWrapper finalWalletStorage
+             | .revert failure => .revert failure
+         | .revert failure => .revert failure)
+  | _, _, _, _ => none
+
+/--
+Execution-side equivalence for the v1 full flow: running the reflected v1
+summary phases produces the same `IntegratedFullResult` as
+`AAPQIntegration.validateAndExecuteV1`.
+-/
+theorem reflectedValidateAndExecuteV1_eq_validateAndExecuteV1
+    (env : SoLean.Env)
+    (input : AAPQIntegration.IntegratedInputV1)
+    (wrapperStorage walletStorage : SoLean.Storage) :
+    reflectedValidateAndExecuteV1 env input wrapperStorage walletStorage =
+      some
+        (AAPQIntegration.validateAndExecuteV1 env input wrapperStorage walletStorage) := by
   rfl
 
 end BehaviorReflection

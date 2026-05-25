@@ -129,13 +129,15 @@ For the current intuition and next steps, see `docs/roadmap.md` and
 - An `AAPQSource` Solidity-shaped source description of the two-contract
   layout with instantiation theorems back to the proved wallet, wrapper, and
   integrated programs, plus Lean-owned `source-json`,
-  `source-certificate-json`, and `behavior-summary-json` artifacts emitted
-  from `AAPQArtifactsMain.lean`. The behavior summary names the ordered
-  guards per phase (wrapper, key-match, wallet), the final write to the
-  wallet nonce slot, and the Lean theorem backing each phase; its guards and
+  `source-certificate-json`, `behavior-summary-json`,
+  `full-behavior-summary-json`, and `v1-full-behavior-summary-json`
+  artifacts emitted from `AAPQArtifactsMain.lean`. The behavior summaries name
+  the ordered guards per phase (wrapper, key-match, wallet, execute), the
+  wallet writes, and the Lean theorem backing each phase; their guards and
   final-write values are structured `Condition` / `ValueExpression` nodes
   over a small `Operand` DSL (param / slot / msgSender / const) instead of
-  English condition strings.
+  English condition strings. The v1 full summary makes the
+  `expectedWrapperAddress == wallet.wrapperAddress` guard explicit.
 - A shared `SoLean.Source.Shape` vocabulary for source-shape audit metadata
   (`Param`, `StorageSlot`, `Contract`, and `IntegratedContract`) used by both
   Counter and AA/PQ artifacts.
@@ -556,6 +558,7 @@ lake env lean --run SoLean/AAPQArtifactsMain.lean source-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean source-certificate-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean behavior-summary-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean full-behavior-summary-json
+lake env lean --run SoLean/AAPQArtifactsMain.lean v1-full-behavior-summary-json
 ```
 
 Run the AA/PQ source-shape audit (deterministic JSON report by default):

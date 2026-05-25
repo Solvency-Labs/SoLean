@@ -2,7 +2,7 @@
 """Run the presentation-grade AA/PQ source-shape demo.
 
 This command exercises the AA/PQ side of SoLean end-to-end without requiring
-solc: `lake build`, AA/PQ-focused Python tests, the three Lean-owned source
+solc: `lake build`, AA/PQ-focused Python tests, the Lean-owned source
 artifacts, the markdown source-shape report, and a Trust Boundaries summary
 sourced from the Lean-owned source certificate so the proved-vs-trusted
 boundary is visible at a glance.
@@ -183,6 +183,8 @@ def main(argv: list[str] | None = None) -> int:
         "source-json",
         "source-certificate-json",
         "behavior-summary-json",
+        "full-behavior-summary-json",
+        "v1-full-behavior-summary-json",
     ):
         code = smoke_lean_artifact(kind)
         if code != 0:

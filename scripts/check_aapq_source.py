@@ -863,6 +863,83 @@ def check_full_behavior_summary_extends_short_summary(
     )
 
 
+def check_v1_full_behavior_summary(
+    certificate: dict[str, Any],
+    v1_full_summary: dict[str, Any],
+) -> dict[str, str]:
+    embedded = certificate.get("expectedV1FullBehaviorSummary")
+    proofs = set(certificate.get("proofReferences", []))
+    problems: list[str] = []
+    if embedded is None:
+        problems.append("certificate missing expectedV1FullBehaviorSummary")
+    elif embedded != v1_full_summary:
+        problems.append(
+            "certificate expectedV1FullBehaviorSummary differs from artifact"
+        )
+    if v1_full_summary.get("function") != "validateAndExecuteV1":
+        problems.append("v1 summary function is not validateAndExecuteV1")
+    params = v1_full_summary.get("params", [])
+    if "expectedWrapperAddress" not in params:
+        problems.append("v1 summary missing expectedWrapperAddress parameter")
+    phases = v1_full_summary.get("phases", [])
+    phase_names = [phase.get("name") for phase in phases]
+    expected_phase_names = ["wrapper", "keyMatch", "walletV1", "execute"]
+    if phase_names != expected_phase_names:
+        problems.append(
+            f"v1 summary phases {phase_names!r} != {expected_phase_names!r}"
+        )
+    wallet_phase = next(
+        (phase for phase in phases if phase.get("name") == "walletV1"),
+        None,
+    )
+    expected_guard = {
+        "condition": {
+            "args": [
+                {"kind": "param", "name": "expectedWrapperAddress"},
+                {
+                    "contract": "wallet",
+                    "kind": "slot",
+                    "name": "wrapperAddress",
+                },
+            ],
+            "kind": "eq",
+        },
+        "kind": "wrapperAddressCheck",
+    }
+    if wallet_phase is None:
+        problems.append("v1 summary missing walletV1 phase")
+    elif expected_guard not in wallet_phase.get("guards", []):
+        problems.append(
+            "v1 summary walletV1 phase missing wrapperAddressCheck guard"
+        )
+    for phase in phases:
+        ref = phase.get("proofReference", "")
+        if not ref:
+            problems.append(f"v1 summary phase {phase.get('name')} has no proof")
+    required_reflection_theorems = [
+        "SoLean.Examples.AAPQSource.BehaviorReflection.walletV1Phase_reflects_validateProgramV1",
+        "SoLean.Examples.AAPQSource.BehaviorReflection.integratedV1FullBehaviorSummary_reflects_validateAndExecuteV1Flow",
+        "SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateAndExecuteV1_eq_validateAndExecuteV1",
+    ]
+    for ref in required_reflection_theorems:
+        if ref not in proofs:
+            problems.append(
+                f"v1 summary reflection theorem {ref} not in proofReferences"
+            )
+    if problems:
+        return failed(
+            "v1 full behavior summary resolves",
+            "Lean-owned v1 behavior summary",
+            "Broken v1 full behavior summary: " + "; ".join(problems),
+        )
+    return passed(
+        "v1 full behavior summary resolves",
+        "Lean-owned v1 behavior summary",
+        "validateAndExecuteV1 summary exposes the wrapper-address guard and "
+        f"has {len(required_reflection_theorems)} Lean reflection theorems.",
+    )
+
+
 def check_protocol_boundary_assumptions(
     certificate: dict[str, Any],
 ) -> dict[str, str]:
@@ -1130,6 +1207,7 @@ def run_audit(
     certificate: dict[str, Any],
     behavior_summary: dict[str, Any],
     full_behavior_summary: dict[str, Any],
+    v1_full_behavior_summary: dict[str, Any],
     solidity_text: str,
 ) -> dict[str, Any]:
     shape = parse_solidity_shape(solidity_text)
@@ -1159,6 +1237,9 @@ def run_audit(
     checks.append(
         check_behavior_summary_operand_scope(full_behavior_summary, source)
     )
+    checks.append(
+        check_v1_full_behavior_summary(certificate, v1_full_behavior_summary)
+    )
     for contract, storage, functions in REQUIRED_CONTRACTS:
         checks.append(check_solidity_contract_present(shape, contract))
         if storage:
@@ -1171,6 +1252,7 @@ def run_audit(
         "artifacts": {
             "behaviorSummaryHash": artifact_hash(behavior_summary),
             "fullBehaviorSummaryHash": artifact_hash(full_behavior_summary),
+            "v1FullBehaviorSummaryHash": artifact_hash(v1_full_behavior_summary),
             "sourceCertificateHash": artifact_hash(certificate),
             "sourceHash": artifact_hash(source),
         },
@@ -1252,6 +1334,11 @@ def main(argv: list[str] | None = None) -> int:
         "Defaults to invoking lake.",
     )
     parser.add_argument(
+        "--v1-full-behavior-summary-json",
+        help="Path to a precomputed aapq v1-full-behavior-summary-json artifact. "
+        "Defaults to invoking lake.",
+    )
+    parser.add_argument(
         "--solidity",
         default="examples/AAPQIntegration.sol",
         help="Path to the AA/PQ Solidity sketch.",
@@ -1274,10 +1361,19 @@ def main(argv: list[str] | None = None) -> int:
     full_behavior_summary = load_json_arg(
         args.full_behavior_summary_json, "full-behavior-summary-json"
     )
+    v1_full_behavior_summary = load_json_arg(
+        args.v1_full_behavior_summary_json,
+        "v1-full-behavior-summary-json",
+    )
     solidity_text = Path(args.solidity).read_text()
 
     report = run_audit(
-        source, certificate, behavior_summary, full_behavior_summary, solidity_text
+        source,
+        certificate,
+        behavior_summary,
+        full_behavior_summary,
+        v1_full_behavior_summary,
+        solidity_text,
     )
 
     if args.format == "markdown":

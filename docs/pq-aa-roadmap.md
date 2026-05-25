@@ -213,10 +213,11 @@ Current v0:
   environment and storage produces the same `IntegratedResult` as
   `AAPQIntegration.validateIntegrated`.
 - `SoLean/AAPQArtifactsMain.lean` emits `source-json`,
-  `source-certificate-json`, `behavior-summary-json`, and
-  `full-behavior-summary-json` artifacts naming the assumptions, contracts,
-  integration flow, ordered phase guards (wrapper, key-match, wallet,
-  execute), final wallet writes, theorem references, and explicit
+  `source-certificate-json`, `behavior-summary-json`,
+  `full-behavior-summary-json`, and `v1-full-behavior-summary-json` artifacts
+  naming the assumptions, contracts, integration flow, ordered phase guards
+  (wrapper, key-match, wallet, execute), final wallet writes, theorem
+  references, and explicit
   out-of-scope items. The source certificate embeds the short behavior
   summary as `expectedBehaviorSummary`, records named verifier-oracle
   assumptions in `cryptoAssumptions`, and records a directed
@@ -457,18 +458,30 @@ Reduce duplication in the AA/PQ source certificate and audit:
 4. Left Solidity/Yul generation untouched; this was a trust-boundary cleanup
    milestone.
 
-## Next Milestone: FalconSimpleWallet v2.3 v1 behavior summary
+## FalconSimpleWallet v2.3 v1 behavior summary *(landed)*
 
 Make the `validateAndExecuteV1` address check visible in the structured
 behavior layer, not only in theorem/artifact metadata:
 
-1. Add a Lean-owned v1 behavior summary that includes the
+1. Added a Lean-owned v1 behavior summary that includes the
    `expectedWrapperAddress == wallet.wrapperAddress` guard.
-2. Add a reflection theorem tying that v1 summary to the existing v1 Lean
+2. Added reflection theorems tying that v1 summary to the existing v1 Lean
    program path.
-3. Extend the Python audit to compare/check the v1 summary without widening the
+3. Extended the Python audit to compare/check the v1 summary without widening the
    Solidity parser.
-4. Keep the verifier cryptography and real EVM/Yul boundaries unchanged.
+4. Kept the verifier cryptography and real EVM/Yul boundaries unchanged.
+
+## Next Milestone: FalconSimpleWallet v2.4 source-shape parity
+
+Make the source-shape side catch up with the v1 behavior summary:
+
+1. Add a Lean-owned FalconSimpleWallet v1 source shape that includes
+   `wrapperAddress` storage and `expectedWrapperAddress` input.
+2. Audit the v1 behavior summary operands against that v1 source shape instead
+   of relying only on certificate metadata.
+3. Keep the existing Solidity parser restricted; do not claim general Solidity
+   parsing.
+4. Keep real Yul/solc generation out of this AA/PQ milestone.
 
 ## Phase 4: Bridge To Real Solidity And solc
 

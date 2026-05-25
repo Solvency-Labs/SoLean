@@ -622,9 +622,15 @@ FalconSimpleWallet v2.2 manifest hygiene is now landed: repeated
 certificate theorem-reference checks are factored, and dangling theorem
 references now identify the nested section/field that introduced them.
 
-The next best qualitative task is FalconSimpleWallet v2.3 v1 behavior
-summary: make the `validateAndExecuteV1` wrapper-address guard visible in
-the structured behavior-summary layer, not only in theorem/artifact metadata.
+FalconSimpleWallet v2.3 v1 behavior summary is now landed: the
+`validateAndExecuteV1` wrapper-address guard is visible in a Lean-owned
+structured behavior summary and checked by the Python audit via Lean
+reflection theorem references.
+
+The next best qualitative task is FalconSimpleWallet v2.4 source-shape parity:
+add a Lean-owned v1 source shape carrying `wrapperAddress` storage and
+`expectedWrapperAddress` input, then audit the v1 behavior summary against
+that v1 source vocabulary.
 
 ### FalconSimpleWallet shape v0 (landed)
 

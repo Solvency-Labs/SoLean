@@ -580,16 +580,22 @@ def phaseJson (phase : SoLean.Examples.AAPQSource.Phase) : Json :=
     ("proofReference", .str phase.proofReference)
   ]
 
-def summaryJson (summary : SoLean.Examples.AAPQSource.BehaviorSummary) : Json :=
+def summaryJsonWithLean
+    (leanName : String)
+    (summary : SoLean.Examples.AAPQSource.BehaviorSummary) : Json :=
   .obj [
     ("function", .str summary.function),
     ("kind", .str "aapqBehaviorSummary"),
-    ("lean", .str "SoLean.Examples.AAPQSource.integratedBehaviorSummary"),
+    ("lean", .str leanName),
     ("object", .str summary.object),
     ("params", stringsJson summary.params),
     ("phases", .arr (summary.phases.map phaseJson)),
     ("version", .num 2)
   ]
+
+def summaryJson (summary : SoLean.Examples.AAPQSource.BehaviorSummary) : Json :=
+  summaryJsonWithLean "SoLean.Examples.AAPQSource.integratedBehaviorSummary"
+    summary
 
 def cryptoAssumptionJson
     (entry : SoLean.Examples.AAPQSource.CryptoAssumption) : Json :=
@@ -789,6 +795,10 @@ def aapqSourceCertificate : Json :=
     ]),
     ("expectedBehaviorSummary",
       AAPQBehavior.summaryJson Examples.AAPQSource.integratedBehaviorSummary),
+    ("expectedV1FullBehaviorSummary",
+      AAPQBehavior.summaryJsonWithLean
+        "SoLean.Examples.AAPQSource.integratedV1FullBehaviorSummary"
+        Examples.AAPQSource.integratedV1FullBehaviorSummary),
     ("integration", .obj [
       ("flow", AAPQ.integratedFlow),
       ("lean", .str "SoLean.Examples.AAPQIntegration.validateIntegrated"),
@@ -1021,6 +1031,7 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQSource.BehaviorReflection.wrapperPhase_reflects_verifyProgram",
       "SoLean.Examples.AAPQSource.BehaviorReflection.keyMatchPhase_reflects_keyMatchesWalletProgram",
       "SoLean.Examples.AAPQSource.BehaviorReflection.walletPhase_reflects_validateProgram",
+      "SoLean.Examples.AAPQSource.BehaviorReflection.walletV1Phase_reflects_validateProgramV1",
       "SoLean.Examples.AAPQSource.BehaviorReflection.integratedBehaviorSummary_reflects_integratedProgram",
       "SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateIntegrated_eq_validateIntegrated",
       "SoLean.Examples.AAPQIntegration.noBypass_implies_verifier_accepted",
@@ -1038,6 +1049,8 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.AAPQSource.BehaviorReflection.executePhase_reflects_executeUserOp",
       "SoLean.Examples.AAPQSource.BehaviorReflection.integratedFullBehaviorSummary_reflects_validateAndExecuteFlow",
       "SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateAndExecute_eq_validateAndExecute",
+      "SoLean.Examples.AAPQSource.BehaviorReflection.integratedV1FullBehaviorSummary_reflects_validateAndExecuteV1Flow",
+      "SoLean.Examples.AAPQSource.BehaviorReflection.reflectedValidateAndExecuteV1_eq_validateAndExecuteV1",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_implies_verifier_accepted",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_records_authorized_opHash",
       "SoLean.Examples.AAPQIntegration.validateAndExecute_success_structure",
@@ -1143,6 +1156,14 @@ def aapqFullBehaviorSummary : Json :=
 
 def aapqFullBehaviorSummaryJson : String :=
   renderJson aapqFullBehaviorSummary
+
+def aapqV1FullBehaviorSummary : Json :=
+  AAPQBehavior.summaryJsonWithLean
+    "SoLean.Examples.AAPQSource.integratedV1FullBehaviorSummary"
+    Examples.AAPQSource.integratedV1FullBehaviorSummary
+
+def aapqV1FullBehaviorSummaryJson : String :=
+  renderJson aapqV1FullBehaviorSummary
 
 end Artifacts
 end SoLean
