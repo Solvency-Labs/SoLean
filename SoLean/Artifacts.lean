@@ -914,7 +914,9 @@ def aapqSourceCertificate : Json :=
           "The wrapper's expectedPublicKeyLengthSlot and expectedSignatureLengthSlot store the modeled byte-length UInt256s for the deployment's SchemeParameters (publicKeyByteLengthUInt256 / signatureByteLengthUInt256). Ties the wrapper storage to the named scheme parameters.")
       ]),
       ("compositeSafetyTheorem", .str
-        "SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_composite_safety")
+        "SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_composite_safety"),
+      ("schemeDiscriminationTheorem", .str
+        "SoLean.Examples.FalconSimpleWallet.falconSimpleWalletDeployment_rejects_mlDsa44_signature_length")
     ]),
     ("falconSimpleWalletNonClaims", stringsJson [
       "Real Falcon (or any PQ scheme) cryptographic security — the verifier stays an oracle / structured-verifier model.",
@@ -1002,6 +1004,7 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.SchemeParameters.falcon512_calibrated_wrapper_rejects_mlDsa44_signature_length",
       "SoLean.Examples.SchemeParameters.validateAndExecute_falcon512_calibrated_rejects_mlDsa44_signature_length",
       "SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_composite_safety",
+      "SoLean.Examples.FalconSimpleWallet.falconSimpleWalletDeployment_rejects_mlDsa44_signature_length",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success",

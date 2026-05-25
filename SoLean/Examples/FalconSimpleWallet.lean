@@ -174,6 +174,46 @@ theorem falconSimpleWallet_composite_safety
       AAPQIntegration.validateAndExecute_replay_rejected env input
         wrapperStorage walletStorage finalWrapper finalWallet rw rw' h hReplay
 
+/--
+Deployment-level scheme discrimination: a Falcon-512 FalconSimpleWallet
+deployment, under `WrapperCalibratedForScheme`, cannot succeed
+`validateAndExecute` on an `IntegratedInput` whose `signatureLength`
+matches ML-DSA-44.
+
+Lifts `SchemeParameters.validateAndExecute_falcon512_calibrated_rejects_
+mlDsa44_signature_length` from the wrapper-level to the deployment-level
+through the named scheme equality in `falconSimpleWalletDeployment`.
+
+Concrete content: an attacker holding an ML-DSA-44-sized signature
+cannot replay calldata against a wallet deployment that was provisioned
+for Falcon-512 — the wrapper's stored expected signature length forces
+a revert before any verifier oracle runs, and the integration boundary
+propagates that revert.
+-/
+theorem falconSimpleWalletDeployment_rejects_mlDsa44_signature_length
+    (env : Env) (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage : Storage)
+    (hCalibrated :
+      WrapperCalibratedForScheme falconSimpleWalletDeployment wrapperStorage)
+    (hMlDsaSig :
+      input.signatureLength =
+        SchemeParameters.mlDsa44.signatureByteLengthUInt256) :
+    ∀ finalWrapper finalWallet,
+      AAPQIntegration.validateAndExecute env input wrapperStorage
+          walletStorage ≠
+        AAPQIntegration.IntegratedFullResult.success finalWrapper
+          finalWallet := by
+  -- WrapperCalibratedForScheme unpacks to the two stored-length equalities;
+  -- the relevant one is the signature length matching falcon512.
+  have hSigCalibrated :
+      wrapperStorage.read PQVerifierWrapper.expectedSignatureLengthSlot =
+        SchemeParameters.falcon512.signatureByteLengthUInt256 := by
+    -- falconSimpleWalletDeployment.scheme is falcon512 by definition.
+    exact hCalibrated.2
+  exact
+    SchemeParameters.validateAndExecute_falcon512_calibrated_rejects_mlDsa44_signature_length
+      env input wrapperStorage walletStorage hSigCalibrated hMlDsaSig
+
 end FalconSimpleWallet
 end Examples
 end SoLean
