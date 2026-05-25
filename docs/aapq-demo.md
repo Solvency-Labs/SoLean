@@ -272,5 +272,6 @@ additional `expectedWrapperAddress == wallet.wrapperAddress` guard.
 `v1-source-json` declares the matching `FalconSimpleWallet.lastOpHash` slot 4,
 `wrapperAddress` slot 5, and `expectedWrapperAddress` input used to scope-check
 that guard and the execute-record vocabulary. The Solidity sketch mirrors those
-names, but the audit is still a trusted source-shape check, not verified
-Solidity parsing.
+names. The audit also recognizes the exact v1 body shape and checks its
+phase/guard/write signature against the Lean-owned v1 behavior summary, but it
+is still a trusted restricted recognizer, not verified Solidity parsing.

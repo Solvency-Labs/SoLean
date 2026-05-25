@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Audit the current AA/PQ source-shape boundary against Lean-owned artifacts.
 
-This is a Solidity-shape-only audit. It does not verify Solidity parsing
-generally, does not run solc, and does not claim semantic equivalence with any
-compiler output. The intended trust reduction is:
+This is a restricted Solidity-shape/body audit. It does not verify Solidity
+parsing generally, does not run solc, and does not claim semantic equivalence
+with any compiler output. The intended trust reduction is:
 
   Lean-owned source artifact  ─┐
   Lean-owned source certificate │── deterministic cross-checks
   Lean-owned behavior summary  ─┘
-  Solidity sketch (examples/AAPQIntegration.sol) ── restricted shape parse
+  Solidity sketch (examples/AAPQIntegration.sol) ── restricted shape/body parse
 
 The script fails if any cross-check fails, and emits a deterministic JSON or
 Markdown report otherwise.
@@ -26,11 +26,11 @@ import sys
 from pathlib import Path
 from typing import Any
 
-REPORT_VERSION = 5
+REPORT_VERSION = 6
 
 LIMITATIONS = [
-    "AA/PQ source-shape audit only.",
-    "Solidity parsing is a narrow restricted shape extractor for the AAPQ sketch.",
+    "AA/PQ source-shape/body audit only.",
+    "Solidity parsing is a narrow restricted shape/body recognizer for the AAPQ sketch.",
     "Does not run solc or compare against Yul.",
     "Does not verify external-call, ABI, calldata, memory, gas, or reentrancy semantics.",
     "Verifier is an abstract oracle in the Lean models.",
@@ -128,6 +128,14 @@ _STORAGE_DECL = re.compile(
 _FUNCTION_DECL = re.compile(
     r"\bfunction\s+(\w+)\s*\([^)]*\)\s*(?:external|public)\b",
 )
+_FUNCTION_HEAD = re.compile(
+    r"\bfunction\s+(\w+)\s*\(([^)]*)\)([^{};]*)([;{])",
+    re.DOTALL,
+)
+
+
+class UnsupportedSolidityBody(ValueError):
+    """Raised when the AA/PQ Solidity sketch leaves the supported v1 shape."""
 
 
 def strip_solidity_comments(text: str) -> str:
@@ -170,6 +178,348 @@ def parse_solidity_shape(text: str) -> dict[str, dict[str, list[str]]]:
             "functions": _FUNCTION_DECL.findall(body),
         }
     return shapes
+
+
+def scan_balanced_body(text: str, open_brace_index: int, label: str) -> tuple[str, int]:
+    depth = 1
+    start = open_brace_index + 1
+    cursor = start
+    while cursor < len(text) and depth > 0:
+        char = text[cursor]
+        if char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+        cursor += 1
+    if depth != 0:
+        raise ValueError(f"Unbalanced braces while parsing {label!r}")
+    return text[start : cursor - 1], cursor
+
+
+def solidity_contract_bodies(text: str) -> dict[str, str]:
+    stripped = strip_solidity_comments(text)
+    bodies: dict[str, str] = {}
+    for match in _CONTRACT_HEAD.finditer(stripped):
+        name = match.group(1)
+        body, _ = scan_balanced_body(stripped, match.end() - 1, name)
+        bodies[name] = body
+    return bodies
+
+
+def solidity_param_names(params_text: str) -> list[str]:
+    names: list[str] = []
+    for raw_param in params_text.split(","):
+        param = raw_param.strip()
+        if not param:
+            continue
+        parts = param.split()
+        names.append(parts[-1])
+    return names
+
+
+def solidity_functions(contract_body: str) -> list[dict[str, Any]]:
+    functions: list[dict[str, Any]] = []
+    cursor = 0
+    while True:
+        match = _FUNCTION_HEAD.search(contract_body, cursor)
+        if match is None:
+            break
+        name = match.group(1)
+        params = solidity_param_names(match.group(2))
+        terminator = match.group(4)
+        if terminator == ";":
+            functions.append(
+                {"name": name, "params": params, "body": None, "statements": []}
+            )
+            cursor = match.end()
+            continue
+        body, end = scan_balanced_body(contract_body, match.end() - 1, name)
+        functions.append(
+            {
+                "name": name,
+                "params": params,
+                "body": body,
+                "statements": split_solidity_statements(body),
+            }
+        )
+        cursor = end
+    return functions
+
+
+def normalize_solidity_statement(statement: str) -> str:
+    return re.sub(r"\s+", "", statement.strip().rstrip(";"))
+
+
+def split_solidity_statements(body: str) -> list[str]:
+    statements: list[str] = []
+    start = 0
+    paren_depth = 0
+    for cursor, char in enumerate(body):
+        if char == "(":
+            paren_depth += 1
+        elif char == ")":
+            paren_depth -= 1
+        elif char == ";" and paren_depth == 0:
+            statement = normalize_solidity_statement(body[start:cursor])
+            if statement:
+                statements.append(statement)
+            start = cursor + 1
+    tail = normalize_solidity_statement(body[start:])
+    if tail:
+        statements.append(tail)
+    return statements
+
+
+def find_solidity_function(
+    functions: list[dict[str, Any]],
+    name: str,
+    params: list[str],
+    contract: str,
+) -> dict[str, Any]:
+    matches = [
+        function
+        for function in functions
+        if function.get("name") == name and function.get("params") == params
+    ]
+    if len(matches) != 1:
+        raise UnsupportedSolidityBody(
+            f"Expected exactly one {contract}.{name}({', '.join(params)}), "
+            f"found {len(matches)}."
+        )
+    function = matches[0]
+    if function.get("body") is None:
+        raise UnsupportedSolidityBody(
+            f"{contract}.{name}({', '.join(params)}) has no body."
+        )
+    return function
+
+
+def require_solidity_statements(
+    function: dict[str, Any],
+    contract: str,
+    expected: list[str],
+) -> None:
+    observed = function.get("statements", [])
+    if observed != expected:
+        name = function.get("name", "?")
+        raise UnsupportedSolidityBody(
+            f"{contract}.{name} body outside supported shape. "
+            f"expected={expected!r}, observed={observed!r}"
+        )
+
+
+def solidity_v1_body_summary(solidity_text: str) -> dict[str, Any]:
+    """Recognize the current v1 AA/PQ Solidity sketch body shape.
+
+    This is a deliberately tiny recognizer for the documentation fixture. It is
+    not a Solidity parser and only accepts the exact body shape needed to audit
+    `validateAndExecuteV1` against the Lean-owned v1 behavior summary.
+    """
+
+    bodies = solidity_contract_bodies(solidity_text)
+    required_contracts = ["PQVerifierWrapper", "AAWallet", "AAPQIntegration"]
+    for contract in required_contracts:
+        if contract not in bodies:
+            raise UnsupportedSolidityBody(f"Missing contract {contract!r}.")
+
+    wrapper_functions = solidity_functions(bodies["PQVerifierWrapper"])
+    wallet_functions = solidity_functions(bodies["AAWallet"])
+    integration_functions = solidity_functions(bodies["AAPQIntegration"])
+
+    wrapper_verify = find_solidity_function(
+        wrapper_functions,
+        "verify",
+        [
+            "publicKey",
+            "publicKeyLength",
+            "message",
+            "domain",
+            "signature",
+            "signatureLength",
+        ],
+        "PQVerifierWrapper",
+    )
+    wrapper_expected = [
+        "require(publicKeyLength==expectedPublicKeyLength)",
+        "require(signatureLength==expectedSignatureLength)",
+        "require(domain==expectedDomain)",
+        "require(pqVerifier(publicKey,message,domain,signature))",
+    ]
+    require_solidity_statements(wrapper_verify, "PQVerifierWrapper", wrapper_expected)
+
+    wallet_v1 = find_solidity_function(
+        wallet_functions,
+        "validateUserOp",
+        [
+            "opHash",
+            "userOpNonce",
+            "userOpDomain",
+            "signature",
+            "expectedWrapperAddress",
+        ],
+        "AAWallet",
+    )
+    wallet_v1_expected = [
+        "require(expectedWrapperAddress==wrapperAddress)",
+        "_validateUserOp(opHash,userOpNonce,userOpDomain,signature)",
+    ]
+    require_solidity_statements(wallet_v1, "AAWallet", wallet_v1_expected)
+
+    wallet_helper = find_solidity_function(
+        wallet_functions,
+        "_validateUserOp",
+        ["opHash", "userOpNonce", "userOpDomain", "signature"],
+        "AAWallet",
+    )
+    wallet_helper_expected = [
+        "require(msg.sender==address(uint160(uint256(uint160(entryPoint)))))",
+        "require(userOpNonce==nonce)",
+        "require(userOpDomain==domain)",
+        "require(pqVerifier(keyCommitment,opHash,domain,signature))",
+        "nonce=nonce+1",
+    ]
+    require_solidity_statements(wallet_helper, "AAWallet", wallet_helper_expected)
+
+    execute_user_op = find_solidity_function(
+        wallet_functions,
+        "executeUserOp",
+        ["opHash"],
+        "AAWallet",
+    )
+    execute_expected = ["lastOpHash=opHash"]
+    require_solidity_statements(execute_user_op, "AAWallet", execute_expected)
+
+    integration_v1 = find_solidity_function(
+        integration_functions,
+        "validateAndExecuteV1",
+        [
+            "publicKey",
+            "publicKeyLength",
+            "opHash",
+            "userOpNonce",
+            "userOpDomain",
+            "signature",
+            "signatureLength",
+            "expectedWrapperAddress",
+        ],
+        "AAPQIntegration",
+    )
+    integration_expected = [
+        "wrapper.verify(publicKey,publicKeyLength,opHash,userOpDomain,signature,signatureLength)",
+        "require(wallet.keyCommitment()==publicKey)",
+        "wallet.validateUserOp(opHash,userOpNonce,userOpDomain,signature,expectedWrapperAddress)",
+        "wallet.executeUserOp(opHash)",
+    ]
+    require_solidity_statements(
+        integration_v1, "AAPQIntegration", integration_expected
+    )
+
+    return {
+        "kind": "aapqSolidityV1BodySummary",
+        "phases": [
+            {
+                "contract": "PQVerifierWrapper",
+                "finalWrites": [],
+                "function": "verify",
+                "guards": [
+                    {"kind": "lengthCheck", "source": wrapper_expected[0]},
+                    {"kind": "lengthCheck", "source": wrapper_expected[1]},
+                    {"kind": "domainCheck", "source": wrapper_expected[2]},
+                    {"kind": "verifierCheck", "source": wrapper_expected[3]},
+                ],
+                "name": "wrapper",
+            },
+            {
+                "contract": "AAPQIntegration",
+                "finalWrites": [],
+                "function": "validateAndExecuteV1",
+                "guards": [
+                    {"kind": "keyCommitmentCheck", "source": integration_expected[1]}
+                ],
+                "name": "keyMatch",
+            },
+            {
+                "contract": "AAWallet",
+                "finalWrites": [
+                    {
+                        "name": "nonce",
+                        "slot": 0,
+                        "source": wallet_helper_expected[4],
+                        "value": "checkedAdd(nonce, 1)",
+                    }
+                ],
+                "function": "validateUserOp",
+                "guards": [
+                    {"kind": "wrapperAddressCheck", "source": wallet_v1_expected[0]},
+                    {"kind": "entryPointCheck", "source": wallet_helper_expected[0]},
+                    {"kind": "nonceCheck", "source": wallet_helper_expected[1]},
+                    {"kind": "domainCheck", "source": wallet_helper_expected[2]},
+                    {"kind": "verifierCheck", "source": wallet_helper_expected[3]},
+                ],
+                "name": "walletV1",
+            },
+            {
+                "contract": "AAWallet",
+                "finalWrites": [
+                    {
+                        "name": "lastOpHash",
+                        "slot": 4,
+                        "source": execute_expected[0],
+                        "value": "opHash",
+                    }
+                ],
+                "function": "executeUserOp",
+                "guards": [],
+                "name": "execute",
+            },
+        ],
+        "recognizedFunctions": [
+            "PQVerifierWrapper.verify",
+            "AAWallet.validateUserOp/v1",
+            "AAWallet._validateUserOp",
+            "AAWallet.executeUserOp",
+            "AAPQIntegration.validateAndExecuteV1",
+        ],
+        "version": 1,
+    }
+
+
+def phase_signature(summary: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        {
+            "finalWrites": [
+                {"name": write.get("name"), "slot": write.get("slot")}
+                for write in phase.get("finalWrites", [])
+            ],
+            "guards": [
+                guard.get("kind")
+                for guard in phase.get("guards", [])
+            ],
+            "name": phase.get("name"),
+        }
+        for phase in summary.get("phases", [])
+    ]
+
+
+def check_solidity_v1_body_summary(
+    body_summary: dict[str, Any],
+    v1_full_behavior_summary: dict[str, Any],
+) -> dict[str, str]:
+    observed = phase_signature(body_summary)
+    expected = phase_signature(v1_full_behavior_summary)
+    if observed != expected:
+        return failed(
+            "Solidity v1 body summary matches Lean v1 behavior",
+            "trusted Solidity body recognizer",
+            f"Body summary signature differs. expected={expected!r}, "
+            f"observed={observed!r}",
+        )
+    return passed(
+        "Solidity v1 body summary matches Lean v1 behavior",
+        "trusted Solidity body recognizer",
+        "Restricted Solidity v1 body summary has the same phase/guard/write "
+        "signature as the Lean-owned v1 behavior summary.",
+    )
 
 
 def check_solidity_v1_vocabulary(solidity_text: str) -> dict[str, str]:
@@ -1285,6 +1635,23 @@ def run_audit(
     solidity_text: str,
 ) -> dict[str, Any]:
     shape = parse_solidity_shape(solidity_text)
+    try:
+        body_summary = solidity_v1_body_summary(solidity_text)
+        body_summary_check = check_solidity_v1_body_summary(
+            body_summary,
+            v1_full_behavior_summary,
+        )
+    except UnsupportedSolidityBody as error:
+        body_summary = {
+            "error": str(error),
+            "kind": "unsupportedAapqSolidityV1BodySummary",
+            "version": 1,
+        }
+        body_summary_check = failed(
+            "Solidity v1 body summary matches Lean v1 behavior",
+            "trusted Solidity body recognizer",
+            str(error),
+        )
 
     checks: list[dict[str, str]] = []
     checks.append(
@@ -1330,6 +1697,7 @@ def run_audit(
         if functions:
             checks.append(check_solidity_functions(shape, contract, functions))
     checks.append(check_solidity_v1_vocabulary(solidity_text))
+    checks.append(body_summary_check)
 
     status = "passed" if all(check["status"] == "passed" for check in checks) else "failed"
     return {
@@ -1347,6 +1715,7 @@ def run_audit(
         ),
         "limitations": LIMITATIONS,
         "reportVersion": REPORT_VERSION,
+        "solidityV1BodySummary": body_summary,
         "solidityContracts": sorted(shape.keys()),
         "status": status,
         "verifierModelCalibrations": verifier_model_calibrations_view(certificate),
@@ -1369,6 +1738,29 @@ def format_markdown_report(report: dict[str, Any]) -> str:
             f"- [{icon}] **{check.get('name')}** ({check.get('trust')}): "
             f"{check.get('message')}"
         )
+    lines.append("")
+    body_summary = report.get("solidityV1BodySummary", {})
+    lines.append("## Solidity V1 Body Summary")
+    lines.append("")
+    if body_summary.get("kind") == "aapqSolidityV1BodySummary":
+        for phase in body_summary.get("phases", []):
+            guards = [guard.get("kind", "?") for guard in phase.get("guards", [])]
+            writes = [
+                f"{write.get('name', '?')}@{write.get('slot', '?')}"
+                for write in phase.get("finalWrites", [])
+            ]
+            lines.append(
+                f"- **{phase.get('name', '?')}** "
+                f"`{phase.get('contract', '?')}.{phase.get('function', '?')}`"
+            )
+            lines.append(
+                "  - guards: " + (", ".join(guards) if guards else "(none)")
+            )
+            lines.append(
+                "  - final writes: " + (", ".join(writes) if writes else "(none)")
+            )
+    else:
+        lines.append(f"- unsupported: {body_summary.get('error', 'unknown error')}")
     lines.append("")
     lines.append(
         format_crypto_assumption_graph_markdown(

@@ -163,6 +163,12 @@
       "name": "Solidity v1 source vocabulary",
       "status": "passed",
       "trust": "trusted Solidity shape"
+    },
+    {
+      "message": "Restricted Solidity v1 body summary has the same phase/guard/write signature as the Lean-owned v1 behavior summary.",
+      "name": "Solidity v1 body summary matches Lean v1 behavior",
+      "status": "passed",
+      "trust": "trusted Solidity body recognizer"
     }
   ],
   "cryptoAssumptionSupportGraph": [
@@ -219,18 +225,116 @@
     }
   ],
   "limitations": [
-    "AA/PQ source-shape audit only.",
-    "Solidity parsing is a narrow restricted shape extractor for the AAPQ sketch.",
+    "AA/PQ source-shape/body audit only.",
+    "Solidity parsing is a narrow restricted shape/body recognizer for the AAPQ sketch.",
     "Does not run solc or compare against Yul.",
     "Does not verify external-call, ABI, calldata, memory, gas, or reentrancy semantics.",
     "Verifier is an abstract oracle in the Lean models."
   ],
-  "reportVersion": 5,
+  "reportVersion": 6,
   "solidityContracts": [
     "AAPQIntegration",
     "AAWallet",
     "PQVerifierWrapper"
   ],
+  "solidityV1BodySummary": {
+    "kind": "aapqSolidityV1BodySummary",
+    "phases": [
+      {
+        "contract": "PQVerifierWrapper",
+        "finalWrites": [],
+        "function": "verify",
+        "guards": [
+          {
+            "kind": "lengthCheck",
+            "source": "require(publicKeyLength==expectedPublicKeyLength)"
+          },
+          {
+            "kind": "lengthCheck",
+            "source": "require(signatureLength==expectedSignatureLength)"
+          },
+          {
+            "kind": "domainCheck",
+            "source": "require(domain==expectedDomain)"
+          },
+          {
+            "kind": "verifierCheck",
+            "source": "require(pqVerifier(publicKey,message,domain,signature))"
+          }
+        ],
+        "name": "wrapper"
+      },
+      {
+        "contract": "AAPQIntegration",
+        "finalWrites": [],
+        "function": "validateAndExecuteV1",
+        "guards": [
+          {
+            "kind": "keyCommitmentCheck",
+            "source": "require(wallet.keyCommitment()==publicKey)"
+          }
+        ],
+        "name": "keyMatch"
+      },
+      {
+        "contract": "AAWallet",
+        "finalWrites": [
+          {
+            "name": "nonce",
+            "slot": 0,
+            "source": "nonce=nonce+1",
+            "value": "checkedAdd(nonce, 1)"
+          }
+        ],
+        "function": "validateUserOp",
+        "guards": [
+          {
+            "kind": "wrapperAddressCheck",
+            "source": "require(expectedWrapperAddress==wrapperAddress)"
+          },
+          {
+            "kind": "entryPointCheck",
+            "source": "require(msg.sender==address(uint160(uint256(uint160(entryPoint)))))"
+          },
+          {
+            "kind": "nonceCheck",
+            "source": "require(userOpNonce==nonce)"
+          },
+          {
+            "kind": "domainCheck",
+            "source": "require(userOpDomain==domain)"
+          },
+          {
+            "kind": "verifierCheck",
+            "source": "require(pqVerifier(keyCommitment,opHash,domain,signature))"
+          }
+        ],
+        "name": "walletV1"
+      },
+      {
+        "contract": "AAWallet",
+        "finalWrites": [
+          {
+            "name": "lastOpHash",
+            "slot": 4,
+            "source": "lastOpHash=opHash",
+            "value": "opHash"
+          }
+        ],
+        "function": "executeUserOp",
+        "guards": [],
+        "name": "execute"
+      }
+    ],
+    "recognizedFunctions": [
+      "PQVerifierWrapper.verify",
+      "AAWallet.validateUserOp/v1",
+      "AAWallet._validateUserOp",
+      "AAWallet.executeUserOp",
+      "AAPQIntegration.validateAndExecuteV1"
+    ],
+    "version": 1
+  },
   "status": "passed",
   "verifierModelCalibrations": [
     {

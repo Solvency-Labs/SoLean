@@ -150,10 +150,12 @@ results.
 - `SoLean.Source.Shape` defines shared source-shape audit metadata used by
   Counter and AA/PQ artifacts. It is not a parser and does not add supported
   Solidity syntax.
-- The AA/PQ Solidity sketch audit is a trusted restricted shape check. It now
+- The AA/PQ Solidity sketch audit is a trusted restricted shape/body check. It
   requires the v1 names `lastOpHash`, `wrapperAddress`,
-  `expectedWrapperAddress`, `executeUserOp`, and `validateAndExecuteV1`, but it
-  still does not verify Solidity function bodies or Solidity semantics.
+  `expectedWrapperAddress`, `executeUserOp`, and `validateAndExecuteV1`, and it
+  recognizes the current v1 body shape exactly enough to compare a body summary
+  to the Lean-owned v1 behavior summary. It still does not verify Solidity
+  parsing generally or Solidity semantics.
 - Solidity parsing and generation of SoLean models are not implemented beyond
   an explicit restricted Counter-subset parser.
 - Yul parsing is limited to the restricted subset in `docs/yul-subset.md`.

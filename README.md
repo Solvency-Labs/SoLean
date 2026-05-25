@@ -209,7 +209,7 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   not full EVM CALL (no per-opcode gas schedule, no code resolution,
   no cross-contract reentrant callbacks).
 - An AA/PQ source-shape audit script (`scripts/check_aapq_source.py`) that
-  loads the four Lean-owned AA/PQ artifacts, parses the restricted Solidity
+  loads the Lean-owned AA/PQ artifacts, parses the restricted Solidity
   sketch, and emits a deterministic JSON or Markdown report cross-checking
   contract/storage/function names, the certificate's embedded behavior
   summary, structural scope of every operand in both the short and full
@@ -219,8 +219,11 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   summary includes the expected `execute` phase and extends the short
   summary's first three phases. Markdown reports and the demo render that
   graph as a grouped trust-boundary view. The same audit checks
-  `verifierModelCalibrations` proof references and non-claim text. The
-  report has a committed golden fixture at `tests/golden/AAPQ.source.v5.json`.
+  `verifierModelCalibrations` proof references and non-claim text. It also
+  recognizes the restricted v1 Solidity body shape for
+  `validateAndExecuteV1` and compares its phase/guard/write signature to the
+  Lean-owned v1 behavior summary. The report has a committed golden fixture at
+  `tests/golden/AAPQ.source.v6.json`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.
   - Yul subset classification for supported/unsupported compiler output.
@@ -352,7 +355,7 @@ still a restricted Solidity subset rather than an EVM semantics.
 │   └── yul_subset.py
 └── tests/
     ├── golden/
-    │   ├── AAPQ.source.v5.json
+    │   ├── AAPQ.source.v6.json
     │   ├── Counter.bridge.v7.json
     │   └── Counter.solean.yul
     ├── README.md
@@ -566,20 +569,21 @@ lake env lean --run SoLean/AAPQArtifactsMain.lean full-behavior-summary-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean v1-full-behavior-summary-json
 ```
 
-Run the AA/PQ source-shape audit (deterministic JSON report by default):
+Run the AA/PQ source-shape/body audit (deterministic JSON report by default):
 
 ```bash
 python3 scripts/check_aapq_source.py
 python3 scripts/check_aapq_source.py --format markdown
 ```
 
-The script invokes `lake` to fetch the three Lean-owned artifacts, parses
-`examples/AAPQIntegration.sol` with a narrow restricted shape extractor, and
-cross-checks contract/storage/function names plus the certificate's embedded
-behavior summary. It is a Solidity-shape-only audit; it does not run solc and
-does not claim Yul or semantic equivalence.
+The script invokes `lake` to fetch the Lean-owned artifacts, parses
+`examples/AAPQIntegration.sol` with a narrow restricted shape/body recognizer,
+and cross-checks contract/storage/function names, the certificate's embedded
+behavior summary, and the v1 Solidity body summary against the Lean-owned v1
+behavior summary. It does not run solc and does not claim Yul or semantic
+equivalence.
 
-Run the full AA/PQ source-shape research demo (build + tests + artifacts +
+Run the full AA/PQ source-shape/body research demo (build + tests + artifacts +
 markdown report + trust-boundary summary):
 
 ```bash

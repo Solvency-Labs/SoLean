@@ -9,6 +9,7 @@ from pathlib import Path
 
 from scripts.check_aapq_source import (
     REPORT_VERSION,
+    UnsupportedSolidityBody,
     artifact_hash,
     check_behavior_summary_operand_scope,
     check_certificate_embeds_behavior_summary,
@@ -21,6 +22,7 @@ from scripts.check_aapq_source import (
     check_integration_variants,
     check_protocol_boundary_assumptions,
     check_phase_proof_references,
+    check_solidity_v1_body_summary,
     check_solidity_v1_vocabulary,
     check_source_contracts_match_certificate,
     check_under_oracle_assumption_theorems_covered,
@@ -35,6 +37,7 @@ from scripts.check_aapq_source import (
     render_condition,
     render_value,
     run_audit,
+    solidity_v1_body_summary,
     stable_json,
     walk_operands_in_condition,
     walk_operands_in_value,
@@ -48,7 +51,7 @@ from scripts.demo_aapq_source import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOLIDITY_PATH = REPO_ROOT / "examples" / "AAPQIntegration.sol"
-GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v5.json"
+GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v6.json"
 
 
 @lru_cache(maxsize=None)
@@ -104,6 +107,32 @@ class SolidityShapeParserTests(unittest.TestCase):
         result = check_solidity_v1_vocabulary(solidity)
         self.assertEqual(result["status"], "failed")
         self.assertIn("wrapperAddress", result["message"])
+
+    def test_v1_body_summary_matches_lean_signature(self) -> None:
+        body = solidity_v1_body_summary(SOLIDITY_PATH.read_text())
+        lean = cached_artifact("v1-full-behavior-summary-json")
+        result = check_solidity_v1_body_summary(body, lean)
+        self.assertEqual(result["status"], "passed", result)
+        self.assertEqual(
+            [phase["name"] for phase in body["phases"]],
+            ["wrapper", "keyMatch", "walletV1", "execute"],
+        )
+
+    def test_v1_body_summary_rejects_missing_wrapper_guard(self) -> None:
+        solidity = SOLIDITY_PATH.read_text().replace(
+            "        require(expectedWrapperAddress == wrapperAddress);\n",
+            "",
+        )
+        with self.assertRaisesRegex(UnsupportedSolidityBody, "outside supported shape"):
+            solidity_v1_body_summary(solidity)
+
+    def test_v1_body_summary_rejects_wrong_execute_write(self) -> None:
+        solidity = SOLIDITY_PATH.read_text().replace(
+            "lastOpHash = opHash;",
+            "nonce = opHash;",
+        )
+        with self.assertRaisesRegex(UnsupportedSolidityBody, "executeUserOp body"):
+            solidity_v1_body_summary(solidity)
 
 
 class CertificateCrossCheckTests(unittest.TestCase):
@@ -277,6 +306,41 @@ class AuditIntegrationTests(unittest.TestCase):
             any(check["name"] == "Solidity v1 source vocabulary" for check in failing)
         )
 
+    def test_audit_fails_when_solidity_body_drifts(self) -> None:
+        source = cached_artifact("source-json")
+        v1_source = cached_artifact("v1-source-json")
+        certificate = cached_artifact("source-certificate-json")
+        summary = cached_artifact("behavior-summary-json")
+        full_summary = cached_artifact("full-behavior-summary-json")
+        v1_full_summary = cached_artifact("v1-full-behavior-summary-json")
+        solidity = SOLIDITY_PATH.read_text().replace(
+            "        wallet.executeUserOp(opHash);\n",
+            "",
+        )
+
+        report = run_audit(
+            source,
+            v1_source,
+            certificate,
+            summary,
+            full_summary,
+            v1_full_summary,
+            solidity,
+        )
+        self.assertEqual(report["status"], "failed")
+        failing = [check for check in report["checks"] if check["status"] == "failed"]
+        self.assertTrue(
+            any(
+                check["name"]
+                == "Solidity v1 body summary matches Lean v1 behavior"
+                for check in failing
+            )
+        )
+        self.assertEqual(
+            report["solidityV1BodySummary"]["kind"],
+            "unsupportedAapqSolidityV1BodySummary",
+        )
+
     def test_main_emits_stable_json_and_zero_exit(self) -> None:
         buffer = io.StringIO()
         with redirect_stdout(buffer):
@@ -293,6 +357,8 @@ class AuditIntegrationTests(unittest.TestCase):
         self.assertIn("# AA/PQ Source-Shape Report", text)
         self.assertIn("Status: **passed**", text)
         self.assertIn("## Crypto Assumption Support Graph", text)
+        self.assertIn("## Solidity V1 Body Summary", text)
+        self.assertIn("walletV1", text)
         self.assertIn("VerifierSignatureBinding", text)
         self.assertIn("## Verifier Model Calibrations", text)
         self.assertIn("AllFieldsEqualToyVerifier", text)

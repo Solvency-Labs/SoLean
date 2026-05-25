@@ -172,8 +172,10 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   source certificate carries the behavior summary as its
   `expectedBehaviorSummary` field.
 - A hand-written Solidity sketch lives at `examples/AAPQIntegration.sol` as
-  documentation/audit fixture only; it is not parsed or compared to Lean.
-- `scripts/check_aapq_source.py` cross-checks the four Lean-owned AA/PQ
+  documentation/audit fixture only. The audit performs restricted
+  source-shape/body recognition for the current v1 sketch; this is a trusted
+  recognizer, not verified Solidity parsing.
+- `scripts/check_aapq_source.py` cross-checks the Lean-owned AA/PQ
   artifacts against the Solidity sketch and against each other (certificate's
   `expectedBehaviorSummary` vs. the standalone behavior summary), walks
   the behavior summary's structured operands (both short and full) to
@@ -184,10 +186,14 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   and demo output, checks `verifierModelCalibrations`, and verifies the
   full-behavior-summary contains an `execute` phase with the
   expected `lastOpHash` finalWrite and extends the standalone three-phase
-  summary. The report is committed as `tests/golden/AAPQ.source.v5.json`
-  (reportVersion 4).
+  summary. The v1 Solidity body recognizer collapses the sketch's
+  `verify`, v1 `validateUserOp`, `_validateUserOp`, `executeUserOp`, and
+  `validateAndExecuteV1` bodies into a deterministic four-phase body summary
+  and checks its phase/guard/write signature against the Lean-owned v1
+  behavior summary. The report is committed as
+  `tests/golden/AAPQ.source.v6.json` (reportVersion 6).
 - `scripts/demo_aapq_source.py` is a one-command research demo that runs
-  `lake build`, the AA/PQ-focused Python tests, the three artifact smokes,
+  `lake build`, the AA/PQ-focused Python tests, the Lean artifact smokes,
   the markdown source-shape report, and a Trust Boundaries summary sourced
   from the Lean-owned source certificate. See `docs/aapq-demo.md` for the
   current claims and non-claims.
@@ -525,7 +531,9 @@ graph is now visible in the Markdown/demo trust-boundary surface:
   `source-certificate-json` artifacts with theorem references and explicit
   out-of-scope items.
 - `examples/AAPQIntegration.sol` is a hand-written Solidity fixture matching
-  the source shape; it is not parsed or compared to Lean.
+  the source shape. The current audit recognizes the v1 body shape and compares
+  that body summary to Lean-owned artifacts, but this remains trusted Python
+  recognition rather than verified Solidity parsing.
 - `SoLean.Source.Shape` now owns the shared Solidity-shaped source metadata
   vocabulary, and both Counter and AA/PQ artifacts use it.
 - `AAPQIntegration.callVerifierWrapper` and the `ViaCall` variants make the
@@ -627,18 +635,17 @@ FalconSimpleWallet v2.3 v1 behavior summary is now landed: the
 structured behavior summary and checked by the Python audit via Lean
 reflection theorem references.
 
-FalconSimpleWallet v2.5 Solidity sketch parity is now landed:
+FalconSimpleWallet v2.6 restricted Solidity body recognition is now landed:
 `v1-source-json` declares `FalconSimpleWallet.lastOpHash` slot 4,
 `wrapperAddress` slot 5, `expectedWrapperAddress` input, and the v1
 integration flow names the wallet v1 call plus `executeUserOp(opHash)`.
 `examples/AAPQIntegration.sol` mirrors that vocabulary, and the trusted Python
-shape audit fails if those v1 names drift.
+shape/body audit now fails if those v1 names or bodies drift from the
+Lean-owned v1 behavior signature.
 
-The next best qualitative task is FalconSimpleWallet v2.6 restricted Solidity
-body recognition: emit an auditable body-shape summary for
-`AAWallet.validateUserOp(..., expectedWrapperAddress)` and
-`AAPQIntegration.validateAndExecuteV1`, then compare it to the Lean-owned v1
-behavior summary.
+The next best qualitative task is FalconSimpleWallet v2.7 source-body trace
+audit: keep the same restricted recognizer, but emit ordered per-statement trace
+entries with rule names and Lean proof references where available.
 
 ### FalconSimpleWallet shape v0 (landed)
 
