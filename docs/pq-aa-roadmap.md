@@ -446,17 +446,29 @@ What landed:
   EIP-7701 pending), EIP-7702 risk, signature aggregation, and the
   full gas schedule.
 
-## Next Milestone: FalconSimpleWallet v2.2 manifest hygiene
+## FalconSimpleWallet v2.2 manifest hygiene *(landed)*
 
 Reduce duplication in the AA/PQ source certificate and audit:
 
-1. Factor common theorem-reference checks for nested certificate sections.
-2. Make the `falconSimpleWalletShape` audit report which section introduced
-   each theorem reference.
-3. Keep the exported JSON shape stable unless the new structure catches a real
-   ambiguity.
-4. Leave Solidity/Yul generation untouched; this is a trust-boundary cleanup
+1. Factored common theorem-reference checks for nested certificate sections.
+2. Made the `falconSimpleWalletShape` audit report which section introduced
+   each theorem reference when a reference dangles.
+3. Kept the exported JSON shape stable.
+4. Left Solidity/Yul generation untouched; this was a trust-boundary cleanup
    milestone.
+
+## Next Milestone: FalconSimpleWallet v2.3 v1 behavior summary
+
+Make the `validateAndExecuteV1` address check visible in the structured
+behavior layer, not only in theorem/artifact metadata:
+
+1. Add a Lean-owned v1 behavior summary that includes the
+   `expectedWrapperAddress == wallet.wrapperAddress` guard.
+2. Add a reflection theorem tying that v1 summary to the existing v1 Lean
+   program path.
+3. Extend the Python audit to compare/check the v1 summary without widening the
+   Solidity parser.
+4. Keep the verifier cryptography and real EVM/Yul boundaries unchanged.
 
 ## Phase 4: Bridge To Real Solidity And solc
 

@@ -777,6 +777,9 @@ class FalconSimpleWalletShapeAuditTests(unittest.TestCase):
         result = check_falcon_simple_wallet_shape(cert)
         self.assertEqual(result["status"], "failed")
         self.assertIn("M.missing_composite", result["message"])
+        self.assertIn(
+            "falconSimpleWalletShape.compositeSafetyTheorem", result["message"]
+        )
 
     def test_missing_deployment_wrapper_preservation_fails(self) -> None:
         cert = copied_json(cached_artifact("source-certificate-json"))
@@ -811,6 +814,19 @@ class FalconSimpleWalletShapeAuditTests(unittest.TestCase):
         result = check_falcon_simple_wallet_shape(cert)
         self.assertEqual(result["status"], "failed")
         self.assertIn("v1CompositeSafety", result["message"])
+
+    def test_dangling_v1_composite_safety_theorem_names_section(self) -> None:
+        cert = copied_json(cached_artifact("source-certificate-json"))
+        cert["falconSimpleWalletShape"]["v1CompositeSafety"]["theorem"] = (
+            "M.missing_v1_safety"
+        )
+        result = check_falcon_simple_wallet_shape(cert)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("M.missing_v1_safety", result["message"])
+        self.assertIn(
+            "falconSimpleWalletShape.v1CompositeSafety.theorem",
+            result["message"],
+        )
 
 
 class DemoTests(unittest.TestCase):

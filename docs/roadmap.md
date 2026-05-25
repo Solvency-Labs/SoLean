@@ -618,9 +618,13 @@ yields the reviewer-facing composite safety bundle plus the expected wrapper
 address check as a first-class successful-execution fact.
 ```
 
-The next best qualitative task is FalconSimpleWallet v2.2 manifest hygiene:
-factor the repeated certificate theorem-reference checks while keeping the
-model and JSON shape stable.
+FalconSimpleWallet v2.2 manifest hygiene is now landed: repeated
+certificate theorem-reference checks are factored, and dangling theorem
+references now identify the nested section/field that introduced them.
+
+The next best qualitative task is FalconSimpleWallet v2.3 v1 behavior
+summary: make the `validateAndExecuteV1` wrapper-address guard visible in
+the structured behavior-summary layer, not only in theorem/artifact metadata.
 
 ### FalconSimpleWallet shape v0 (landed)
 
