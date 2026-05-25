@@ -9,6 +9,14 @@ def keyCommitmentSlot : Slot := 1
 def domainSlot : Slot := 2
 def entryPointSlot : Slot := 3
 def lastOpHashSlot : Slot := 4
+/-- Declared storage slot for the verifier wrapper's address.
+
+The current `validateProgram` does not read this slot; it exists so the
+FalconSimpleWallet deployment view can declare the wallet's
+`wrapperAddress` alongside its other configuration slots. A future
+milestone can extend `validateProgram` to assert the wallet's stored
+wrapper address matches the address the integration actually calls. -/
+def wrapperAddressSlot : Slot := 5
 
 def nonceExpr : ValueExpr :=
   .slot nonceSlot

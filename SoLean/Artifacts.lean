@@ -1,6 +1,7 @@
 import SoLean.Bridge
 import SoLean.Examples.AAPQSource
 import SoLean.Examples.CounterCompiler
+import SoLean.Examples.FalconSimpleWallet
 import SoLean.Examples.SchemeParameters
 import SoLean.Examples.StructuredVerifier
 import SoLean.Examples.ToyVerifier
@@ -885,6 +886,46 @@ def aapqSourceCertificate : Json :=
         ])
       ]
     ]),
+    ("falconSimpleWalletShape", .obj [
+      ("deploymentRecord", .str
+        "SoLean.Examples.FalconSimpleWallet.falconSimpleWalletDeployment"),
+      ("kind", .str "falconSimpleWalletShape"),
+      ("walletName", .str
+        Examples.FalconSimpleWallet.falconSimpleWalletDeployment.wallet.name),
+      ("walletFunction", .str
+        Examples.FalconSimpleWallet.falconSimpleWalletDeployment.wallet.functionName),
+      ("scheme", .str
+        Examples.FalconSimpleWallet.falconSimpleWalletDeployment.scheme.name),
+      ("storedSlots", .arr
+        (Examples.FalconSimpleWallet.falconSimpleWalletDeployment.wallet.storage.map
+          AAPQ.storageSlotJson)),
+      ("crossStorageAssumption", .obj [
+        ("leanReference", .str
+          "SoLean.Examples.FalconSimpleWallet.WalletStoresWrapperAddress"),
+        ("name", .str "WalletStoresWrapperAddress"),
+        ("statement", .str
+          "The wallet's wrapperAddressSlot stores the same EVM address the integration's EvmEnv configures as wrapperAddress. Bridges the modeled wallet-storage view to the runtime EVM call boundary.")
+      ]),
+      ("wrapperCalibrationAssumption", .obj [
+        ("leanReference", .str
+          "SoLean.Examples.FalconSimpleWallet.WrapperCalibratedForScheme"),
+        ("name", .str "WrapperCalibratedForScheme"),
+        ("statement", .str
+          "The wrapper's expectedPublicKeyLengthSlot and expectedSignatureLengthSlot store the modeled byte-length UInt256s for the deployment's SchemeParameters (publicKeyByteLengthUInt256 / signatureByteLengthUInt256). Ties the wrapper storage to the named scheme parameters.")
+      ]),
+      ("compositeSafetyTheorem", .str
+        "SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_composite_safety")
+    ]),
+    ("falconSimpleWalletNonClaims", stringsJson [
+      "Real Falcon (or any PQ scheme) cryptographic security — the verifier stays an oracle / structured-verifier model.",
+      "EVM-friendly hashing choices (Keccak-256 vs SHAKE-256) for opHash and EIP-712-style domain binding are not modeled at the byte level; opHash is a UInt256 placeholder.",
+      "Byte-level ABI parsing of calldata: the modeled calldata layout is one word per argument + a selector word, not real ABI bytes/padding.",
+      "Full ERC-4337 EntryPoint / paymaster / aggregator / bundler machinery: the integration covers the wallet ↔ wrapper boundary only.",
+      "Bundler ECDSA dependence: the outer bundler transaction in ERC-4337 today still relies on ECDSA. Protocol-level / native-AA work (RIP-7560, EIP-7701-like) would close this; SoLean leaves it as an explicit non-claim.",
+      "EIP-7702 caveat: delegating an EOA to a smart-wallet implementation can add PQ-AA behavior, but the original ECDSA key remains valid for signing — a PQ-resilience risk SoLean does not resolve.",
+      "Signature aggregation (BLS-style or PQ-aggregate) is out of scope.",
+      "Full per-opcode EVM gas schedule (calldata bytes, refunds, memory expansion) beyond the single-cost gas-aware variant."
+    ]),
     ("kind", .str "aapqSourceCertificate"),
     ("lean", .str "SoLean.Examples.AAPQSource.integratedContract"),
     ("proofReferences", stringsJson [
@@ -960,6 +1001,7 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.SchemeParameters.wrapper_calibrated_for_one_scheme_rejects_other_signature_length",
       "SoLean.Examples.SchemeParameters.falcon512_calibrated_wrapper_rejects_mlDsa44_signature_length",
       "SoLean.Examples.SchemeParameters.validateAndExecute_falcon512_calibrated_rejects_mlDsa44_signature_length",
+      "SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_composite_safety",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_eq_under_enough_gas",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_outOfGas_when_insufficient",
       "SoLean.Examples.AAPQEvmCallGas.validateIntegratedViaEvmCallWithGas_is_success_iff_validateIntegrated_is_success",

@@ -390,55 +390,59 @@ string without breaking the Lean build or the Python audit.
 
 This is the first target that should feel like a serious Ethereum research demo.
 
-## Next Milestone: FalconSimpleWallet shape v0
+## FalconSimpleWallet shape v0 (landed)
 
-Reframe the existing AA/PQ proofs around the
+The existing AA/PQ proofs have been reframed around the
 **FalconSimpleWallet**-style PQ-AA deployment so the certificate
 exposes a wallet shape an ERC-4337 reviewer recognizes, with loud
 non-claims for the boundaries SoLean does not cross.
 
-Concrete scope (mostly re-presentation + targeted Lean tweaks; the
-underlying proofs already exist):
+What landed:
 
-1. **AA-facing source-shape view.** Add or rename an artifact closer
-   to `validateUserOp` (the AA-facing entry point name) so the source
-   certificate exposes the wallet shape an ERC-4337 reviewer
-   recognizes. Surface as a new entry alongside the existing
-   `AAPQSource.integratedContract`.
-2. **Wallet storage layout.** Make the wallet's `wrapperAddress` slot
-   explicit on the wallet side (currently held in `EvmEnv`, not in
-   wallet storage). Slots: key commitment / public-key commitment,
-   nonce, domain, entry point, verifier wrapper address.
-3. **Verifier-wrapper call shape.** Surface the wrapper invocation as
-   validating an explicit
-   `(publicKey, opHash, domain, signature, publicKeyLength,
-    signatureLength)` tuple, with a named FalconSimpleWallet
-   calibration referencing the relevant
-   `SchemeParameters` (`falcon512` first).
-4. **Composite FalconSimpleWallet safety theorem.** Bundle existing
-   claims into a single theorem visible to AA reviewers: a successful
-   `validateAndExecute` implies (a) the public key matches the
-   wallet's stored commitment, (b) the verifier wrapper accepted the
-   exact `(publicKey, opHash, domain, signature)` tuple, (c) the
-   nonce advanced through checked arithmetic, (d) the `opHash` is
-   recorded at `lastOpHashSlot`, and (e) the same `UserOp` cannot
-   replay on the post-state.
-5. **Loud non-claims** baked into the certificate's assumption /
-   non-claim surface:
-   - real Falcon arithmetic / cryptographic security
-   - byte parsing of ABI calldata, real Keccak-vs-SHAKE choice
-   - full ERC-4337 bundler / EntryPoint / paymaster / aggregator
-     semantics
-   - protocol-level bundler ECDSA dependence (RIP-7560 / EIP-7701
-     pending)
-   - EIP-7702 ECDSA-key-still-valid risk
-   - signature aggregation, full gas schedule beyond the single-cost
-     model
+- `SoLean.Examples.FalconSimpleWallet.FalconSimpleWalletDeployment`
+  is the AA-facing deployment record. The default
+  `falconSimpleWalletDeployment` bundles the wallet contract
+  (named "FalconSimpleWallet" with function "validateUserOp"), the
+  wrapper contract, the Falcon-512 scheme parameters, and the
+  wrapper's EVM address.
+- `AAWallet.wrapperAddressSlot` (slot 5) declared on the wallet
+  side. `validateProgram` does not read it yet; v1 will.
+- `WalletStoresWrapperAddress` and `WrapperCalibratedForScheme` are
+  the named cross-storage / scheme-calibration assumptions surfaced
+  in the certificate.
+- `falconSimpleWallet_composite_safety` produces a
+  `FalconSimpleWalletSafety` record from a successful
+  `validateAndExecute`, bundling: (a) public key matches the
+  wallet's stored commitment, (b) abstract verifier accepted the
+  exact `(publicKey, opHash, domain, signature)` tuple, (c) the
+  nonce advanced through checked arithmetic, (d) the `opHash` is
+  recorded at `lastOpHashSlot`, (e) the same `UserOp` cannot replay
+  on the post-state.
+- The source certificate has a new `falconSimpleWalletShape` field
+  carrying the deployment view + assumption references, and a new
+  `falconSimpleWalletNonClaims` field enumerating real Falcon
+  crypto, hashing choice, ABI byte parsing, ERC-4337 EntryPoint /
+  paymaster / aggregator, bundler ECDSA dependence (RIP-7560 /
+  EIP-7701 pending), EIP-7702 risk, signature aggregation, and the
+  full gas schedule.
 
-After Phase 5/6 verifier-shape work, FalconSimpleWallet shape v1
-would lift the loose `wrapperAddress` from `EvmEnv` into a
-wallet-storage anchor with a cross-storage equality assumption,
-giving the wallet a fully self-describing deployment view.
+## Next Milestone: FalconSimpleWallet shape v1
+
+Lift `wrapperAddress` from a loose `EvmEnv` field to a wallet-side
+constraint that `validateProgram` actually enforces:
+
+1. Extend `AAWallet.validateProgram` with a `require msg.sender == ...`
+   or `require wrapperAddress == <expected>` check (TBD which is most
+   AA-realistic).
+2. Update `IntegratedPost` / `ValidationPost` accordingly.
+3. Prove that under `WalletStoresWrapperAddress`, the integrated flow
+   forces the wallet's stored address to match the address the
+   integration calls.
+4. Surface a new "wrapper address matches stored slot" conjunct in
+   `falconSimpleWallet_composite_safety` (v1 version).
+
+This finishes the wallet shape: every slot the FalconSimpleWallet
+deployment declares is also used by `validateProgram`.
 
 ## Phase 4: Bridge To Real Solidity And solc
 

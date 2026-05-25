@@ -613,46 +613,45 @@ finite sub-domain or moving to a richer codomain (e.g., tuples).
 The next best qualitative task is:
 
 ```text
-FalconSimpleWallet shape v0 — reframe and consolidate the existing AA/PQ
-proofs around the Antonio-Sanso-style PQ-AA reference deployment, with
-loud non-claims for ECDSA, EIP-7702, ERC-4337 bundlers, real Falcon
-arithmetic, byte parsing, and EVM-friendly hashing choices.
+FalconSimpleWallet shape v1 — lift the loose `wrapperAddress` from
+EvmEnv into a wallet-storage anchor under WalletStoresWrapperAddress,
+and extend `validateProgram` to assert wallet's stored wrapper address
+matches the address the integration calls.
 ```
 
-### FalconSimpleWallet shape v0 (next milestone)
+### FalconSimpleWallet shape v0 (landed)
 
-The Lean-side proofs already cover most of this shape (key commitment,
-nonce, domain, entry point, integrated validateAndExecute, replay
-failure, witness extraction). The milestone is mostly *re-presentation*
-and explicit non-claim wiring:
+Reframed and consolidated the AA/PQ proofs around the Antonio-Sanso-style
+PQ-AA reference deployment:
 
-1. **AA-facing source-shape view.** Add or rename an artifact closer to
-   `validateUserOp` so the certificate exposes the wallet shape an
-   ERC-4337 reviewer recognizes.
-2. **Wallet storage layout.** Make the wallet's `wrapperAddress` slot
-   explicit (currently held in `EvmEnv`, not wallet storage). Slots:
-   key commitment / public-key commitment, nonce, domain, entryPoint,
-   verifier wrapper address.
-3. **Verifier-wrapper call.** Surface the wrapper invocation as
-   validating an explicit `(publicKey, opHash, domain, signature,
-   publicKeyLength, signatureLength)` tuple, with a named
-   FalconSimpleWallet calibration referencing the relevant
-   `SchemeParameters` (`falcon512` initially).
-4. **Composite safety theorem.** Bundle the existing claims into a
-   single FalconSimpleWallet-facing theorem:
-   successful `validateAndExecute` implies (a) the public key matches
-   the wallet's commitment, (b) the verifier wrapper accepted the exact
-   tuple, (c) the nonce advanced through checked arithmetic, (d) the
-   `opHash` is recorded at `lastOpHashSlot`, and (e) the same `UserOp`
-   cannot replay on the post-state.
-5. **Loud non-claims** baked into the certificate:
-   - real Falcon arithmetic / cryptographic security
-   - byte parsing of ABI calldata, real Keccak-vs-SHAKE choice
-   - full ERC-4337 bundler / EntryPoint semantics
-   - protocol-level bundler ECDSA dependence (RIP-7560 / EIP-7701
-     pending)
-   - EIP-7702 ECDSA-key-still-valid risk
-   - signature aggregation, gas schedule beyond the single-cost model
+1. **AA-facing source-shape view** *(landed)* —
+   `SoLean.Examples.FalconSimpleWallet.falconSimpleWalletDeployment`
+   bundles the wallet contract (re-named "FalconSimpleWallet" /
+   "validateUserOp"), wrapper contract, scheme parameters, and the
+   wrapper's EVM address. Surfaced as the new
+   `falconSimpleWalletShape` field in the source certificate.
+2. **Wallet storage layout** *(landed)* — `AAWallet.wrapperAddressSlot`
+   (slot 5) declared on the wallet side. The deployment view's
+   wallet contract carries the new `wrapperAddress` storage entry.
+   `validateProgram` doesn't read it yet (v1 will).
+3. **Verifier-wrapper call shape with calibration** *(landed)* —
+   `WrapperCalibratedForScheme` is the named assumption tying the
+   wrapper's `expectedPublicKeyLengthSlot` and
+   `expectedSignatureLengthSlot` to a `SchemeParameters` instance
+   (Falcon-512 by default).
+4. **Composite safety theorem** *(landed)* —
+   `falconSimpleWallet_composite_safety` produces a single
+   `FalconSimpleWalletSafety` record from a successful
+   `validateAndExecute`, bundling: (a) key match, (b) verifier
+   accepted the exact tuple, (c) nonce advanced through checked
+   arithmetic, (d) opHash recorded at `lastOpHashSlot`, (e) replay
+   cannot succeed on the post-state.
+5. **Loud non-claims** *(landed)* — new `falconSimpleWalletNonClaims`
+   field in the certificate enumerates: real Falcon / PQ
+   cryptographic security; Keccak-vs-SHAKE hashing choice; byte-level
+   ABI parsing; full ERC-4337 EntryPoint / paymaster / aggregator;
+   bundler ECDSA dependence; EIP-7702 ECDSA-key-still-valid risk;
+   signature aggregation; full gas schedule.
 
 Counter stays as a calibration case. ERC-20 stays optional. Do not
 broaden into generic DeFi.
@@ -660,8 +659,9 @@ broaden into generic DeFi.
 ### Already-completed lanes (kept for reference)
 
 Work is organized into named lanes. Lanes A, B, C below are
-feature-complete; FalconSimpleWallet shape v0 (above) is the new
-in-flight milestone.
+feature-complete; FalconSimpleWallet shape v0 (above) is now landed
+and v1 is the next milestone (wallet's stored wrapperAddress used by
+`validateProgram`).
 
 ### Lane A — Deepen the EVM CALL boundary (in flight)
 
