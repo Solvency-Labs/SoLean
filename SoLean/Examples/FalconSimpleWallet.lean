@@ -214,6 +214,32 @@ theorem falconSimpleWalletDeployment_rejects_mlDsa44_signature_length
     SchemeParameters.validateAndExecute_falcon512_calibrated_rejects_mlDsa44_signature_length
       env input wrapperStorage walletStorage hSigCalibrated hMlDsaSig
 
+/--
+Deployment-level wrapper-address preservation: if the wallet storage initially
+satisfies the named `WalletStoresWrapperAddress` assumption, then a successful
+integrated `validateAndExecute` preserves that assumption on the final wallet
+storage.
+
+This is the v1.6 lift from raw slot preservation
+(`AAPQIntegration.validateAndExecute_preserves_wallet_wrapperAddress`) to the
+deployment-facing cross-storage assumption auditors actually read.
+-/
+theorem validateAndExecute_preserves_walletStoresWrapperAddress
+    (deployment : FalconSimpleWalletDeployment)
+    (env : Env) (input : AAPQIntegration.IntegratedInput)
+    (wrapperStorage walletStorage finalWrapper finalWallet : Storage)
+    (hStored : WalletStoresWrapperAddress deployment walletStorage)
+    (h :
+      AAPQIntegration.validateAndExecute env input wrapperStorage
+          walletStorage =
+        AAPQIntegration.IntegratedFullResult.success finalWrapper
+          finalWallet) :
+    WalletStoresWrapperAddress deployment finalWallet := by
+  unfold WalletStoresWrapperAddress at *
+  rw [AAPQIntegration.validateAndExecute_preserves_wallet_wrapperAddress
+    env input wrapperStorage walletStorage finalWrapper finalWallet h]
+  exact hStored
+
 end FalconSimpleWallet
 end Examples
 end SoLean

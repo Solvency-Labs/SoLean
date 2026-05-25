@@ -406,10 +406,16 @@ What landed:
   wrapper contract, the Falcon-512 scheme parameters, and the
   wrapper's EVM address.
 - `AAWallet.wrapperAddressSlot` (slot 5) declared on the wallet
-  side. `validateProgram` does not read it yet; v1 will.
+  side. `validateProgramV1` checks that the operation's expected wrapper
+  address matches the wallet's stored wrapper address before running the v0
+  wallet validation.
 - `WalletStoresWrapperAddress` and `WrapperCalibratedForScheme` are
   the named cross-storage / scheme-calibration assumptions surfaced
   in the certificate.
+- `validateAndExecute_preserves_walletStoresWrapperAddress` lifts raw
+  wrapper-address slot preservation to the deployment-facing
+  `WalletStoresWrapperAddress` assumption: if it held before a successful
+  `validateAndExecute`, it still holds in the final wallet storage.
 - `falconSimpleWallet_composite_safety` produces a
   `FalconSimpleWalletSafety` record from a successful
   `validateAndExecute`, bundling: (a) public key matches the
@@ -426,23 +432,18 @@ What landed:
   EIP-7701 pending), EIP-7702 risk, signature aggregation, and the
   full gas schedule.
 
-## Next Milestone: FalconSimpleWallet shape v1
+## Next Milestone: FalconSimpleWallet deployment invariant v1.7
 
-Lift `wrapperAddress` from a loose `EvmEnv` field to a wallet-side
-constraint that `validateProgram` actually enforces:
+Bundle the individual deployment facts into one reviewer-facing invariant:
 
-1. Extend `AAWallet.validateProgram` with a `require msg.sender == ...`
-   or `require wrapperAddress == <expected>` check (TBD which is most
-   AA-realistic).
-2. Update `IntegratedPost` / `ValidationPost` accordingly.
-3. Prove that under `WalletStoresWrapperAddress`, the integrated flow
-   forces the wallet's stored address to match the address the
-   integration calls.
-4. Surface a new "wrapper address matches stored slot" conjunct in
-   `falconSimpleWallet_composite_safety` (v1 version).
-
-This finishes the wallet shape: every slot the FalconSimpleWallet
-deployment declares is also used by `validateProgram`.
+1. Define a `FalconSimpleWalletDeploymentInvariant` record over the deployment,
+   wrapper storage, and wallet storage.
+2. Include at least `WalletStoresWrapperAddress`,
+   `WrapperCalibratedForScheme`, and the existing wallet configuration facts.
+3. Prove successful `validateAndExecute` preserves the invariant fields that
+   should survive execution.
+4. Surface the invariant theorem in `falconSimpleWalletShape` and the Python
+   audit.
 
 ## Phase 4: Bridge To Real Solidity And solc
 

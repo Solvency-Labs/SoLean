@@ -931,8 +931,10 @@ def aapqSourceCertificate : Json :=
           "SoLean.Examples.AAWallet.validateProgram_preserves_wrapperAddressSlot"),
         ("integratedTheorem", .str
           "SoLean.Examples.AAPQIntegration.validateAndExecute_preserves_wallet_wrapperAddress"),
+        ("deploymentAssumptionTheorem", .str
+          "SoLean.Examples.FalconSimpleWallet.validateAndExecute_preserves_walletStoresWrapperAddress"),
         ("rationale", .str
-          "validateProgram only writes to nonceSlot and the execute step only writes to lastOpHashSlot; the new FalconSimpleWallet wrapperAddressSlot is preserved end-to-end. Auditors can rely on the wallet's stored wrapper address surviving every successful validateAndExecute.")
+          "validateProgram only writes to nonceSlot and the execute step only writes to lastOpHashSlot; the new FalconSimpleWallet wrapperAddressSlot is preserved end-to-end. Auditors can rely on the wallet's stored wrapper address surviving every successful validateAndExecute, and on WalletStoresWrapperAddress remaining true for the deployment.")
       ])
     ]),
     ("protocolBoundaryAssumptions", .arr [
@@ -1049,6 +1051,7 @@ def aapqSourceCertificate : Json :=
       "SoLean.Examples.SchemeParameters.validateAndExecute_falcon512_calibrated_rejects_mlDsa44_signature_length",
       "SoLean.Examples.FalconSimpleWallet.falconSimpleWallet_composite_safety",
       "SoLean.Examples.FalconSimpleWallet.falconSimpleWalletDeployment_rejects_mlDsa44_signature_length",
+      "SoLean.Examples.FalconSimpleWallet.validateAndExecute_preserves_walletStoresWrapperAddress",
       "SoLean.Examples.AAWallet.validateV1_success_properties",
       "SoLean.Examples.ProtocolBoundaries.bundlerEcdsaDependence_trivial",
       "SoLean.Examples.ProtocolBoundaries.eip7702EcdsaKeyValidity_trivial",

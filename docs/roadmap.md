@@ -613,10 +613,9 @@ finite sub-domain or moving to a richer codomain (e.g., tuples).
 The next best qualitative task is:
 
 ```text
-FalconSimpleWallet shape v1 — lift the loose `wrapperAddress` from
-EvmEnv into a wallet-storage anchor under WalletStoresWrapperAddress,
-and extend `validateProgram` to assert wallet's stored wrapper address
-matches the address the integration calls.
+FalconSimpleWallet deployment invariant v1.7 — bundle the landed
+wallet-storage anchor, wrapper calibration, wrapper-address preservation, and
+configuration-preservation facts into one reviewer-facing deployment invariant.
 ```
 
 ### FalconSimpleWallet shape v0 (landed)
@@ -632,8 +631,9 @@ PQ-AA reference deployment:
    `falconSimpleWalletShape` field in the source certificate.
 2. **Wallet storage layout** *(landed)* — `AAWallet.wrapperAddressSlot`
    (slot 5) declared on the wallet side. The deployment view's
-   wallet contract carries the new `wrapperAddress` storage entry.
-   `validateProgram` doesn't read it yet (v1 will).
+   wallet contract carries the new `wrapperAddress` storage entry, and
+   `validateProgramV1` requires the operation's expected wrapper address to
+   match that stored slot before running the v0 wallet validation.
 3. **Verifier-wrapper call shape with calibration** *(landed)* —
    `WrapperCalibratedForScheme` is the named assumption tying the
    wrapper's `expectedPublicKeyLengthSlot` and
@@ -659,9 +659,9 @@ broaden into generic DeFi.
 ### Already-completed lanes (kept for reference)
 
 Work is organized into named lanes. Lanes A, B, C below are
-feature-complete; FalconSimpleWallet shape v0 (above) is now landed
-and v1 is the next milestone (wallet's stored wrapperAddress used by
-`validateProgram`).
+feature-complete; FalconSimpleWallet shape v1 is now landed through the
+wallet-side wrapper-address check and preservation theorem, and v1.7 is the
+next milestone.
 
 ### Lane A — Deepen the EVM CALL boundary (in flight)
 
