@@ -1193,5 +1193,133 @@ def aapqV1FullBehaviorSummary : Json :=
 def aapqV1FullBehaviorSummaryJson : String :=
   renderJson aapqV1FullBehaviorSummary
 
+/--
+Per-statement entry for the Lean-owned AA/PQ v1 trace manifest.
+
+`phase` is one of `wrapper`, `keyMatch`, `walletV1`, `execute`. `leanProof` is
+the Lean theorem the Python audit must report alongside this trace entry.
+-/
+structure AAPQV1TraceEntry where
+  index    : Nat
+  contract : String
+  function : String
+  rule     : String
+  phase    : String
+  leanProof : String
+deriving Repr
+
+namespace AAPQV1Trace
+
+def wrapperProof : String :=
+  "SoLean.Examples.PQVerifierWrapper.verify_success_properties"
+
+def keyMatchProof : String :=
+  "SoLean.Examples.AAPQIntegration.wallet_program_success_properties"
+
+def walletV1Proof : String :=
+  "SoLean.Examples.AAWallet.validateV1_success_properties"
+
+def executeProof : String :=
+  "SoLean.Examples.AAWallet.executeUserOp"
+
+def v1FlowProof : String :=
+  "SoLean.Examples.AAPQSource.BehaviorReflection." ++
+    "integratedV1FullBehaviorSummary_reflects_validateAndExecuteV1Flow"
+
+def ruleProofs : List AAPQV1TraceEntry :=
+  [ { index := 0,  contract := "PQVerifierWrapper", function := "verify",
+      rule := "wrapperPublicKeyLengthGuard", phase := "wrapper",
+      leanProof := wrapperProof },
+    { index := 1,  contract := "PQVerifierWrapper", function := "verify",
+      rule := "wrapperSignatureLengthGuard", phase := "wrapper",
+      leanProof := wrapperProof },
+    { index := 2,  contract := "PQVerifierWrapper", function := "verify",
+      rule := "wrapperDomainGuard", phase := "wrapper",
+      leanProof := wrapperProof },
+    { index := 3,  contract := "PQVerifierWrapper", function := "verify",
+      rule := "wrapperVerifierGuard", phase := "wrapper",
+      leanProof := wrapperProof },
+    { index := 4,  contract := "AAWallet", function := "validateUserOp",
+      rule := "walletWrapperAddressGuard", phase := "walletV1",
+      leanProof := walletV1Proof },
+    { index := 5,  contract := "AAWallet", function := "validateUserOp",
+      rule := "walletDelegateToBaseValidation", phase := "walletV1",
+      leanProof := walletV1Proof },
+    { index := 6,  contract := "AAWallet", function := "_validateUserOp",
+      rule := "walletEntryPointGuard", phase := "walletV1",
+      leanProof := walletV1Proof },
+    { index := 7,  contract := "AAWallet", function := "_validateUserOp",
+      rule := "walletNonceGuard", phase := "walletV1",
+      leanProof := walletV1Proof },
+    { index := 8,  contract := "AAWallet", function := "_validateUserOp",
+      rule := "walletDomainGuard", phase := "walletV1",
+      leanProof := walletV1Proof },
+    { index := 9,  contract := "AAWallet", function := "_validateUserOp",
+      rule := "walletVerifierGuard", phase := "walletV1",
+      leanProof := walletV1Proof },
+    { index := 10, contract := "AAWallet", function := "_validateUserOp",
+      rule := "walletNonceIncrement", phase := "walletV1",
+      leanProof := walletV1Proof },
+    { index := 11, contract := "AAWallet", function := "executeUserOp",
+      rule := "walletExecuteRecordsOpHash", phase := "execute",
+      leanProof := executeProof },
+    { index := 12, contract := "AAPQIntegration", function := "validateAndExecuteV1",
+      rule := "integrationWrapperVerifyCall", phase := "wrapper",
+      leanProof := v1FlowProof },
+    { index := 13, contract := "AAPQIntegration", function := "validateAndExecuteV1",
+      rule := "integrationKeyCommitmentGuard", phase := "keyMatch",
+      leanProof := keyMatchProof },
+    { index := 14, contract := "AAPQIntegration", function := "validateAndExecuteV1",
+      rule := "integrationWalletV1Call", phase := "walletV1",
+      leanProof := v1FlowProof },
+    { index := 15, contract := "AAPQIntegration", function := "validateAndExecuteV1",
+      rule := "integrationExecuteCall", phase := "execute",
+      leanProof := v1FlowProof } ]
+
+def entryJson (entry : AAPQV1TraceEntry) : Json :=
+  .obj [
+    ("contract", .str entry.contract),
+    ("function", .str entry.function),
+    ("index", .num entry.index),
+    ("leanProof", .str entry.leanProof),
+    ("phase", .str entry.phase),
+    ("rule", .str entry.rule)
+  ]
+
+def expectedTrustedRules : List String :=
+  ruleProofs.map AAPQV1TraceEntry.rule
+
+def phaseProofsJson : Json :=
+  .obj [
+    ("execute", .str executeProof),
+    ("keyMatch", .str keyMatchProof),
+    ("walletV1", .str walletV1Proof),
+    ("wrapper", .str wrapperProof)
+  ]
+
+/-- Sorted, deduplicated union of every Lean proof referenced by the manifest. -/
+def proofReferences : List String :=
+  [ "SoLean.Examples.AAPQIntegration.wallet_program_success_properties",
+    v1FlowProof,
+    executeProof,
+    walletV1Proof,
+    wrapperProof ]
+
+end AAPQV1Trace
+
+def aapqV1TraceManifest : Json :=
+  .obj [
+    ("expectedTrustedRules", stringsJson AAPQV1Trace.expectedTrustedRules),
+    ("kind", .str "aapqV1TraceManifest"),
+    ("phaseProofs", AAPQV1Trace.phaseProofsJson),
+    ("proofReferences", stringsJson AAPQV1Trace.proofReferences),
+    ("traceRuleProofs", .arr (AAPQV1Trace.ruleProofs.map AAPQV1Trace.entryJson)),
+    ("v1FlowProof", .str AAPQV1Trace.v1FlowProof),
+    ("version", .num 1)
+  ]
+
+def aapqV1TraceManifestJson : String :=
+  renderJson aapqV1TraceManifest
+
 end Artifacts
 end SoLean

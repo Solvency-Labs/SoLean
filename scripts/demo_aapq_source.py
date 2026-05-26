@@ -186,6 +186,7 @@ def main(argv: list[str] | None = None) -> int:
         "behavior-summary-json",
         "full-behavior-summary-json",
         "v1-full-behavior-summary-json",
+        "v1-trace-manifest-json",
     ):
         code = smoke_lean_artifact(kind)
         if code != 0:

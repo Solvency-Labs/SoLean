@@ -224,8 +224,13 @@ For the current intuition and next steps, see `docs/roadmap.md` and
   `validateAndExecuteV1` and compares its phase/guard/write signature to the
   Lean-owned v1 behavior summary. It also emits an ordered per-statement trace
   with stable rule names, normalized effects, trust labels, and proof
-  references for the Lean-backed target phases. The report has a committed
-  golden fixture at `tests/golden/AAPQ.source.v7.json`.
+  references for the Lean-backed target phases. The v1 trace's ordered rule
+  list, per-rule contract/function/phase, and required Lean proof references
+  now come from a Lean-owned `v1-trace-manifest-json` artifact
+  (`SoLean.Artifacts.aapqV1TraceManifest`); Python derives its trace from the
+  manifest and the new `Solidity v1 trace matches Lean trace manifest` check
+  fails loudly if the two drift. The report has a committed golden fixture at
+  `tests/golden/AAPQ.source.v8.json`.
 - Python placeholder tools for:
   - Solidity to Yul via `solc`.
   - Yul subset classification for supported/unsupported compiler output.
@@ -357,7 +362,7 @@ still a restricted Solidity subset rather than an EVM semantics.
 │   └── yul_subset.py
 └── tests/
     ├── golden/
-    │   ├── AAPQ.source.v7.json
+    │   ├── AAPQ.source.v8.json
     │   ├── Counter.bridge.v7.json
     │   └── Counter.solean.yul
     ├── README.md
@@ -569,6 +574,7 @@ lake env lean --run SoLean/AAPQArtifactsMain.lean source-certificate-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean behavior-summary-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean full-behavior-summary-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean v1-full-behavior-summary-json
+lake env lean --run SoLean/AAPQArtifactsMain.lean v1-trace-manifest-json
 ```
 
 Run the AA/PQ source-shape/body audit (deterministic JSON report by default):

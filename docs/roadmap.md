@@ -647,10 +647,22 @@ Lean-owned v1 behavior signature. The report also shows every recognized v1
 Solidity statement as a stable trace entry with a rule name, effect, trust
 label, and Lean proof reference.
 
-The next best qualitative task is FalconSimpleWallet v2.8 trace coverage from
-Lean manifest: move the expected trace rule list and required proof references
-into a Lean-owned artifact, then make Python compare its observed trace against
-that artifact.
+FalconSimpleWallet v2.8 trace coverage from Lean manifest is now landed:
+`SoLean.Artifacts.aapqV1TraceManifest` (exported as `v1-trace-manifest-json`
+from `SoLean/AAPQArtifactsMain.lean`) is the Lean-owned source of truth for the
+ordered v1 trace rule list, per-rule contract/function/phase, the per-phase
+backing proofs (`phaseProofs` + `v1FlowProof`), and the deduped
+`proofReferences` set. `scripts/check_aapq_source.py` derives its trace entries
+from the manifest and adds a `Solidity v1 trace matches Lean trace manifest`
+audit check that fails if Lean and Python disagree on any
+`(index, rule, contract, function, phase, leanProof)` tuple. Report bumped to
+`reportVersion: 8` with a committed golden at
+`tests/golden/AAPQ.source.v8.json`.
+
+The next best qualitative task is to pin per-rule effect signatures (guard
+kinds, finalWrite slot/name, phaseCall/delegates) in the Lean manifest as well,
+so Python stops owning the recognized effect shape. This would close the
+remaining "trusted Python recognizer" gap for v1 trace effects.
 
 ### FalconSimpleWallet shape v0 (landed)
 

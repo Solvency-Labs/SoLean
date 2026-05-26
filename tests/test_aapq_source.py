@@ -28,8 +28,10 @@ from scripts.check_aapq_source import (
     check_source_contracts_match_certificate,
     check_under_oracle_assumption_theorems_covered,
     check_v1_full_behavior_summary,
+    check_v1_trace_against_manifest,
     crypto_assumption_support_graph_view,
     check_verifier_model_calibrations,
+    default_v1_trace_manifest,
     format_crypto_assumption_graph_markdown,
     format_verifier_model_calibrations_markdown,
     lean_artifact,
@@ -40,6 +42,8 @@ from scripts.check_aapq_source import (
     run_audit,
     solidity_v1_body_summary,
     stable_json,
+    v1_flow_proof,
+    v1_phase_proofs,
     walk_operands_in_condition,
     walk_operands_in_value,
     verifier_model_calibrations_view,
@@ -52,7 +56,7 @@ from scripts.demo_aapq_source import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOLIDITY_PATH = REPO_ROOT / "examples" / "AAPQIntegration.sol"
-GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v7.json"
+GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v8.json"
 
 
 @lru_cache(maxsize=None)
@@ -173,6 +177,87 @@ class SolidityShapeParserTests(unittest.TestCase):
             solidity_v1_body_summary(solidity)
 
 
+class V1TraceManifestTests(unittest.TestCase):
+    def test_manifest_shape(self) -> None:
+        manifest = cached_artifact("v1-trace-manifest-json")
+        self.assertEqual(manifest["kind"], "aapqV1TraceManifest")
+        self.assertEqual(manifest["version"], 1)
+        rules = manifest["expectedTrustedRules"]
+        entries = manifest["traceRuleProofs"]
+        self.assertEqual(len(rules), len(entries))
+        self.assertEqual(rules, [entry["rule"] for entry in entries])
+        self.assertEqual(
+            [entry["index"] for entry in entries],
+            list(range(len(entries))),
+        )
+        for entry in entries:
+            self.assertTrue(entry["leanProof"])
+            self.assertIn(
+                entry["phase"],
+                {"wrapper", "keyMatch", "walletV1", "execute"},
+            )
+        self.assertEqual(
+            sorted(manifest["phaseProofs"].keys()),
+            ["execute", "keyMatch", "walletV1", "wrapper"],
+        )
+        self.assertTrue(manifest["v1FlowProof"])
+
+    def test_default_manifest_helpers(self) -> None:
+        manifest = cached_artifact("v1-trace-manifest-json")
+        self.assertEqual(v1_phase_proofs(manifest), manifest["phaseProofs"])
+        self.assertEqual(v1_flow_proof(manifest), manifest["v1FlowProof"])
+        # default fetcher returns the same shape as cached_artifact
+        cached = default_v1_trace_manifest()
+        self.assertEqual(cached["kind"], "aapqV1TraceManifest")
+
+    def test_check_passes_on_real_artifacts(self) -> None:
+        manifest = cached_artifact("v1-trace-manifest-json")
+        body = solidity_v1_body_summary(
+            SOLIDITY_PATH.read_text(), trace_manifest=manifest
+        )
+        result = check_v1_trace_against_manifest(body, manifest)
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_check_fails_when_manifest_rule_drifts(self) -> None:
+        manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
+        body = solidity_v1_body_summary(
+            SOLIDITY_PATH.read_text(),
+            trace_manifest=cached_artifact("v1-trace-manifest-json"),
+        )
+        manifest["expectedTrustedRules"][0] = "renamedRule"
+        manifest["traceRuleProofs"][0]["rule"] = "renamedRule"
+        result = check_v1_trace_against_manifest(body, manifest)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("renamedRule", result["message"])
+
+    def test_check_fails_when_proof_drifts(self) -> None:
+        manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
+        body = solidity_v1_body_summary(
+            SOLIDITY_PATH.read_text(),
+            trace_manifest=cached_artifact("v1-trace-manifest-json"),
+        )
+        manifest["traceRuleProofs"][0]["leanProof"] = "Module.other_proof"
+        result = check_v1_trace_against_manifest(body, manifest)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("Module.other_proof", result["message"])
+
+    def test_body_summary_rejects_phase_drift(self) -> None:
+        manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
+        manifest["traceRuleProofs"][0]["phase"] = "walletV1"
+        with self.assertRaisesRegex(UnsupportedSolidityBody, "manifest phase"):
+            solidity_v1_body_summary(
+                SOLIDITY_PATH.read_text(), trace_manifest=manifest
+            )
+
+    def test_body_summary_rejects_length_drift(self) -> None:
+        manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
+        manifest["traceRuleProofs"].pop()
+        with self.assertRaisesRegex(UnsupportedSolidityBody, "trace manifest length"):
+            solidity_v1_body_summary(
+                SOLIDITY_PATH.read_text(), trace_manifest=manifest
+            )
+
+
 class CertificateCrossCheckTests(unittest.TestCase):
     def test_passes_when_certificate_embeds_behavior_summary(self) -> None:
         certificate = {"expectedBehaviorSummary": {"phases": [], "version": 1}}
@@ -242,6 +327,7 @@ class AuditIntegrationTests(unittest.TestCase):
         summary = cached_artifact("behavior-summary-json")
         full_summary = cached_artifact("full-behavior-summary-json")
         v1_full_summary = cached_artifact("v1-full-behavior-summary-json")
+        v1_trace_manifest = cached_artifact("v1-trace-manifest-json")
         solidity = SOLIDITY_PATH.read_text()
 
         report = run_audit(
@@ -252,6 +338,7 @@ class AuditIntegrationTests(unittest.TestCase):
             full_summary,
             v1_full_summary,
             solidity,
+            v1_trace_manifest=v1_trace_manifest,
         )
         self.assertEqual(report["status"], "passed", report)
         self.assertEqual(report["reportVersion"], REPORT_VERSION)
@@ -1159,6 +1246,7 @@ class GoldenReportTests(unittest.TestCase):
         summary = cached_artifact("behavior-summary-json")
         full_summary = cached_artifact("full-behavior-summary-json")
         v1_full_summary = cached_artifact("v1-full-behavior-summary-json")
+        v1_trace_manifest = cached_artifact("v1-trace-manifest-json")
         solidity = SOLIDITY_PATH.read_text()
 
         report = run_audit(
@@ -1169,6 +1257,7 @@ class GoldenReportTests(unittest.TestCase):
             full_summary,
             v1_full_summary,
             solidity,
+            v1_trace_manifest=v1_trace_manifest,
         )
         observed = stable_json(report)
         expected = GOLDEN_PATH.read_text()

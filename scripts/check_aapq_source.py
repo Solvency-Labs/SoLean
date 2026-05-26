@@ -23,10 +23,11 @@ import re
 import shutil
 import subprocess
 import sys
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-REPORT_VERSION = 7
+REPORT_VERSION = 8
 
 LIMITATIONS = [
     "AA/PQ source-shape/body audit only.",
@@ -308,17 +309,27 @@ def require_solidity_statements(
         )
 
 
-V1_PHASE_PROOFS: dict[str, str] = {
-    "wrapper": "SoLean.Examples.PQVerifierWrapper.verify_success_properties",
-    "keyMatch": "SoLean.Examples.AAPQIntegration.wallet_program_success_properties",
-    "walletV1": "SoLean.Examples.AAWallet.validateV1_success_properties",
-    "execute": "SoLean.Examples.AAWallet.executeUserOp",
-}
+@lru_cache(maxsize=1)
+def default_v1_trace_manifest() -> dict[str, Any]:
+    """Lean-owned v1 trace manifest, fetched once per process."""
 
-V1_FLOW_PROOF = (
-    "SoLean.Examples.AAPQSource.BehaviorReflection."
-    "integratedV1FullBehaviorSummary_reflects_validateAndExecuteV1Flow"
-)
+    return lean_artifact("v1-trace-manifest-json")
+
+
+def v1_phase_proofs(manifest: dict[str, Any] | None = None) -> dict[str, str]:
+    manifest = manifest if manifest is not None else default_v1_trace_manifest()
+    proofs = manifest.get("phaseProofs", {})
+    if not isinstance(proofs, dict):
+        raise ValueError("v1 trace manifest has no phaseProofs object")
+    return dict(proofs)
+
+
+def v1_flow_proof(manifest: dict[str, Any] | None = None) -> str:
+    manifest = manifest if manifest is not None else default_v1_trace_manifest()
+    proof = manifest.get("v1FlowProof", "")
+    if not isinstance(proof, str) or not proof:
+        raise ValueError("v1 trace manifest is missing v1FlowProof")
+    return proof
 
 
 def trace_entry(
@@ -344,13 +355,26 @@ def trace_entry(
     }
 
 
-def solidity_v1_body_summary(solidity_text: str) -> dict[str, Any]:
+def solidity_v1_body_summary(
+    solidity_text: str,
+    *,
+    trace_manifest: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Recognize the current v1 AA/PQ Solidity sketch body shape.
 
     This is a deliberately tiny recognizer for the documentation fixture. It is
     not a Solidity parser and only accepts the exact body shape needed to audit
     `validateAndExecuteV1` against the Lean-owned v1 behavior summary.
+
+    `trace_manifest` is the Lean-owned `v1-trace-manifest-json` artifact. When
+    omitted the audit fetches it via `default_v1_trace_manifest()`. Per-entry
+    `rule`, `phase`, `contract`, `function`, and `leanProof` fields are sourced
+    from the manifest so that drift between Python and Lean fails loudly.
     """
+
+    manifest = trace_manifest if trace_manifest is not None else default_v1_trace_manifest()
+    phase_proofs = v1_phase_proofs(manifest)
+    flow_proof = v1_flow_proof(manifest)
 
     bodies = solidity_contract_bodies(solidity_text)
     required_contracts = ["PQVerifierWrapper", "AAWallet", "AAPQIntegration"]
@@ -450,187 +474,102 @@ def solidity_v1_body_summary(solidity_text: str) -> dict[str, Any]:
         integration_v1, "AAPQIntegration", integration_expected
     )
 
-    trace_specs = [
-        (
-            "PQVerifierWrapper",
-            "verify",
-            "wrapperPublicKeyLengthGuard",
-            wrapper_expected[0],
-            {"guard": "lengthCheck", "kind": "guard", "phase": "wrapper"},
-            V1_PHASE_PROOFS["wrapper"],
-            "trusted recognizer; Lean proof covers wrapper phase",
-        ),
-        (
-            "PQVerifierWrapper",
-            "verify",
-            "wrapperSignatureLengthGuard",
-            wrapper_expected[1],
-            {"guard": "lengthCheck", "kind": "guard", "phase": "wrapper"},
-            V1_PHASE_PROOFS["wrapper"],
-            "trusted recognizer; Lean proof covers wrapper phase",
-        ),
-        (
-            "PQVerifierWrapper",
-            "verify",
-            "wrapperDomainGuard",
-            wrapper_expected[2],
-            {"guard": "domainCheck", "kind": "guard", "phase": "wrapper"},
-            V1_PHASE_PROOFS["wrapper"],
-            "trusted recognizer; Lean proof covers wrapper phase",
-        ),
-        (
-            "PQVerifierWrapper",
-            "verify",
-            "wrapperVerifierGuard",
-            wrapper_expected[3],
-            {"guard": "verifierCheck", "kind": "guard", "phase": "wrapper"},
-            V1_PHASE_PROOFS["wrapper"],
-            "trusted recognizer; Lean proof covers wrapper phase",
-        ),
-        (
-            "AAWallet",
-            "validateUserOp",
-            "walletWrapperAddressGuard",
-            wallet_v1_expected[0],
-            {"guard": "wrapperAddressCheck", "kind": "guard", "phase": "walletV1"},
-            V1_PHASE_PROOFS["walletV1"],
-            "trusted recognizer; Lean proof covers walletV1 phase",
-        ),
-        (
-            "AAWallet",
-            "validateUserOp",
-            "walletDelegateToBaseValidation",
-            wallet_v1_expected[1],
-            {
-                "kind": "delegates",
-                "phase": "walletV1",
-                "target": "AAWallet._validateUserOp",
-            },
-            V1_PHASE_PROOFS["walletV1"],
-            "trusted recognizer; Lean proof covers walletV1 phase",
-        ),
-        (
-            "AAWallet",
-            "_validateUserOp",
-            "walletEntryPointGuard",
-            wallet_helper_expected[0],
-            {"guard": "entryPointCheck", "kind": "guard", "phase": "walletV1"},
-            V1_PHASE_PROOFS["walletV1"],
-            "trusted recognizer; Lean proof covers walletV1 phase",
-        ),
-        (
-            "AAWallet",
-            "_validateUserOp",
-            "walletNonceGuard",
-            wallet_helper_expected[1],
-            {"guard": "nonceCheck", "kind": "guard", "phase": "walletV1"},
-            V1_PHASE_PROOFS["walletV1"],
-            "trusted recognizer; Lean proof covers walletV1 phase",
-        ),
-        (
-            "AAWallet",
-            "_validateUserOp",
-            "walletDomainGuard",
-            wallet_helper_expected[2],
-            {"guard": "domainCheck", "kind": "guard", "phase": "walletV1"},
-            V1_PHASE_PROOFS["walletV1"],
-            "trusted recognizer; Lean proof covers walletV1 phase",
-        ),
-        (
-            "AAWallet",
-            "_validateUserOp",
-            "walletVerifierGuard",
-            wallet_helper_expected[3],
-            {"guard": "verifierCheck", "kind": "guard", "phase": "walletV1"},
-            V1_PHASE_PROOFS["walletV1"],
-            "trusted recognizer; Lean proof covers walletV1 phase",
-        ),
-        (
-            "AAWallet",
-            "_validateUserOp",
-            "walletNonceIncrement",
-            wallet_helper_expected[4],
-            {
-                "kind": "finalWrite",
-                "name": "nonce",
-                "phase": "walletV1",
-                "slot": 0,
-            },
-            V1_PHASE_PROOFS["walletV1"],
-            "trusted recognizer; Lean proof covers walletV1 phase",
-        ),
-        (
-            "AAWallet",
-            "executeUserOp",
-            "walletExecuteRecordsOpHash",
-            execute_expected[0],
-            {
-                "kind": "finalWrite",
-                "name": "lastOpHash",
-                "phase": "execute",
-                "slot": 4,
-            },
-            V1_PHASE_PROOFS["execute"],
-            "trusted recognizer; Lean proof covers execute phase",
-        ),
-        (
-            "AAPQIntegration",
-            "validateAndExecuteV1",
-            "integrationWrapperVerifyCall",
-            integration_expected[0],
-            {"kind": "phaseCall", "phase": "wrapper"},
-            V1_FLOW_PROOF,
-            "trusted recognizer; Lean proof covers v1 flow reflection",
-        ),
-        (
-            "AAPQIntegration",
-            "validateAndExecuteV1",
-            "integrationKeyCommitmentGuard",
-            integration_expected[1],
-            {"guard": "keyCommitmentCheck", "kind": "guard", "phase": "keyMatch"},
-            V1_PHASE_PROOFS["keyMatch"],
-            "trusted recognizer; Lean proof covers keyMatch phase",
-        ),
-        (
-            "AAPQIntegration",
-            "validateAndExecuteV1",
-            "integrationWalletV1Call",
-            integration_expected[2],
-            {"kind": "phaseCall", "phase": "walletV1"},
-            V1_FLOW_PROOF,
-            "trusted recognizer; Lean proof covers v1 flow reflection",
-        ),
-        (
-            "AAPQIntegration",
-            "validateAndExecuteV1",
-            "integrationExecuteCall",
-            integration_expected[3],
-            {"kind": "phaseCall", "phase": "execute"},
-            V1_FLOW_PROOF,
-            "trusted recognizer; Lean proof covers v1 flow reflection",
-        ),
+    # Python owns each statement's `source` text and `effect` shape; Lean owns
+    # the `rule`, `phase`, `leanProof`, `contract`, and `function` per index via
+    # the manifest. Trust labels are derived from each entry's phase.
+    trace_phase_effects: list[tuple[str, dict[str, Any]]] = [
+        (wrapper_expected[0],
+         {"guard": "lengthCheck", "kind": "guard", "phase": "wrapper"}),
+        (wrapper_expected[1],
+         {"guard": "lengthCheck", "kind": "guard", "phase": "wrapper"}),
+        (wrapper_expected[2],
+         {"guard": "domainCheck", "kind": "guard", "phase": "wrapper"}),
+        (wrapper_expected[3],
+         {"guard": "verifierCheck", "kind": "guard", "phase": "wrapper"}),
+        (wallet_v1_expected[0],
+         {"guard": "wrapperAddressCheck", "kind": "guard", "phase": "walletV1"}),
+        (wallet_v1_expected[1],
+         {"kind": "delegates", "phase": "walletV1",
+          "target": "AAWallet._validateUserOp"}),
+        (wallet_helper_expected[0],
+         {"guard": "entryPointCheck", "kind": "guard", "phase": "walletV1"}),
+        (wallet_helper_expected[1],
+         {"guard": "nonceCheck", "kind": "guard", "phase": "walletV1"}),
+        (wallet_helper_expected[2],
+         {"guard": "domainCheck", "kind": "guard", "phase": "walletV1"}),
+        (wallet_helper_expected[3],
+         {"guard": "verifierCheck", "kind": "guard", "phase": "walletV1"}),
+        (wallet_helper_expected[4],
+         {"kind": "finalWrite", "name": "nonce", "phase": "walletV1", "slot": 0}),
+        (execute_expected[0],
+         {"kind": "finalWrite", "name": "lastOpHash", "phase": "execute",
+          "slot": 4}),
+        (integration_expected[0],
+         {"kind": "phaseCall", "phase": "wrapper"}),
+        (integration_expected[1],
+         {"guard": "keyCommitmentCheck", "kind": "guard", "phase": "keyMatch"}),
+        (integration_expected[2],
+         {"kind": "phaseCall", "phase": "walletV1"}),
+        (integration_expected[3],
+         {"kind": "phaseCall", "phase": "execute"}),
     ]
-    trace = [
-        trace_entry(
-            index,
-            contract=contract,
-            function=function,
-            rule=rule,
-            source=source,
-            effect=effect,
-            lean_proof=lean_proof,
-            trust=trust,
+
+    manifest_entries = manifest.get("traceRuleProofs", [])
+    if len(manifest_entries) != len(trace_phase_effects):
+        raise UnsupportedSolidityBody(
+            f"v1 trace manifest length {len(manifest_entries)} does not match "
+            f"recognized statement count {len(trace_phase_effects)}"
         )
-        for index, (
-            contract,
-            function,
-            rule,
-            source,
-            effect,
-            lean_proof,
-            trust,
-        ) in enumerate(trace_specs)
-    ]
+
+    trust_for_phase = {
+        "wrapper": "trusted recognizer; Lean proof covers wrapper phase",
+        "keyMatch": "trusted recognizer; Lean proof covers keyMatch phase",
+        "walletV1": "trusted recognizer; Lean proof covers walletV1 phase",
+        "execute": "trusted recognizer; Lean proof covers execute phase",
+    }
+    flow_phases = {"wrapper", "walletV1", "execute"}
+
+    trace = []
+    for index, (entry, (source, effect)) in enumerate(
+        zip(manifest_entries, trace_phase_effects)
+    ):
+        if entry.get("index") != index:
+            raise UnsupportedSolidityBody(
+                f"v1 trace manifest entry index {entry.get('index')!r} != {index}"
+            )
+        if entry.get("phase") != effect["phase"]:
+            raise UnsupportedSolidityBody(
+                f"v1 trace[{index}]: manifest phase {entry.get('phase')!r} != "
+                f"recognized effect phase {effect['phase']!r}"
+            )
+        lean_proof = entry.get("leanProof", "")
+        expected_phase_proof = (
+            flow_proof if entry.get("function") == "validateAndExecuteV1"
+            and entry.get("phase") in flow_phases
+            else phase_proofs.get(entry.get("phase"), "")
+        )
+        if lean_proof != expected_phase_proof:
+            raise UnsupportedSolidityBody(
+                f"v1 trace[{index}]: manifest leanProof {lean_proof!r} != "
+                f"phaseProofs/v1FlowProof entry {expected_phase_proof!r}"
+            )
+        trust = (
+            "trusted recognizer; Lean proof covers v1 flow reflection"
+            if lean_proof == flow_proof
+            else trust_for_phase.get(entry.get("phase"), "trusted recognizer")
+        )
+        trace.append(
+            trace_entry(
+                index,
+                contract=entry.get("contract", ""),
+                function=entry.get("function", ""),
+                rule=entry.get("rule", ""),
+                source=source,
+                effect=effect,
+                lean_proof=lean_proof,
+                trust=trust,
+            )
+        )
 
     return {
         "kind": "aapqSolidityV1BodySummary",
@@ -794,6 +733,63 @@ def check_solidity_v1_trace(body_summary: dict[str, Any]) -> dict[str, str]:
         "trusted Solidity body recognizer",
         f"All {len(trace)} recognized Solidity statements have ordered rules, "
         "effects, trust labels, and Lean proof references.",
+    )
+
+
+def check_v1_trace_against_manifest(
+    body_summary: dict[str, Any],
+    manifest: dict[str, Any],
+) -> dict[str, str]:
+    name = "Solidity v1 trace matches Lean trace manifest"
+    trust = "Lean-owned v1 trace manifest"
+    if manifest.get("kind") != "aapqV1TraceManifest":
+        return failed(name, trust, "v1 trace manifest is missing or wrong kind.")
+    if body_summary.get("kind") != "aapqSolidityV1BodySummary":
+        return failed(name, trust, "No supported Solidity v1 body summary.")
+
+    expected_rules = manifest.get("expectedTrustedRules", [])
+    manifest_entries = manifest.get("traceRuleProofs", [])
+    observed = body_summary.get("trace", [])
+    observed_rules = [entry.get("rule") for entry in observed]
+
+    if observed_rules != expected_rules:
+        return failed(
+            name,
+            trust,
+            f"Observed trace rules {observed_rules!r} != manifest "
+            f"expectedTrustedRules {expected_rules!r}",
+        )
+
+    if len(observed) != len(manifest_entries):
+        return failed(
+            name,
+            trust,
+            f"Observed trace length {len(observed)} != manifest "
+            f"traceRuleProofs length {len(manifest_entries)}",
+        )
+
+    problems: list[str] = []
+    for index, (entry, manifest_entry) in enumerate(zip(observed, manifest_entries)):
+        for field in ("index", "rule", "contract", "function", "leanProof"):
+            if entry.get(field) != manifest_entry.get(field):
+                problems.append(
+                    f"trace[{index}].{field}: {entry.get(field)!r} != "
+                    f"manifest {manifest_entry.get(field)!r}"
+                )
+        effect_phase = (entry.get("effect") or {}).get("phase")
+        if effect_phase != manifest_entry.get("phase"):
+            problems.append(
+                f"trace[{index}].effect.phase: {effect_phase!r} != "
+                f"manifest phase {manifest_entry.get('phase')!r}"
+            )
+
+    if problems:
+        return failed(name, trust, "; ".join(problems))
+    return passed(
+        name,
+        trust,
+        f"All {len(observed)} trace entries match the Lean-owned manifest "
+        f"(rule, contract, function, phase, leanProof).",
     )
 
 
@@ -1908,10 +1904,15 @@ def run_audit(
     full_behavior_summary: dict[str, Any],
     v1_full_behavior_summary: dict[str, Any],
     solidity_text: str,
+    v1_trace_manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    if v1_trace_manifest is None:
+        v1_trace_manifest = default_v1_trace_manifest()
     shape = parse_solidity_shape(solidity_text)
     try:
-        body_summary = solidity_v1_body_summary(solidity_text)
+        body_summary = solidity_v1_body_summary(
+            solidity_text, trace_manifest=v1_trace_manifest
+        )
         body_summary_check = check_solidity_v1_body_summary(
             body_summary,
             v1_full_behavior_summary,
@@ -1974,6 +1975,7 @@ def run_audit(
     checks.append(check_solidity_v1_vocabulary(solidity_text))
     checks.append(body_summary_check)
     checks.append(check_solidity_v1_trace(body_summary))
+    checks.append(check_v1_trace_against_manifest(body_summary, v1_trace_manifest))
 
     status = "passed" if all(check["status"] == "passed" for check in checks) else "failed"
     return {
@@ -1982,6 +1984,7 @@ def run_audit(
             "fullBehaviorSummaryHash": artifact_hash(full_behavior_summary),
             "v1SourceHash": artifact_hash(v1_source),
             "v1FullBehaviorSummaryHash": artifact_hash(v1_full_behavior_summary),
+            "v1TraceManifestHash": artifact_hash(v1_trace_manifest),
             "sourceCertificateHash": artifact_hash(certificate),
             "sourceHash": artifact_hash(source),
         },
@@ -2115,6 +2118,11 @@ def main(argv: list[str] | None = None) -> int:
         "Defaults to invoking lake.",
     )
     parser.add_argument(
+        "--v1-trace-manifest-json",
+        help="Path to a precomputed aapq v1-trace-manifest-json artifact. "
+        "Defaults to invoking lake.",
+    )
+    parser.add_argument(
         "--solidity",
         default="examples/AAPQIntegration.sol",
         help="Path to the AA/PQ Solidity sketch.",
@@ -2142,6 +2150,10 @@ def main(argv: list[str] | None = None) -> int:
         args.v1_full_behavior_summary_json,
         "v1-full-behavior-summary-json",
     )
+    v1_trace_manifest = load_json_arg(
+        args.v1_trace_manifest_json,
+        "v1-trace-manifest-json",
+    )
     solidity_text = Path(args.solidity).read_text()
 
     report = run_audit(
@@ -2152,6 +2164,7 @@ def main(argv: list[str] | None = None) -> int:
         full_behavior_summary,
         v1_full_behavior_summary,
         solidity_text,
+        v1_trace_manifest=v1_trace_manifest,
     )
 
     if args.format == "markdown":

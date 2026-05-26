@@ -20,7 +20,8 @@ The demo runs:
 - the AA/PQ-focused Python test module (`tests.test_aapq_source`)
 - Lean artifact export smoke checks for `source-json`, `v1-source-json`,
   `source-certificate-json`, `behavior-summary-json`,
-  `full-behavior-summary-json`, and `v1-full-behavior-summary-json`
+  `full-behavior-summary-json`, `v1-full-behavior-summary-json`, and
+  `v1-trace-manifest-json`
 - the AA/PQ source-shape report in Markdown mode
   (`scripts/check_aapq_source.py --format markdown`)
 - a Trust Boundaries section sourced from the Lean-owned source certificate,
@@ -262,7 +263,15 @@ lake env lean --run SoLean/AAPQArtifactsMain.lean source-certificate-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean behavior-summary-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean full-behavior-summary-json
 lake env lean --run SoLean/AAPQArtifactsMain.lean v1-full-behavior-summary-json
+lake env lean --run SoLean/AAPQArtifactsMain.lean v1-trace-manifest-json
 ```
+
+`v1-trace-manifest-json` is the Lean-owned source of truth for the v1 trace's
+ordered rule list, per-rule `(contract, function, phase)`, the per-phase
+backing proof (`phaseProofs`), and the `v1FlowProof` covering the integration
+function. The Python audit derives its observed trace from this manifest, and
+the `Solidity v1 trace matches Lean trace manifest` check fails if the
+manifest and the recognized Solidity statements disagree on any entry.
 
 `full-behavior-summary-json` covers `validateAndExecute` (the four-phase
 flow: wrapper + key-match + wallet + execute). `behavior-summary-json` covers
