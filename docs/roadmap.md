@@ -197,15 +197,18 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   `v1-trace-manifest-json` artifact (`version: 3`) and pulled into Python
   by the recognizer; the audit cross-checks observed and manifest effects.
   Rule names and phase labels are both closed Lean enumerations
-  (`TraceRuleId`, `TracePhase`); the rule list is backed by the
-  `rfl`-provable coverage theorem
-  `allTraceRuleIds_cover_expectedTrustedRules` (referenced from the
-  manifest's `proofReferences`), and the phase set is exported as
-  `expectedTracePhases`. Two audit checks
-  (`v1 trace rule enumeration covered by Lean theorem`,
-  `v1 trace phases form a closed Lean-owned set`) catch drift in either
-  direction. The report is committed as `tests/golden/AAPQ.source.v11.json`
-  (reportVersion 11).
+  (`TraceRuleId`, `TracePhase`); `AAPQV1TraceEntry.phase` carries a typed
+  `TracePhase` value rather than a free string. The rule list is backed by
+  the `rfl`-provable coverage theorem
+  `allTraceRuleIds_cover_expectedTrustedRules`, and the phase set is
+  backed by the `decide`-provable surjectivity theorem
+  `allTracePhases_all_used` (both surfaced in the manifest's
+  `proofReferences`). The phase set is exported as `expectedTracePhases`.
+  Three audit checks (`v1 trace rule enumeration covered by Lean theorem`,
+  `v1 trace phases form a closed Lean-owned set`, and
+  `v1 trace phases are all used by at least one entry`) catch drift in
+  either direction. The report is committed as
+  `tests/golden/AAPQ.source.v12.json` (reportVersion 12).
 - `scripts/demo_aapq_source.py` is a one-command research demo that runs
   `lake build`, the AA/PQ-focused Python tests, the Lean artifact smokes,
   the markdown source-shape report, and a Trust Boundaries summary sourced
@@ -705,6 +708,17 @@ and the audit check `v1 trace phases form a closed Lean-owned set` rejects any
 entry whose `phase` field is not one of those four. Manifest bumped to
 `version: 3`; report bumped to `reportVersion: 11` with a committed golden at
 `tests/golden/AAPQ.source.v11.json`.
+
+FalconSimpleWallet v2.12 typed phase field + surjectivity is now landed:
+`AAPQV1TraceEntry.phase` is now `TracePhase` (was `String`), and the new
+`SoLean.Artifacts.AAPQV1Trace.allTracePhases_all_used` theorem (proved by
+`decide`) certifies the inverse direction of the closed set — every
+`TracePhase` is exercised by at least one trace entry. The manifest's
+`proofReferences` surfaces this theorem, and a new audit check
+`v1 trace phases are all used by at least one entry` fails loudly if any
+listed phase becomes a zombie or the theorem is dropped. Report bumped to
+`reportVersion: 12` with a committed golden at
+`tests/golden/AAPQ.source.v12.json`.
 
 The next best qualitative task is to extend Lane A — Deepen the EVM CALL
 boundary — by closing the integrated v1 / `validateAndExecuteV1` flow over

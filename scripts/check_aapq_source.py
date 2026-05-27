@@ -27,7 +27,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-REPORT_VERSION = 11
+REPORT_VERSION = 12
 
 LIMITATIONS = [
     "AA/PQ source-shape/body audit only.",
@@ -791,6 +791,47 @@ def check_v1_trace_against_manifest(
 TRACE_RULE_COVERAGE_THEOREM = (
     "SoLean.Artifacts.AAPQV1Trace.allTraceRuleIds_cover_expectedTrustedRules"
 )
+
+TRACE_PHASE_SURJECTIVITY_THEOREM = (
+    "SoLean.Artifacts.AAPQV1Trace.allTracePhases_all_used"
+)
+
+
+def check_v1_trace_phases_used(manifest: dict[str, Any]) -> dict[str, str]:
+    name = "v1 trace phases are all used by at least one entry"
+    trust = "Lean-owned v1 trace manifest"
+    if manifest.get("kind") != "aapqV1TraceManifest":
+        return failed(name, trust, "v1 trace manifest is missing or wrong kind.")
+    expected = manifest.get("expectedTracePhases")
+    if not isinstance(expected, list) or not expected:
+        return failed(
+            name,
+            trust,
+            "Manifest is missing or has empty expectedTracePhases.",
+        )
+    refs = manifest.get("proofReferences", [])
+    if TRACE_PHASE_SURJECTIVITY_THEOREM not in refs:
+        return failed(
+            name,
+            trust,
+            f"Manifest proofReferences is missing the phase-surjectivity theorem "
+            f"{TRACE_PHASE_SURJECTIVITY_THEOREM}.",
+        )
+    entries = manifest.get("traceRuleProofs", [])
+    used = {entry.get("phase") for entry in entries}
+    unused = sorted(ph for ph in expected if ph not in used)
+    if unused:
+        return failed(
+            name,
+            trust,
+            f"expectedTracePhases lists phases never used by any entry: {unused!r}.",
+        )
+    return passed(
+        name,
+        trust,
+        f"All {len(set(expected))} expected v1 trace phases are referenced by at "
+        f"least one entry; backed by {TRACE_PHASE_SURJECTIVITY_THEOREM}.",
+    )
 
 
 def check_v1_trace_phases_closed(manifest: dict[str, Any]) -> dict[str, str]:
@@ -2048,6 +2089,7 @@ def run_audit(
     checks.append(check_v1_trace_against_manifest(body_summary, v1_trace_manifest))
     checks.append(check_v1_trace_rule_coverage(v1_trace_manifest))
     checks.append(check_v1_trace_phases_closed(v1_trace_manifest))
+    checks.append(check_v1_trace_phases_used(v1_trace_manifest))
 
     status = "passed" if all(check["status"] == "passed" for check in checks) else "failed"
     return {

@@ -30,6 +30,7 @@ from scripts.check_aapq_source import (
     check_v1_full_behavior_summary,
     check_v1_trace_against_manifest,
     check_v1_trace_phases_closed,
+    check_v1_trace_phases_used,
     check_v1_trace_rule_coverage,
     crypto_assumption_support_graph_view,
     check_verifier_model_calibrations,
@@ -58,7 +59,7 @@ from scripts.demo_aapq_source import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOLIDITY_PATH = REPO_ROOT / "examples" / "AAPQIntegration.sol"
-GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v11.json"
+GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v12.json"
 
 
 @lru_cache(maxsize=None)
@@ -186,6 +187,10 @@ class V1TraceManifestTests(unittest.TestCase):
         self.assertEqual(manifest["version"], 3)
         self.assertIn(
             "SoLean.Artifacts.AAPQV1Trace.allTraceRuleIds_cover_expectedTrustedRules",
+            manifest["proofReferences"],
+        )
+        self.assertIn(
+            "SoLean.Artifacts.AAPQV1Trace.allTracePhases_all_used",
             manifest["proofReferences"],
         )
         self.assertEqual(
@@ -334,6 +339,28 @@ class V1TraceManifestTests(unittest.TestCase):
         result = check_v1_trace_phases_closed(manifest)
         self.assertEqual(result["status"], "failed")
         self.assertIn("expectedTracePhases", result["message"])
+
+    def test_trace_phases_used_passes_on_real_artifacts(self) -> None:
+        manifest = cached_artifact("v1-trace-manifest-json")
+        result = check_v1_trace_phases_used(manifest)
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_trace_phases_used_fails_on_unused_phase(self) -> None:
+        manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
+        manifest["expectedTracePhases"].append("zombiePhase")
+        result = check_v1_trace_phases_used(manifest)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("zombiePhase", result["message"])
+
+    def test_trace_phases_used_fails_when_theorem_missing(self) -> None:
+        manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
+        manifest["proofReferences"] = [
+            ref for ref in manifest["proofReferences"]
+            if not ref.endswith("allTracePhases_all_used")
+        ]
+        result = check_v1_trace_phases_used(manifest)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("allTracePhases_all_used", result["message"])
 
     def test_body_summary_rejects_phase_drift(self) -> None:
         manifest = copied_json(cached_artifact("v1-trace-manifest-json"))

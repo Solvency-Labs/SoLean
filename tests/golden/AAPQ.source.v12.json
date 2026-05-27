@@ -6,7 +6,7 @@
     "sourceHash": "9ef06ae57aae9f38b47d9edcf3bbd32861ec8077f21297acda01c746e19f4f81",
     "v1FullBehaviorSummaryHash": "d46ee81ed0cf8653af033e10492ae12ced892a52504badbb6e918c2958eae4be",
     "v1SourceHash": "79c4b594acac581f31dfe79aeab14a72d9e74bf9df1808f30b1b98e223c4acc4",
-    "v1TraceManifestHash": "37c52795c8375759f5f6563f0b5ef665e97bfe47c1a9be98f0102a84990d938f"
+    "v1TraceManifestHash": "c8d39a3cbe0230a3123c72742e19173c91cf0bb518b22c8cb6c1595436350765"
   },
   "checks": [
     {
@@ -194,6 +194,12 @@
       "name": "v1 trace phases form a closed Lean-owned set",
       "status": "passed",
       "trust": "Lean-owned v1 trace manifest"
+    },
+    {
+      "message": "All 4 expected v1 trace phases are referenced by at least one entry; backed by SoLean.Artifacts.AAPQV1Trace.allTracePhases_all_used.",
+      "name": "v1 trace phases are all used by at least one entry",
+      "status": "passed",
+      "trust": "Lean-owned v1 trace manifest"
     }
   ],
   "cryptoAssumptionSupportGraph": [
@@ -256,7 +262,7 @@
     "Does not verify external-call, ABI, calldata, memory, gas, or reentrancy semantics.",
     "Verifier is an abstract oracle in the Lean models."
   ],
-  "reportVersion": 11,
+  "reportVersion": 12,
   "solidityContracts": [
     "AAPQIntegration",
     "AAWallet",

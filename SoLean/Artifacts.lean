@@ -1203,7 +1203,7 @@ inductive TracePhase where
   | keyMatch
   | walletV1
   | execute
-deriving Repr, DecidableEq
+deriving Repr, DecidableEq, BEq
 
 def TracePhase.toString : TracePhase -> String
   | .wrapper  => "wrapper"
@@ -1235,17 +1235,17 @@ deriving Repr
 /--
 Per-statement entry for the Lean-owned AA/PQ v1 trace manifest.
 
-`phase` is one of `wrapper`, `keyMatch`, `walletV1`, `execute`. `leanProof` is
-the Lean theorem the Python audit must report alongside this trace entry.
-`effect` pins the recognized effect kind (guard / delegates / finalWrite /
-phaseCall) and its per-kind shape data (guard kind, slot/name, target).
+`phase` is a closed `TracePhase` enum value. `leanProof` is the Lean theorem
+the Python audit must report alongside this trace entry. `effect` pins the
+recognized effect kind (guard / delegates / finalWrite / phaseCall) and its
+per-kind shape data (guard kind, slot/name, target).
 -/
 structure AAPQV1TraceEntry where
   index    : Nat
   contract : String
   function : String
   rule     : String
-  phase    : String
+  phase    : TracePhase
   effect   : TraceEffect
   leanProof : String
 deriving Repr
@@ -1270,90 +1270,90 @@ def v1FlowProof : String :=
 
 def ruleProofs : List AAPQV1TraceEntry :=
   [ { index := 0,  contract := "PQVerifierWrapper", function := "verify",
-      rule := "wrapperPublicKeyLengthGuard", phase := "wrapper",
+      rule := "wrapperPublicKeyLengthGuard", phase := .wrapper,
       effect := .guard .lengthCheck,
       leanProof := wrapperProof },
     { index := 1,  contract := "PQVerifierWrapper", function := "verify",
-      rule := "wrapperSignatureLengthGuard", phase := "wrapper",
+      rule := "wrapperSignatureLengthGuard", phase := .wrapper,
       effect := .guard .lengthCheck,
       leanProof := wrapperProof },
     { index := 2,  contract := "PQVerifierWrapper", function := "verify",
-      rule := "wrapperDomainGuard", phase := "wrapper",
+      rule := "wrapperDomainGuard", phase := .wrapper,
       effect := .guard .domainCheck,
       leanProof := wrapperProof },
     { index := 3,  contract := "PQVerifierWrapper", function := "verify",
-      rule := "wrapperVerifierGuard", phase := "wrapper",
+      rule := "wrapperVerifierGuard", phase := .wrapper,
       effect := .guard .verifierCheck,
       leanProof := wrapperProof },
     { index := 4,  contract := "AAWallet", function := "validateUserOp",
-      rule := "walletWrapperAddressGuard", phase := "walletV1",
+      rule := "walletWrapperAddressGuard", phase := .walletV1,
       effect := .guard .wrapperAddressCheck,
       leanProof := walletV1Proof },
     { index := 5,  contract := "AAWallet", function := "validateUserOp",
-      rule := "walletDelegateToBaseValidation", phase := "walletV1",
+      rule := "walletDelegateToBaseValidation", phase := .walletV1,
       effect := .delegates "AAWallet._validateUserOp",
       leanProof := walletV1Proof },
     { index := 6,  contract := "AAWallet", function := "_validateUserOp",
-      rule := "walletEntryPointGuard", phase := "walletV1",
+      rule := "walletEntryPointGuard", phase := .walletV1,
       effect := .guard .entryPointCheck,
       leanProof := walletV1Proof },
     { index := 7,  contract := "AAWallet", function := "_validateUserOp",
-      rule := "walletNonceGuard", phase := "walletV1",
+      rule := "walletNonceGuard", phase := .walletV1,
       effect := .guard .nonceCheck,
       leanProof := walletV1Proof },
     { index := 8,  contract := "AAWallet", function := "_validateUserOp",
-      rule := "walletDomainGuard", phase := "walletV1",
+      rule := "walletDomainGuard", phase := .walletV1,
       effect := .guard .domainCheck,
       leanProof := walletV1Proof },
     { index := 9,  contract := "AAWallet", function := "_validateUserOp",
-      rule := "walletVerifierGuard", phase := "walletV1",
+      rule := "walletVerifierGuard", phase := .walletV1,
       effect := .guard .verifierCheck,
       leanProof := walletV1Proof },
     { index := 10, contract := "AAWallet", function := "_validateUserOp",
-      rule := "walletNonceIncrement", phase := "walletV1",
+      rule := "walletNonceIncrement", phase := .walletV1,
       effect := .finalWrite "nonce" Examples.AAWallet.nonceSlot,
       leanProof := walletV1Proof },
     { index := 11, contract := "AAWallet", function := "executeUserOp",
-      rule := "walletExecuteRecordsOpHash", phase := "execute",
+      rule := "walletExecuteRecordsOpHash", phase := .execute,
       effect := .finalWrite "lastOpHash" Examples.AAWallet.lastOpHashSlot,
       leanProof := executeProof },
     { index := 12, contract := "AAPQIntegration", function := "validateAndExecuteV1",
-      rule := "integrationWrapperVerifyCall", phase := "wrapper",
+      rule := "integrationWrapperVerifyCall", phase := .wrapper,
       effect := .phaseCall,
       leanProof := v1FlowProof },
     { index := 13, contract := "AAPQIntegration", function := "validateAndExecuteV1",
-      rule := "integrationKeyCommitmentGuard", phase := "keyMatch",
+      rule := "integrationKeyCommitmentGuard", phase := .keyMatch,
       effect := .guard .keyCommitmentCheck,
       leanProof := keyMatchProof },
     { index := 14, contract := "AAPQIntegration", function := "validateAndExecuteV1",
-      rule := "integrationWalletV1Call", phase := "walletV1",
+      rule := "integrationWalletV1Call", phase := .walletV1,
       effect := .phaseCall,
       leanProof := v1FlowProof },
     { index := 15, contract := "AAPQIntegration", function := "validateAndExecuteV1",
-      rule := "integrationExecuteCall", phase := "execute",
+      rule := "integrationExecuteCall", phase := .execute,
       effect := .phaseCall,
       leanProof := v1FlowProof } ]
 
-def effectJson (phase : String) : TraceEffect -> Json
+def effectJson (phase : TracePhase) : TraceEffect -> Json
   | .guard kind => .obj [
       ("guard", .str (Examples.AAPQSource.GuardKind.toString kind)),
       ("kind", .str "guard"),
-      ("phase", .str phase)
+      ("phase", .str (TracePhase.toString phase))
     ]
   | .delegates target => .obj [
       ("kind", .str "delegates"),
-      ("phase", .str phase),
+      ("phase", .str (TracePhase.toString phase)),
       ("target", .str target)
     ]
   | .finalWrite name slot => .obj [
       ("kind", .str "finalWrite"),
       ("name", .str name),
-      ("phase", .str phase),
+      ("phase", .str (TracePhase.toString phase)),
       ("slot", .num slot)
     ]
   | .phaseCall => .obj [
       ("kind", .str "phaseCall"),
-      ("phase", .str phase)
+      ("phase", .str (TracePhase.toString phase))
     ]
 
 def entryJson (entry : AAPQV1TraceEntry) : Json :=
@@ -1363,7 +1363,7 @@ def entryJson (entry : AAPQV1TraceEntry) : Json :=
     ("function", .str entry.function),
     ("index", .num entry.index),
     ("leanProof", .str entry.leanProof),
-    ("phase", .str entry.phase),
+    ("phase", .str (TracePhase.toString entry.phase)),
     ("rule", .str entry.rule)
   ]
 
@@ -1444,6 +1444,17 @@ theorem allTraceRuleIds_cover_expectedTrustedRules :
       ruleProofs.map AAPQV1TraceEntry.rule := by
   rfl
 
+/--
+Surjectivity companion to the closed `TracePhase` enumeration: every
+phase listed in `allTracePhases` is referenced by at least one entry in
+`ruleProofs`. Adding a phase without using it (or dropping all uses of
+an existing phase) breaks this `decide` at build time.
+-/
+theorem allTracePhases_all_used :
+    allTracePhases.all
+      (fun ph => ruleProofs.any (fun e => e.phase == ph)) = true := by
+  decide
+
 def phaseProofsJson : Json :=
   .obj [
     ("execute", .str executeProof),
@@ -1454,7 +1465,8 @@ def phaseProofsJson : Json :=
 
 /-- Sorted, deduplicated union of every Lean proof referenced by the manifest. -/
 def proofReferences : List String :=
-  [ "SoLean.Artifacts.AAPQV1Trace.allTraceRuleIds_cover_expectedTrustedRules",
+  [ "SoLean.Artifacts.AAPQV1Trace.allTracePhases_all_used",
+    "SoLean.Artifacts.AAPQV1Trace.allTraceRuleIds_cover_expectedTrustedRules",
     "SoLean.Examples.AAPQIntegration.wallet_program_success_properties",
     v1FlowProof,
     executeProof,
