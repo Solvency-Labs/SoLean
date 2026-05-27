@@ -6,7 +6,7 @@
     "sourceHash": "9ef06ae57aae9f38b47d9edcf3bbd32861ec8077f21297acda01c746e19f4f81",
     "v1FullBehaviorSummaryHash": "d46ee81ed0cf8653af033e10492ae12ced892a52504badbb6e918c2958eae4be",
     "v1SourceHash": "79c4b594acac581f31dfe79aeab14a72d9e74bf9df1808f30b1b98e223c4acc4",
-    "v1TraceManifestHash": "61241a5fd8c40717a396359e5de18186b0e227a2bb2282f45d517ee0975c04d6"
+    "v1TraceManifestHash": "888ccc1369207794af58ec6f4e180616ca1bb4bb9fee42ce91eacb28bcda80b6"
   },
   "checks": [
     {
@@ -182,6 +182,12 @@
       "name": "Solidity v1 trace matches Lean trace manifest",
       "status": "passed",
       "trust": "Lean-owned v1 trace manifest"
+    },
+    {
+      "message": "16 v1 trace rules form a unique closed set backed by SoLean.Artifacts.AAPQV1Trace.allTraceRuleIds_cover_expectedTrustedRules.",
+      "name": "v1 trace rule enumeration covered by Lean theorem",
+      "status": "passed",
+      "trust": "Lean-owned v1 trace manifest"
     }
   ],
   "cryptoAssumptionSupportGraph": [
@@ -244,7 +250,7 @@
     "Does not verify external-call, ABI, calldata, memory, gas, or reentrancy semantics.",
     "Verifier is an abstract oracle in the Lean models."
   ],
-  "reportVersion": 9,
+  "reportVersion": 10,
   "solidityContracts": [
     "AAPQIntegration",
     "AAWallet",

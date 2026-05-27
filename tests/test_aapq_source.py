@@ -29,6 +29,7 @@ from scripts.check_aapq_source import (
     check_under_oracle_assumption_theorems_covered,
     check_v1_full_behavior_summary,
     check_v1_trace_against_manifest,
+    check_v1_trace_rule_coverage,
     crypto_assumption_support_graph_view,
     check_verifier_model_calibrations,
     default_v1_trace_manifest,
@@ -56,7 +57,7 @@ from scripts.demo_aapq_source import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOLIDITY_PATH = REPO_ROOT / "examples" / "AAPQIntegration.sol"
-GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v9.json"
+GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v10.json"
 
 
 @lru_cache(maxsize=None)
@@ -182,6 +183,10 @@ class V1TraceManifestTests(unittest.TestCase):
         manifest = cached_artifact("v1-trace-manifest-json")
         self.assertEqual(manifest["kind"], "aapqV1TraceManifest")
         self.assertEqual(manifest["version"], 2)
+        self.assertIn(
+            "SoLean.Artifacts.AAPQV1Trace.allTraceRuleIds_cover_expectedTrustedRules",
+            manifest["proofReferences"],
+        )
         rules = manifest["expectedTrustedRules"]
         entries = manifest["traceRuleProofs"]
         self.assertEqual(len(rules), len(entries))
@@ -282,6 +287,29 @@ class V1TraceManifestTests(unittest.TestCase):
             solidity_v1_body_summary(
                 SOLIDITY_PATH.read_text(), trace_manifest=manifest
             )
+
+    def test_rule_coverage_passes_on_real_artifacts(self) -> None:
+        manifest = cached_artifact("v1-trace-manifest-json")
+        result = check_v1_trace_rule_coverage(manifest)
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_rule_coverage_fails_when_theorem_missing(self) -> None:
+        manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
+        manifest["proofReferences"] = [
+            ref for ref in manifest["proofReferences"]
+            if not ref.endswith("allTraceRuleIds_cover_expectedTrustedRules")
+        ]
+        result = check_v1_trace_rule_coverage(manifest)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("allTraceRuleIds_cover_expectedTrustedRules", result["message"])
+
+    def test_rule_coverage_fails_on_duplicate_rule(self) -> None:
+        manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
+        manifest["expectedTrustedRules"][1] = manifest["expectedTrustedRules"][0]
+        manifest["traceRuleProofs"][1]["rule"] = manifest["traceRuleProofs"][0]["rule"]
+        result = check_v1_trace_rule_coverage(manifest)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("duplicate", result["message"].lower())
 
     def test_body_summary_rejects_phase_drift(self) -> None:
         manifest = copied_json(cached_artifact("v1-trace-manifest-json"))

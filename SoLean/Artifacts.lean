@@ -1346,8 +1346,79 @@ def entryJson (entry : AAPQV1TraceEntry) : Json :=
     ("rule", .str entry.rule)
   ]
 
+/--
+Closed enumeration of every recognized v1 trace rule. Adding a new rule to
+the manifest requires extending this inductive, which then forces
+`allTraceRuleIds_cover_expectedTrustedRules` below to be re-proved.
+-/
+inductive TraceRuleId where
+  | wrapperPublicKeyLengthGuard
+  | wrapperSignatureLengthGuard
+  | wrapperDomainGuard
+  | wrapperVerifierGuard
+  | walletWrapperAddressGuard
+  | walletDelegateToBaseValidation
+  | walletEntryPointGuard
+  | walletNonceGuard
+  | walletDomainGuard
+  | walletVerifierGuard
+  | walletNonceIncrement
+  | walletExecuteRecordsOpHash
+  | integrationWrapperVerifyCall
+  | integrationKeyCommitmentGuard
+  | integrationWalletV1Call
+  | integrationExecuteCall
+deriving Repr, DecidableEq
+
+def TraceRuleId.toString : TraceRuleId -> String
+  | .wrapperPublicKeyLengthGuard    => "wrapperPublicKeyLengthGuard"
+  | .wrapperSignatureLengthGuard    => "wrapperSignatureLengthGuard"
+  | .wrapperDomainGuard             => "wrapperDomainGuard"
+  | .wrapperVerifierGuard           => "wrapperVerifierGuard"
+  | .walletWrapperAddressGuard      => "walletWrapperAddressGuard"
+  | .walletDelegateToBaseValidation => "walletDelegateToBaseValidation"
+  | .walletEntryPointGuard          => "walletEntryPointGuard"
+  | .walletNonceGuard               => "walletNonceGuard"
+  | .walletDomainGuard              => "walletDomainGuard"
+  | .walletVerifierGuard            => "walletVerifierGuard"
+  | .walletNonceIncrement           => "walletNonceIncrement"
+  | .walletExecuteRecordsOpHash     => "walletExecuteRecordsOpHash"
+  | .integrationWrapperVerifyCall   => "integrationWrapperVerifyCall"
+  | .integrationKeyCommitmentGuard  => "integrationKeyCommitmentGuard"
+  | .integrationWalletV1Call        => "integrationWalletV1Call"
+  | .integrationExecuteCall         => "integrationExecuteCall"
+
+def allTraceRuleIds : List TraceRuleId :=
+  [ .wrapperPublicKeyLengthGuard,
+    .wrapperSignatureLengthGuard,
+    .wrapperDomainGuard,
+    .wrapperVerifierGuard,
+    .walletWrapperAddressGuard,
+    .walletDelegateToBaseValidation,
+    .walletEntryPointGuard,
+    .walletNonceGuard,
+    .walletDomainGuard,
+    .walletVerifierGuard,
+    .walletNonceIncrement,
+    .walletExecuteRecordsOpHash,
+    .integrationWrapperVerifyCall,
+    .integrationKeyCommitmentGuard,
+    .integrationWalletV1Call,
+    .integrationExecuteCall ]
+
 def expectedTrustedRules : List String :=
-  ruleProofs.map AAPQV1TraceEntry.rule
+  allTraceRuleIds.map TraceRuleId.toString
+
+/--
+Lean-side coverage theorem: the enumerated `allTraceRuleIds`, projected
+through `TraceRuleId.toString`, exactly equals the `rule` strings carried
+by `ruleProofs`. Any drift between the enumeration and the per-entry
+strings breaks this `rfl` at build time.
+-/
+theorem allTraceRuleIds_cover_expectedTrustedRules :
+    allTraceRuleIds.map TraceRuleId.toString =
+      ruleProofs.map AAPQV1TraceEntry.rule := by
+  rfl
 
 def phaseProofsJson : Json :=
   .obj [
@@ -1359,7 +1430,8 @@ def phaseProofsJson : Json :=
 
 /-- Sorted, deduplicated union of every Lean proof referenced by the manifest. -/
 def proofReferences : List String :=
-  [ "SoLean.Examples.AAPQIntegration.wallet_program_success_properties",
+  [ "SoLean.Artifacts.AAPQV1Trace.allTraceRuleIds_cover_expectedTrustedRules",
+    "SoLean.Examples.AAPQIntegration.wallet_program_success_properties",
     v1FlowProof,
     executeProof,
     walletV1Proof,

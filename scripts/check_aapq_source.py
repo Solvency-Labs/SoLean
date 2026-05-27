@@ -27,7 +27,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-REPORT_VERSION = 9
+REPORT_VERSION = 10
 
 LIMITATIONS = [
     "AA/PQ source-shape/body audit only.",
@@ -785,6 +785,47 @@ def check_v1_trace_against_manifest(
         trust,
         f"All {len(observed)} trace entries match the Lean-owned manifest "
         f"(rule, contract, function, phase, effect, leanProof).",
+    )
+
+
+TRACE_RULE_COVERAGE_THEOREM = (
+    "SoLean.Artifacts.AAPQV1Trace.allTraceRuleIds_cover_expectedTrustedRules"
+)
+
+
+def check_v1_trace_rule_coverage(manifest: dict[str, Any]) -> dict[str, str]:
+    name = "v1 trace rule enumeration covered by Lean theorem"
+    trust = "Lean-owned v1 trace manifest"
+    if manifest.get("kind") != "aapqV1TraceManifest":
+        return failed(name, trust, "v1 trace manifest is missing or wrong kind.")
+    refs = manifest.get("proofReferences", [])
+    if TRACE_RULE_COVERAGE_THEOREM not in refs:
+        return failed(
+            name,
+            trust,
+            f"Manifest proofReferences is missing the rule-coverage theorem "
+            f"{TRACE_RULE_COVERAGE_THEOREM}.",
+        )
+    rules = manifest.get("expectedTrustedRules", [])
+    duplicates = [rule for rule in rules if rules.count(rule) > 1]
+    if duplicates:
+        return failed(
+            name,
+            trust,
+            f"expectedTrustedRules contains duplicates: {sorted(set(duplicates))}",
+        )
+    entry_rules = [entry.get("rule") for entry in manifest.get("traceRuleProofs", [])]
+    if entry_rules != rules:
+        return failed(
+            name,
+            trust,
+            "expectedTrustedRules does not equal traceRuleProofs.rule list.",
+        )
+    return passed(
+        name,
+        trust,
+        f"{len(rules)} v1 trace rules form a unique closed set backed by "
+        f"{TRACE_RULE_COVERAGE_THEOREM}.",
     )
 
 
@@ -1971,6 +2012,7 @@ def run_audit(
     checks.append(body_summary_check)
     checks.append(check_solidity_v1_trace(body_summary))
     checks.append(check_v1_trace_against_manifest(body_summary, v1_trace_manifest))
+    checks.append(check_v1_trace_rule_coverage(v1_trace_manifest))
 
     status = "passed" if all(check["status"] == "passed" for check in checks) else "failed"
     return {

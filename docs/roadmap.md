@@ -196,8 +196,13 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   finalWrite / phaseCall, plus per-kind data) are now owned by the Lean
   `v1-trace-manifest-json` artifact (`version: 2`) and pulled into Python
   by the recognizer; the audit cross-checks observed and manifest effects.
-  The report is committed as `tests/golden/AAPQ.source.v9.json`
-  (reportVersion 9).
+  Rule names are also a closed Lean enumeration (`TraceRuleId`) with a
+  `rfl`-provable coverage theorem
+  (`allTraceRuleIds_cover_expectedTrustedRules`) referenced from the
+  manifest's `proofReferences` and surfaced by the
+  `v1 trace rule enumeration covered by Lean theorem` audit check. The
+  report is committed as `tests/golden/AAPQ.source.v10.json`
+  (reportVersion 10).
 - `scripts/demo_aapq_source.py` is a one-command research demo that runs
   `lake build`, the AA/PQ-focused Python tests, the Lean artifact smokes,
   the markdown source-shape report, and a Trust Boundaries summary sourced
@@ -676,13 +681,26 @@ deviates from the manifest's effect. Manifest bumped to `version: 2`; report
 bumped to `reportVersion: 9` with a committed golden at
 `tests/golden/AAPQ.source.v9.json`.
 
-The next best qualitative task is to mirror these v1 trace rule names directly
-in the Lean v1 behavior summary so that the per-statement rule identifiers
-(e.g. `walletNonceIncrement`, `integrationKeyCommitmentGuard`) become a
-Lean-owned vocabulary tied to the existing structured `Guard`/`FinalWrite`
-nodes, rather than living as free strings in the trace manifest. Closes the
-last "trusted manifest string" gap by wiring rule names through the reflection
-layer.
+FalconSimpleWallet v2.10 closed trace-rule enumeration is now landed:
+`SoLean.Artifacts.AAPQV1Trace.TraceRuleId` is a 16-case inductive that
+enumerates every recognized v1 trace rule. `expectedTrustedRules` is now
+defined as `allTraceRuleIds.map TraceRuleId.toString`, and the build-time
+theorem
+`SoLean.Artifacts.AAPQV1Trace.allTraceRuleIds_cover_expectedTrustedRules`
+proves it equals the per-entry `rule` strings carried by `ruleProofs`. The
+manifest's `proofReferences` surfaces this theorem, and a new audit check
+`v1 trace rule enumeration covered by Lean theorem` fails loudly if the
+theorem ever drops off or duplicates leak in. Report bumped to
+`reportVersion: 10` with a committed golden at
+`tests/golden/AAPQ.source.v10.json`.
+
+The next best qualitative task is to lift the `phase` strings ("wrapper",
+"keyMatch", "walletV1", "execute") in `AAPQV1TraceEntry` and `TraceEffect`
+into a closed `TracePhase` inductive with a similar coverage theorem,
+closing the last "free string" gap in the v1 trace manifest. The JSON output
+stays byte-identical except for one new theorem reference, so the manifest
+hash bumps but `version` and `reportVersion` only bump if a new audit check
+is added.
 
 ### FalconSimpleWallet shape v0 (landed)
 
