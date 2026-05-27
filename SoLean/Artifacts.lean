@@ -1194,6 +1194,27 @@ def aapqV1FullBehaviorSummaryJson : String :=
   renderJson aapqV1FullBehaviorSummary
 
 /--
+Closed enumeration of every phase the v1 trace manifest can label an
+entry with. Adding a new phase requires extending this inductive, which
+keeps the Python audit's expected phase set in sync with Lean.
+-/
+inductive TracePhase where
+  | wrapper
+  | keyMatch
+  | walletV1
+  | execute
+deriving Repr, DecidableEq
+
+def TracePhase.toString : TracePhase -> String
+  | .wrapper  => "wrapper"
+  | .keyMatch => "keyMatch"
+  | .walletV1 => "walletV1"
+  | .execute  => "execute"
+
+def allTracePhases : List TracePhase :=
+  [.wrapper, .keyMatch, .walletV1, .execute]
+
+/--
 Recognized effect for one Lean-owned AA/PQ v1 trace entry.
 
 - `guard k`     — the source statement enforces an invariant of `GuardKind` `k`.
@@ -1409,6 +1430,9 @@ def allTraceRuleIds : List TraceRuleId :=
 def expectedTrustedRules : List String :=
   allTraceRuleIds.map TraceRuleId.toString
 
+def expectedTracePhases : List String :=
+  allTracePhases.map TracePhase.toString
+
 /--
 Lean-side coverage theorem: the enumerated `allTraceRuleIds`, projected
 through `TraceRuleId.toString`, exactly equals the `rule` strings carried
@@ -1441,13 +1465,14 @@ end AAPQV1Trace
 
 def aapqV1TraceManifest : Json :=
   .obj [
+    ("expectedTracePhases", stringsJson AAPQV1Trace.expectedTracePhases),
     ("expectedTrustedRules", stringsJson AAPQV1Trace.expectedTrustedRules),
     ("kind", .str "aapqV1TraceManifest"),
     ("phaseProofs", AAPQV1Trace.phaseProofsJson),
     ("proofReferences", stringsJson AAPQV1Trace.proofReferences),
     ("traceRuleProofs", .arr (AAPQV1Trace.ruleProofs.map AAPQV1Trace.entryJson)),
     ("v1FlowProof", .str AAPQV1Trace.v1FlowProof),
-    ("version", .num 2)
+    ("version", .num 3)
   ]
 
 def aapqV1TraceManifestJson : String :=

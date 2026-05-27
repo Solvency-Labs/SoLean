@@ -194,15 +194,18 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   rule names, normalized effects, trust labels, and proof references for the
   Lean-backed target phases. Per-statement effect shapes (guard / delegates /
   finalWrite / phaseCall, plus per-kind data) are now owned by the Lean
-  `v1-trace-manifest-json` artifact (`version: 2`) and pulled into Python
+  `v1-trace-manifest-json` artifact (`version: 3`) and pulled into Python
   by the recognizer; the audit cross-checks observed and manifest effects.
-  Rule names are also a closed Lean enumeration (`TraceRuleId`) with a
+  Rule names and phase labels are both closed Lean enumerations
+  (`TraceRuleId`, `TracePhase`); the rule list is backed by the
   `rfl`-provable coverage theorem
-  (`allTraceRuleIds_cover_expectedTrustedRules`) referenced from the
-  manifest's `proofReferences` and surfaced by the
-  `v1 trace rule enumeration covered by Lean theorem` audit check. The
-  report is committed as `tests/golden/AAPQ.source.v10.json`
-  (reportVersion 10).
+  `allTraceRuleIds_cover_expectedTrustedRules` (referenced from the
+  manifest's `proofReferences`), and the phase set is exported as
+  `expectedTracePhases`. Two audit checks
+  (`v1 trace rule enumeration covered by Lean theorem`,
+  `v1 trace phases form a closed Lean-owned set`) catch drift in either
+  direction. The report is committed as `tests/golden/AAPQ.source.v11.json`
+  (reportVersion 11).
 - `scripts/demo_aapq_source.py` is a one-command research demo that runs
   `lake build`, the AA/PQ-focused Python tests, the Lean artifact smokes,
   the markdown source-shape report, and a Trust Boundaries summary sourced
@@ -694,13 +697,21 @@ theorem ever drops off or duplicates leak in. Report bumped to
 `reportVersion: 10` with a committed golden at
 `tests/golden/AAPQ.source.v10.json`.
 
-The next best qualitative task is to lift the `phase` strings ("wrapper",
-"keyMatch", "walletV1", "execute") in `AAPQV1TraceEntry` and `TraceEffect`
-into a closed `TracePhase` inductive with a similar coverage theorem,
-closing the last "free string" gap in the v1 trace manifest. The JSON output
-stays byte-identical except for one new theorem reference, so the manifest
-hash bumps but `version` and `reportVersion` only bump if a new audit check
-is added.
+FalconSimpleWallet v2.11 closed trace-phase enumeration is now landed:
+`SoLean.Artifacts.TracePhase` is a 4-case inductive (`wrapper`, `keyMatch`,
+`walletV1`, `execute`) with a `toString` projection. The manifest exports
+`expectedTracePhases` as a new field (`allTracePhases.map TracePhase.toString`),
+and the audit check `v1 trace phases form a closed Lean-owned set` rejects any
+entry whose `phase` field is not one of those four. Manifest bumped to
+`version: 3`; report bumped to `reportVersion: 11` with a committed golden at
+`tests/golden/AAPQ.source.v11.json`.
+
+The next best qualitative task is to extend Lane A — Deepen the EVM CALL
+boundary — by closing the integrated v1 / `validateAndExecuteV1` flow over
+the gas-aware EVM-call boundary: a `validateAndExecuteV1ViaEvmCallWithGas`
+variant plus the success-iff equivalence with the existing canonical v1 flow
+under `EnoughGas`. This lifts the v1 wrapper-address gate into scope of the
+gas-aware call shim, instead of having gas reasoning only for the v0 flow.
 
 ### FalconSimpleWallet shape v0 (landed)
 

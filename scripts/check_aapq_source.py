@@ -27,7 +27,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-REPORT_VERSION = 10
+REPORT_VERSION = 11
 
 LIMITATIONS = [
     "AA/PQ source-shape/body audit only.",
@@ -791,6 +791,40 @@ def check_v1_trace_against_manifest(
 TRACE_RULE_COVERAGE_THEOREM = (
     "SoLean.Artifacts.AAPQV1Trace.allTraceRuleIds_cover_expectedTrustedRules"
 )
+
+
+def check_v1_trace_phases_closed(manifest: dict[str, Any]) -> dict[str, str]:
+    name = "v1 trace phases form a closed Lean-owned set"
+    trust = "Lean-owned v1 trace manifest"
+    if manifest.get("kind") != "aapqV1TraceManifest":
+        return failed(name, trust, "v1 trace manifest is missing or wrong kind.")
+    expected = manifest.get("expectedTracePhases")
+    if not isinstance(expected, list) or not expected:
+        return failed(
+            name,
+            trust,
+            "Manifest is missing or has empty expectedTracePhases.",
+        )
+    expected_set = set(expected)
+    entries = manifest.get("traceRuleProofs", [])
+    strays = sorted({
+        entry.get("phase")
+        for entry in entries
+        if entry.get("phase") not in expected_set
+    })
+    if strays:
+        return failed(
+            name,
+            trust,
+            f"Manifest entries reference unknown phases: {strays!r} "
+            f"(expected one of {sorted(expected_set)!r}).",
+        )
+    return passed(
+        name,
+        trust,
+        f"All {len(entries)} v1 trace entries reference one of "
+        f"{len(expected_set)} known phases ({sorted(expected_set)}).",
+    )
 
 
 def check_v1_trace_rule_coverage(manifest: dict[str, Any]) -> dict[str, str]:
@@ -2013,6 +2047,7 @@ def run_audit(
     checks.append(check_solidity_v1_trace(body_summary))
     checks.append(check_v1_trace_against_manifest(body_summary, v1_trace_manifest))
     checks.append(check_v1_trace_rule_coverage(v1_trace_manifest))
+    checks.append(check_v1_trace_phases_closed(v1_trace_manifest))
 
     status = "passed" if all(check["status"] == "passed" for check in checks) else "failed"
     return {

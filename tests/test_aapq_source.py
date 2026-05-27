@@ -29,6 +29,7 @@ from scripts.check_aapq_source import (
     check_under_oracle_assumption_theorems_covered,
     check_v1_full_behavior_summary,
     check_v1_trace_against_manifest,
+    check_v1_trace_phases_closed,
     check_v1_trace_rule_coverage,
     crypto_assumption_support_graph_view,
     check_verifier_model_calibrations,
@@ -57,7 +58,7 @@ from scripts.demo_aapq_source import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOLIDITY_PATH = REPO_ROOT / "examples" / "AAPQIntegration.sol"
-GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v10.json"
+GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v11.json"
 
 
 @lru_cache(maxsize=None)
@@ -182,10 +183,14 @@ class V1TraceManifestTests(unittest.TestCase):
     def test_manifest_shape(self) -> None:
         manifest = cached_artifact("v1-trace-manifest-json")
         self.assertEqual(manifest["kind"], "aapqV1TraceManifest")
-        self.assertEqual(manifest["version"], 2)
+        self.assertEqual(manifest["version"], 3)
         self.assertIn(
             "SoLean.Artifacts.AAPQV1Trace.allTraceRuleIds_cover_expectedTrustedRules",
             manifest["proofReferences"],
+        )
+        self.assertEqual(
+            sorted(manifest["expectedTracePhases"]),
+            ["execute", "keyMatch", "walletV1", "wrapper"],
         )
         rules = manifest["expectedTrustedRules"]
         entries = manifest["traceRuleProofs"]
@@ -310,6 +315,25 @@ class V1TraceManifestTests(unittest.TestCase):
         result = check_v1_trace_rule_coverage(manifest)
         self.assertEqual(result["status"], "failed")
         self.assertIn("duplicate", result["message"].lower())
+
+    def test_trace_phases_closed_passes_on_real_artifacts(self) -> None:
+        manifest = cached_artifact("v1-trace-manifest-json")
+        result = check_v1_trace_phases_closed(manifest)
+        self.assertEqual(result["status"], "passed", result)
+
+    def test_trace_phases_closed_fails_on_stray_phase(self) -> None:
+        manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
+        manifest["traceRuleProofs"][0]["phase"] = "rogueStage"
+        result = check_v1_trace_phases_closed(manifest)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("rogueStage", result["message"])
+
+    def test_trace_phases_closed_fails_when_field_missing(self) -> None:
+        manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
+        del manifest["expectedTracePhases"]
+        result = check_v1_trace_phases_closed(manifest)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("expectedTracePhases", result["message"])
 
     def test_body_summary_rejects_phase_drift(self) -> None:
         manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
