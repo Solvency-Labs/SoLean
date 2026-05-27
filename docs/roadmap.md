@@ -192,8 +192,12 @@ See `docs/pq-aa-roadmap.md` for the strategic AA/PQ case-study roadmap.
   and checks its phase/guard/write signature against the Lean-owned v1
   behavior summary. It also emits an ordered per-statement trace with stable
   rule names, normalized effects, trust labels, and proof references for the
-  Lean-backed target phases. The report is committed as
-  `tests/golden/AAPQ.source.v7.json` (reportVersion 7).
+  Lean-backed target phases. Per-statement effect shapes (guard / delegates /
+  finalWrite / phaseCall, plus per-kind data) are now owned by the Lean
+  `v1-trace-manifest-json` artifact (`version: 2`) and pulled into Python
+  by the recognizer; the audit cross-checks observed and manifest effects.
+  The report is committed as `tests/golden/AAPQ.source.v9.json`
+  (reportVersion 9).
 - `scripts/demo_aapq_source.py` is a one-command research demo that runs
   `lake build`, the AA/PQ-focused Python tests, the Lean artifact smokes,
   the markdown source-shape report, and a Trust Boundaries summary sourced
@@ -659,10 +663,26 @@ audit check that fails if Lean and Python disagree on any
 `reportVersion: 8` with a committed golden at
 `tests/golden/AAPQ.source.v8.json`.
 
-The next best qualitative task is to pin per-rule effect signatures (guard
-kinds, finalWrite slot/name, phaseCall/delegates) in the Lean manifest as well,
-so Python stops owning the recognized effect shape. This would close the
-remaining "trusted Python recognizer" gap for v1 trace effects.
+FalconSimpleWallet v2.9 per-rule effect signatures from Lean manifest is now
+landed: `SoLean.Artifacts.TraceEffect` is a closed inductive
+(`guard` carrying a `GuardKind`, `delegates` carrying a target string,
+`finalWrite` carrying slot name + slot, `phaseCall`) embedded in every
+`AAPQV1TraceEntry`. The manifest renders each entry's effect as JSON with the
+phase pulled in from the entry. Python's `solidity_v1_body_summary` no longer
+owns the effect shape — it only owns each statement's source text and pulls
+`effect`, `kind`, `phase`, `guard`/`target`/`name`/`slot` straight from the
+manifest. `check_v1_trace_against_manifest` now fails if any observed effect
+deviates from the manifest's effect. Manifest bumped to `version: 2`; report
+bumped to `reportVersion: 9` with a committed golden at
+`tests/golden/AAPQ.source.v9.json`.
+
+The next best qualitative task is to mirror these v1 trace rule names directly
+in the Lean v1 behavior summary so that the per-statement rule identifiers
+(e.g. `walletNonceIncrement`, `integrationKeyCommitmentGuard`) become a
+Lean-owned vocabulary tied to the existing structured `Guard`/`FinalWrite`
+nodes, rather than living as free strings in the trace manifest. Closes the
+last "trusted manifest string" gap by wiring rule names through the reflection
+layer.
 
 ### FalconSimpleWallet shape v0 (landed)
 

@@ -1194,10 +1194,30 @@ def aapqV1FullBehaviorSummaryJson : String :=
   renderJson aapqV1FullBehaviorSummary
 
 /--
+Recognized effect for one Lean-owned AA/PQ v1 trace entry.
+
+- `guard k`     — the source statement enforces an invariant of `GuardKind` `k`.
+- `delegates t` — the source statement is a call to a sibling function named
+                  `t` whose body is itself in the trace.
+- `finalWrite n s` — the source statement is the final write to slot `s`,
+                  storage-visible as `n`.
+- `phaseCall`   — the source statement is the integration's call into the
+                  phase named by the surrounding trace entry's `phase` field.
+-/
+inductive TraceEffect where
+  | guard (kind : Examples.AAPQSource.GuardKind)
+  | delegates (target : String)
+  | finalWrite (name : String) (slot : Nat)
+  | phaseCall
+deriving Repr
+
+/--
 Per-statement entry for the Lean-owned AA/PQ v1 trace manifest.
 
 `phase` is one of `wrapper`, `keyMatch`, `walletV1`, `execute`. `leanProof` is
 the Lean theorem the Python audit must report alongside this trace entry.
+`effect` pins the recognized effect kind (guard / delegates / finalWrite /
+phaseCall) and its per-kind shape data (guard kind, slot/name, target).
 -/
 structure AAPQV1TraceEntry where
   index    : Nat
@@ -1205,6 +1225,7 @@ structure AAPQV1TraceEntry where
   function : String
   rule     : String
   phase    : String
+  effect   : TraceEffect
   leanProof : String
 deriving Repr
 
@@ -1229,56 +1250,95 @@ def v1FlowProof : String :=
 def ruleProofs : List AAPQV1TraceEntry :=
   [ { index := 0,  contract := "PQVerifierWrapper", function := "verify",
       rule := "wrapperPublicKeyLengthGuard", phase := "wrapper",
+      effect := .guard .lengthCheck,
       leanProof := wrapperProof },
     { index := 1,  contract := "PQVerifierWrapper", function := "verify",
       rule := "wrapperSignatureLengthGuard", phase := "wrapper",
+      effect := .guard .lengthCheck,
       leanProof := wrapperProof },
     { index := 2,  contract := "PQVerifierWrapper", function := "verify",
       rule := "wrapperDomainGuard", phase := "wrapper",
+      effect := .guard .domainCheck,
       leanProof := wrapperProof },
     { index := 3,  contract := "PQVerifierWrapper", function := "verify",
       rule := "wrapperVerifierGuard", phase := "wrapper",
+      effect := .guard .verifierCheck,
       leanProof := wrapperProof },
     { index := 4,  contract := "AAWallet", function := "validateUserOp",
       rule := "walletWrapperAddressGuard", phase := "walletV1",
+      effect := .guard .wrapperAddressCheck,
       leanProof := walletV1Proof },
     { index := 5,  contract := "AAWallet", function := "validateUserOp",
       rule := "walletDelegateToBaseValidation", phase := "walletV1",
+      effect := .delegates "AAWallet._validateUserOp",
       leanProof := walletV1Proof },
     { index := 6,  contract := "AAWallet", function := "_validateUserOp",
       rule := "walletEntryPointGuard", phase := "walletV1",
+      effect := .guard .entryPointCheck,
       leanProof := walletV1Proof },
     { index := 7,  contract := "AAWallet", function := "_validateUserOp",
       rule := "walletNonceGuard", phase := "walletV1",
+      effect := .guard .nonceCheck,
       leanProof := walletV1Proof },
     { index := 8,  contract := "AAWallet", function := "_validateUserOp",
       rule := "walletDomainGuard", phase := "walletV1",
+      effect := .guard .domainCheck,
       leanProof := walletV1Proof },
     { index := 9,  contract := "AAWallet", function := "_validateUserOp",
       rule := "walletVerifierGuard", phase := "walletV1",
+      effect := .guard .verifierCheck,
       leanProof := walletV1Proof },
     { index := 10, contract := "AAWallet", function := "_validateUserOp",
       rule := "walletNonceIncrement", phase := "walletV1",
+      effect := .finalWrite "nonce" Examples.AAWallet.nonceSlot,
       leanProof := walletV1Proof },
     { index := 11, contract := "AAWallet", function := "executeUserOp",
       rule := "walletExecuteRecordsOpHash", phase := "execute",
+      effect := .finalWrite "lastOpHash" Examples.AAWallet.lastOpHashSlot,
       leanProof := executeProof },
     { index := 12, contract := "AAPQIntegration", function := "validateAndExecuteV1",
       rule := "integrationWrapperVerifyCall", phase := "wrapper",
+      effect := .phaseCall,
       leanProof := v1FlowProof },
     { index := 13, contract := "AAPQIntegration", function := "validateAndExecuteV1",
       rule := "integrationKeyCommitmentGuard", phase := "keyMatch",
+      effect := .guard .keyCommitmentCheck,
       leanProof := keyMatchProof },
     { index := 14, contract := "AAPQIntegration", function := "validateAndExecuteV1",
       rule := "integrationWalletV1Call", phase := "walletV1",
+      effect := .phaseCall,
       leanProof := v1FlowProof },
     { index := 15, contract := "AAPQIntegration", function := "validateAndExecuteV1",
       rule := "integrationExecuteCall", phase := "execute",
+      effect := .phaseCall,
       leanProof := v1FlowProof } ]
+
+def effectJson (phase : String) : TraceEffect -> Json
+  | .guard kind => .obj [
+      ("guard", .str (Examples.AAPQSource.GuardKind.toString kind)),
+      ("kind", .str "guard"),
+      ("phase", .str phase)
+    ]
+  | .delegates target => .obj [
+      ("kind", .str "delegates"),
+      ("phase", .str phase),
+      ("target", .str target)
+    ]
+  | .finalWrite name slot => .obj [
+      ("kind", .str "finalWrite"),
+      ("name", .str name),
+      ("phase", .str phase),
+      ("slot", .num slot)
+    ]
+  | .phaseCall => .obj [
+      ("kind", .str "phaseCall"),
+      ("phase", .str phase)
+    ]
 
 def entryJson (entry : AAPQV1TraceEntry) : Json :=
   .obj [
     ("contract", .str entry.contract),
+    ("effect", effectJson entry.phase entry.effect),
     ("function", .str entry.function),
     ("index", .num entry.index),
     ("leanProof", .str entry.leanProof),
@@ -1315,7 +1375,7 @@ def aapqV1TraceManifest : Json :=
     ("proofReferences", stringsJson AAPQV1Trace.proofReferences),
     ("traceRuleProofs", .arr (AAPQV1Trace.ruleProofs.map AAPQV1Trace.entryJson)),
     ("v1FlowProof", .str AAPQV1Trace.v1FlowProof),
-    ("version", .num 1)
+    ("version", .num 2)
   ]
 
 def aapqV1TraceManifestJson : String :=

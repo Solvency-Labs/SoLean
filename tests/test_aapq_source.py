@@ -56,7 +56,7 @@ from scripts.demo_aapq_source import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SOLIDITY_PATH = REPO_ROOT / "examples" / "AAPQIntegration.sol"
-GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v8.json"
+GOLDEN_PATH = REPO_ROOT / "tests" / "golden" / "AAPQ.source.v9.json"
 
 
 @lru_cache(maxsize=None)
@@ -181,7 +181,7 @@ class V1TraceManifestTests(unittest.TestCase):
     def test_manifest_shape(self) -> None:
         manifest = cached_artifact("v1-trace-manifest-json")
         self.assertEqual(manifest["kind"], "aapqV1TraceManifest")
-        self.assertEqual(manifest["version"], 1)
+        self.assertEqual(manifest["version"], 2)
         rules = manifest["expectedTrustedRules"]
         entries = manifest["traceRuleProofs"]
         self.assertEqual(len(rules), len(entries))
@@ -201,6 +201,29 @@ class V1TraceManifestTests(unittest.TestCase):
             ["execute", "keyMatch", "walletV1", "wrapper"],
         )
         self.assertTrue(manifest["v1FlowProof"])
+
+    def test_manifest_effects_present(self) -> None:
+        manifest = cached_artifact("v1-trace-manifest-json")
+        entries = manifest["traceRuleProofs"]
+        allowed_kinds = {"guard", "delegates", "finalWrite", "phaseCall"}
+        kind_counts: dict[str, int] = {kind: 0 for kind in allowed_kinds}
+        for entry in entries:
+            effect = entry.get("effect")
+            self.assertIsInstance(effect, dict, entry)
+            kind = effect.get("kind")
+            self.assertIn(kind, allowed_kinds, entry)
+            self.assertEqual(effect.get("phase"), entry.get("phase"), entry)
+            kind_counts[kind] = kind_counts[kind] + 1
+            if kind == "guard":
+                self.assertIn("guard", effect, entry)
+            elif kind == "delegates":
+                self.assertIn("target", effect, entry)
+            elif kind == "finalWrite":
+                self.assertIn("name", effect, entry)
+                self.assertIn("slot", effect, entry)
+        # Every effect kind is exercised at least once by the v1 trace.
+        for kind in allowed_kinds:
+            self.assertGreater(kind_counts[kind], 0, kind)
 
     def test_default_manifest_helpers(self) -> None:
         manifest = cached_artifact("v1-trace-manifest-json")
@@ -240,6 +263,25 @@ class V1TraceManifestTests(unittest.TestCase):
         result = check_v1_trace_against_manifest(body, manifest)
         self.assertEqual(result["status"], "failed")
         self.assertIn("Module.other_proof", result["message"])
+
+    def test_check_fails_when_effect_drifts(self) -> None:
+        body = solidity_v1_body_summary(
+            SOLIDITY_PATH.read_text(),
+            trace_manifest=cached_artifact("v1-trace-manifest-json"),
+        )
+        drifted = copied_json(cached_artifact("v1-trace-manifest-json"))
+        drifted["traceRuleProofs"][0]["effect"]["guard"] = "domainCheck"
+        result = check_v1_trace_against_manifest(body, drifted)
+        self.assertEqual(result["status"], "failed")
+        self.assertIn("effect", result["message"])
+
+    def test_body_summary_rejects_missing_effect(self) -> None:
+        manifest = copied_json(cached_artifact("v1-trace-manifest-json"))
+        del manifest["traceRuleProofs"][0]["effect"]
+        with self.assertRaisesRegex(UnsupportedSolidityBody, "missing effect"):
+            solidity_v1_body_summary(
+                SOLIDITY_PATH.read_text(), trace_manifest=manifest
+            )
 
     def test_body_summary_rejects_phase_drift(self) -> None:
         manifest = copied_json(cached_artifact("v1-trace-manifest-json"))

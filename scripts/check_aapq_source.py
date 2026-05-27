@@ -27,7 +27,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-REPORT_VERSION = 8
+REPORT_VERSION = 9
 
 LIMITATIONS = [
     "AA/PQ source-shape/body audit only.",
@@ -474,51 +474,33 @@ def solidity_v1_body_summary(
         integration_v1, "AAPQIntegration", integration_expected
     )
 
-    # Python owns each statement's `source` text and `effect` shape; Lean owns
-    # the `rule`, `phase`, `leanProof`, `contract`, and `function` per index via
-    # the manifest. Trust labels are derived from each entry's phase.
-    trace_phase_effects: list[tuple[str, dict[str, Any]]] = [
-        (wrapper_expected[0],
-         {"guard": "lengthCheck", "kind": "guard", "phase": "wrapper"}),
-        (wrapper_expected[1],
-         {"guard": "lengthCheck", "kind": "guard", "phase": "wrapper"}),
-        (wrapper_expected[2],
-         {"guard": "domainCheck", "kind": "guard", "phase": "wrapper"}),
-        (wrapper_expected[3],
-         {"guard": "verifierCheck", "kind": "guard", "phase": "wrapper"}),
-        (wallet_v1_expected[0],
-         {"guard": "wrapperAddressCheck", "kind": "guard", "phase": "walletV1"}),
-        (wallet_v1_expected[1],
-         {"kind": "delegates", "phase": "walletV1",
-          "target": "AAWallet._validateUserOp"}),
-        (wallet_helper_expected[0],
-         {"guard": "entryPointCheck", "kind": "guard", "phase": "walletV1"}),
-        (wallet_helper_expected[1],
-         {"guard": "nonceCheck", "kind": "guard", "phase": "walletV1"}),
-        (wallet_helper_expected[2],
-         {"guard": "domainCheck", "kind": "guard", "phase": "walletV1"}),
-        (wallet_helper_expected[3],
-         {"guard": "verifierCheck", "kind": "guard", "phase": "walletV1"}),
-        (wallet_helper_expected[4],
-         {"kind": "finalWrite", "name": "nonce", "phase": "walletV1", "slot": 0}),
-        (execute_expected[0],
-         {"kind": "finalWrite", "name": "lastOpHash", "phase": "execute",
-          "slot": 4}),
-        (integration_expected[0],
-         {"kind": "phaseCall", "phase": "wrapper"}),
-        (integration_expected[1],
-         {"guard": "keyCommitmentCheck", "kind": "guard", "phase": "keyMatch"}),
-        (integration_expected[2],
-         {"kind": "phaseCall", "phase": "walletV1"}),
-        (integration_expected[3],
-         {"kind": "phaseCall", "phase": "execute"}),
+    # Python only owns each statement's `source` text now. Lean owns the
+    # `rule`, `phase`, `leanProof`, `contract`, `function`, and `effect` per
+    # index via the manifest. Trust labels are derived from each entry's phase.
+    trace_sources: list[str] = [
+        wrapper_expected[0],
+        wrapper_expected[1],
+        wrapper_expected[2],
+        wrapper_expected[3],
+        wallet_v1_expected[0],
+        wallet_v1_expected[1],
+        wallet_helper_expected[0],
+        wallet_helper_expected[1],
+        wallet_helper_expected[2],
+        wallet_helper_expected[3],
+        wallet_helper_expected[4],
+        execute_expected[0],
+        integration_expected[0],
+        integration_expected[1],
+        integration_expected[2],
+        integration_expected[3],
     ]
 
     manifest_entries = manifest.get("traceRuleProofs", [])
-    if len(manifest_entries) != len(trace_phase_effects):
+    if len(manifest_entries) != len(trace_sources):
         raise UnsupportedSolidityBody(
             f"v1 trace manifest length {len(manifest_entries)} does not match "
-            f"recognized statement count {len(trace_phase_effects)}"
+            f"recognized statement count {len(trace_sources)}"
         )
 
     trust_for_phase = {
@@ -530,17 +512,20 @@ def solidity_v1_body_summary(
     flow_phases = {"wrapper", "walletV1", "execute"}
 
     trace = []
-    for index, (entry, (source, effect)) in enumerate(
-        zip(manifest_entries, trace_phase_effects)
-    ):
+    for index, (entry, source) in enumerate(zip(manifest_entries, trace_sources)):
         if entry.get("index") != index:
             raise UnsupportedSolidityBody(
                 f"v1 trace manifest entry index {entry.get('index')!r} != {index}"
             )
-        if entry.get("phase") != effect["phase"]:
+        effect = entry.get("effect")
+        if not isinstance(effect, dict) or not effect.get("kind"):
+            raise UnsupportedSolidityBody(
+                f"v1 trace[{index}]: manifest entry is missing effect"
+            )
+        if entry.get("phase") != effect.get("phase"):
             raise UnsupportedSolidityBody(
                 f"v1 trace[{index}]: manifest phase {entry.get('phase')!r} != "
-                f"recognized effect phase {effect['phase']!r}"
+                f"manifest effect phase {effect.get('phase')!r}"
             )
         lean_proof = entry.get("leanProof", "")
         expected_phase_proof = (
@@ -565,7 +550,7 @@ def solidity_v1_body_summary(
                 function=entry.get("function", ""),
                 rule=entry.get("rule", ""),
                 source=source,
-                effect=effect,
+                effect=dict(effect),
                 lean_proof=lean_proof,
                 trust=trust,
             )
@@ -776,10 +761,20 @@ def check_v1_trace_against_manifest(
                     f"trace[{index}].{field}: {entry.get(field)!r} != "
                     f"manifest {manifest_entry.get(field)!r}"
                 )
-        effect_phase = (entry.get("effect") or {}).get("phase")
-        if effect_phase != manifest_entry.get("phase"):
+        observed_effect = entry.get("effect") or {}
+        manifest_effect = manifest_entry.get("effect") or {}
+        if not manifest_effect:
             problems.append(
-                f"trace[{index}].effect.phase: {effect_phase!r} != "
+                f"trace[{index}].effect: manifest entry is missing effect"
+            )
+        elif observed_effect != manifest_effect:
+            problems.append(
+                f"trace[{index}].effect: {observed_effect!r} != "
+                f"manifest {manifest_effect!r}"
+            )
+        if observed_effect.get("phase") != manifest_entry.get("phase"):
+            problems.append(
+                f"trace[{index}].effect.phase: {observed_effect.get('phase')!r} != "
                 f"manifest phase {manifest_entry.get('phase')!r}"
             )
 
@@ -789,7 +784,7 @@ def check_v1_trace_against_manifest(
         name,
         trust,
         f"All {len(observed)} trace entries match the Lean-owned manifest "
-        f"(rule, contract, function, phase, leanProof).",
+        f"(rule, contract, function, phase, effect, leanProof).",
     )
 
 
